@@ -1,0 +1,65 @@
+K 25
+svn:wc:ra_dav:version-url
+V 122
+/svn/!svn/ver/2950/branches/fullstack_imru/imru/imru-example/src/main/java/edu/uci/ics/hyracks/imru/example/trainmerge/ann
+END
+NeuralNetwork.java
+K 25
+svn:wc:ra_dav:version-url
+V 141
+/svn/!svn/ver/2950/branches/fullstack_imru/imru/imru-example/src/main/java/edu/uci/ics/hyracks/imru/example/trainmerge/ann/NeuralNetwork.java
+END
+Main.java
+K 25
+svn:wc:ra_dav:version-url
+V 132
+/svn/!svn/ver/2950/branches/fullstack_imru/imru/imru-example/src/main/java/edu/uci/ics/hyracks/imru/example/trainmerge/ann/Main.java
+END
+NNEC2.java
+K 25
+svn:wc:ra_dav:version-url
+V 133
+/svn/!svn/ver/2953/branches/fullstack_imru/imru/imru-example/src/main/java/edu/uci/ics/hyracks/imru/example/trainmerge/ann/NNEC2.java
+END
+Neuron.java
+K 25
+svn:wc:ra_dav:version-url
+V 134
+/svn/!svn/ver/2950/branches/fullstack_imru/imru/imru-example/src/main/java/edu/uci/ics/hyracks/imru/example/trainmerge/ann/Neuron.java
+END
+NNLayer.java
+K 25
+svn:wc:ra_dav:version-url
+V 135
+/svn/!svn/ver/2950/branches/fullstack_imru/imru/imru-example/src/main/java/edu/uci/ics/hyracks/imru/example/trainmerge/ann/NNLayer.java
+END
+Job.java
+K 25
+svn:wc:ra_dav:version-url
+V 131
+/svn/!svn/ver/2959/branches/fullstack_imru/imru/imru-example/src/main/java/edu/uci/ics/hyracks/imru/example/trainmerge/ann/Job.java
+END
+MNIST.java
+K 25
+svn:wc:ra_dav:version-url
+V 133
+/svn/!svn/ver/2950/branches/fullstack_imru/imru/imru-example/src/main/java/edu/uci/ics/hyracks/imru/example/trainmerge/ann/MNIST.java
+END
+NNResult.java
+K 25
+svn:wc:ra_dav:version-url
+V 136
+/svn/!svn/ver/2950/branches/fullstack_imru/imru/imru-example/src/main/java/edu/uci/ics/hyracks/imru/example/trainmerge/ann/NNResult.java
+END
+LeCun5.java
+K 25
+svn:wc:ra_dav:version-url
+V 134
+/svn/!svn/ver/2950/branches/fullstack_imru/imru/imru-example/src/main/java/edu/uci/ics/hyracks/imru/example/trainmerge/ann/LeCun5.java
+END
+NNStructure.java
+K 25
+svn:wc:ra_dav:version-url
+V 139
+/svn/!svn/ver/2950/branches/fullstack_imru/imru/imru-example/src/main/java/edu/uci/ics/hyracks/imru/example/trainmerge/ann/NNStructure.java
+END
