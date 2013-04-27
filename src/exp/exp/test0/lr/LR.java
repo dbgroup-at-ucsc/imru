@@ -1,4 +1,4 @@
-package exp.lr;
+package exp.test0.lr;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -13,8 +13,8 @@ import java.util.regex.Pattern;
 
 import edu.uci.ics.hyracks.imru.example.utils.Client;
 import edu.uci.ics.hyracks.imru.util.Rt;
-import exp.lr.ImruLR.Job;
-import exp.lr.ImruLR.Model;
+import exp.test0.lr.ImruLR.Job;
+import exp.test0.lr.ImruLR.Model;
 
 public class LR {
     static int N = 10000; // Number of data points

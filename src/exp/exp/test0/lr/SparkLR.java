@@ -1,4 +1,4 @@
-package exp.lr;
+package exp.test0.lr;
 
 import spark.api.java.JavaRDD;
 import spark.api.java.JavaSparkContext;
@@ -16,8 +16,8 @@ import java.util.zip.ZipOutputStream;
 import edu.uci.ics.hyracks.imru.example.utils.Client;
 import edu.uci.ics.hyracks.imru.example.utils.CreateHar;
 import edu.uci.ics.hyracks.imru.util.Rt;
-import exp.lr.ImruLR.Job;
-import exp.lr.ImruLR.Model;
+import exp.test0.lr.ImruLR.Job;
+import exp.test0.lr.ImruLR.Model;
 
 /**
  * Logistic regression based classification.
