@@ -149,8 +149,8 @@ public class Client<Model extends Serializable> {
     public static String IMRU_PREFIX = "hyracks-auto-deploy-";
     public static int FRAME_SIZE = 65536;
 
-    private ClusterControllerService cc;
-    private Vector<NodeControllerService> ncs = new Vector<NodeControllerService>();
+    private static ClusterControllerService cc;
+    private static Vector<NodeControllerService> ncs = new Vector<NodeControllerService>();
     protected IHyracksClientConnection hcc;
 
     public IMRUJobControl<Model> control;
@@ -394,7 +394,7 @@ public class Client<Model extends Serializable> {
      * 
      * @throws Exception
      */
-    public void deinit() throws Exception {
+    public static void stop() throws Exception {
         for (NodeControllerService nc : ncs)
             nc.stop();
         ncs.clear();

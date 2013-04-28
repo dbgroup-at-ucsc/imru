@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-package exp.imruVsSpark.kmeans.imru;
+package exp.imruVsSpark.kmeans;
 
 import java.io.Serializable;
 
@@ -23,17 +23,44 @@ import exp.imruVsSpark.data.DataGenerator;
  * IMRU model which will be used in map() and updated in update()
  */
 public class SKMeansModel implements Serializable {
-    SCentroid[] centroids;
+    FilledVector[] centroids;
     public int roundsRemaining = 20;
 
     public SKMeansModel(int k, DataGenerator dataGenerator, int roundsRemaining) {
         this.roundsRemaining = roundsRemaining;
-        centroids = new SCentroid[k];
+        centroids = new FilledVector[k];
         for (int i = 0; i < k; i++) {
-            centroids[i] = new SCentroid(dataGenerator.dims);
+            centroids[i] = new FilledVector(dataGenerator.dims);
             centroids[i].count = 1;
             for (int j = 0; j < dataGenerator.dims; j++)
                 centroids[i].ds[j] = dataGenerator.value_distribution.get();
         }
+    }
+
+    public boolean set(FilledVectors combined) {
+        boolean changed = false;
+        for (int i = 0; i < centroids.length; i++)
+            changed = changed || centroids[i].set(combined.centroids[i]);
+        return changed;
+    }
+
+    public static class Result {
+        public int belong;
+        public float dis;
+    }
+    public Result classify(SparseVector dataPoint) {
+        float min = Float.MAX_VALUE;
+        int belong = -1;
+        for (int i = 0; i < centroids.length; i++) {
+            float dis = centroids[i].dis(dataPoint);
+            if (dis < min) {
+                min = dis;
+                belong = i;
+            }
+        }
+        Result result=new Result();
+        result.belong= belong;
+        result.dis=min;
+        return result;
     }
 }

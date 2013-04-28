@@ -13,22 +13,22 @@
  * limitations under the License.
  */
 
-package exp.imruVsSpark.kmeans.imru;
+package exp.imruVsSpark.kmeans;
 
 import java.io.Serializable;
 import java.util.Arrays;
 
 import edu.uci.ics.hyracks.imru.util.Rt;
 
-public class SCentroid implements Serializable {
-    float[] ds;
-    int count = 0;
+public class FilledVector implements Serializable {
+    public float[] ds;
+    public int count = 0;
 
-    public SCentroid(int dimensions) {
+    public FilledVector(int dimensions) {
         ds = new float[dimensions];
     }
 
-    public double dis(SDataPoint dp) {
+    public float dis(SparseVector dp) {
         float sum = 0;
         int c = 0;
         for (int i = 0; i < dp.keys.length; i++) {
@@ -44,14 +44,14 @@ public class SCentroid implements Serializable {
         return (float) Math.sqrt(sum);
     }
 
-    public void add(SDataPoint dp) {
+    public void add(SparseVector dp) {
         for (int i = 0; i < dp.values.length; i++) {
             ds[dp.keys[i]] += dp.values[i];
         }
         count++;
     }
 
-    public boolean set(SCentroid c) {
+    public boolean set(FilledVector c) {
         boolean modified = false;
         if (c.count > 0) {
             for (int i = 0; i < ds.length; i++) {
@@ -70,7 +70,7 @@ public class SCentroid implements Serializable {
         return modified;
     }
 
-    public void add(SCentroid dp) {
+    public void add(FilledVector dp) {
         for (int i = 0; i < ds.length; i++)
             ds[i] += dp.ds[i];
         count += dp.count;

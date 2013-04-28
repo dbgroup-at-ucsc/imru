@@ -26,8 +26,11 @@ import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.IIMRUJob;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
+import exp.imruVsSpark.kmeans.FilledVectors;
+import exp.imruVsSpark.kmeans.SKMeansModel;
+import exp.imruVsSpark.kmeans.SparseVector;
 
-public class SKMeansJob implements IIMRUJob<SKMeansModel, SDataPoint, SKMeansCentroids> {
+public class SKMeansJob implements IIMRUJob<SKMeansModel, SparseVector, FilledVectors> {
     int k;
     int dimensions;
 
@@ -41,25 +44,25 @@ public class SKMeansJob implements IIMRUJob<SKMeansModel, SDataPoint, SKMeansCen
      */
     @Override
     public int getCachedDataFrameSize() {
-        return 1024*1024;
+        return 1024 * 1024;
     }
 
     /**
      * Parse input data and output tuples
      */
     @Override
-    public void parse(IMRUContext ctx, InputStream input, DataWriter<SDataPoint> output) throws IOException {
+    public void parse(IMRUContext ctx, InputStream input, DataWriter<SparseVector> output) throws IOException {
         try {
             Pattern p = Pattern.compile("[ |\\t]+");
             Pattern p2 = Pattern.compile(":");
             BufferedReader reader = new BufferedReader(new InputStreamReader(input));
-            int n=0;
+            int n = 0;
             while (true) {
                 String line = reader.readLine();
                 if (line == null)
                     break;
                 String[] ss = p.split(line);
-                SDataPoint dataPoint = new SDataPoint(ss.length);
+                SparseVector dataPoint = new SparseVector(ss.length);
                 for (int i = 0; i < ss.length; i++) {
                     String[] kv = p2.split(ss[i]);
                     dataPoint.keys[i] = Integer.parseInt(kv[0]);
@@ -76,24 +79,14 @@ public class SKMeansJob implements IIMRUJob<SKMeansModel, SDataPoint, SKMeansCen
     }
 
     @Override
-    public SKMeansCentroids map(IMRUContext ctx, Iterator<SDataPoint> input, SKMeansModel model) throws IOException {
-        SKMeansCentroids result = new SKMeansCentroids(k, dimensions);
+    public FilledVectors map(IMRUContext ctx, Iterator<SparseVector> input, SKMeansModel model) throws IOException {
+        FilledVectors result = new FilledVectors(k, dimensions);
         while (input.hasNext()) {
-            SDataPoint dataPoint = input.next();
-            // Classify data points using existing centroids
-            double min = Double.MAX_VALUE;
-            int belong = -1;
-            for (int i = 0; i < k; i++) {
-                double dis = model.centroids[i].dis(dataPoint);
-                if (dis < min) {
-                    min = dis;
-                    belong = i;
-                }
-            }
-            result.centroids[belong].add(dataPoint);
-            result.distanceSum += min;
+            SparseVector dataPoint = input.next();
+            SKMeansModel.Result rs = model.classify(dataPoint);
+            result.centroids[rs.belong].add(dataPoint);
+            result.distanceSum += rs.dis;
         }
-        //        System.out.println("map "+model);
         return result;
     }
 
@@ -101,14 +94,10 @@ public class SKMeansJob implements IIMRUJob<SKMeansModel, SDataPoint, SKMeansCen
      * Combine multiple results to one result
      */
     @Override
-    public SKMeansCentroids reduce(IMRUContext ctx, Iterator<SKMeansCentroids> input) throws IMRUDataException {
-        SKMeansCentroids combined = new SKMeansCentroids(k, dimensions);
-        while (input.hasNext()) {
-            SKMeansCentroids result = input.next();
-            for (int i = 0; i < k; i++)
-                combined.centroids[i].add(result.centroids[i]);
-            combined.distanceSum += result.distanceSum;
-        }
+    public FilledVectors reduce(IMRUContext ctx, Iterator<FilledVectors> input) throws IMRUDataException {
+        FilledVectors combined = new FilledVectors(k, dimensions);
+        while (input.hasNext())
+            combined.add(input.next());
         return combined;
     }
 
@@ -116,12 +105,10 @@ public class SKMeansJob implements IIMRUJob<SKMeansModel, SDataPoint, SKMeansCen
      * update the model using combined result
      */
     @Override
-    public SKMeansModel update(IMRUContext ctx, Iterator<SKMeansCentroids> input, SKMeansModel model)
+    public SKMeansModel update(IMRUContext ctx, Iterator<FilledVectors> input, SKMeansModel model)
             throws IMRUDataException {
-        SKMeansCentroids combined = reduce(ctx, input);
-        boolean changed = false;
-        for (int i = 0; i < k; i++)
-            changed = changed || model.centroids[i].set(combined.centroids[i]);
+        FilledVectors combined = reduce(ctx, input);
+        boolean changed = model.set(combined);
         model.roundsRemaining--;
         if (!changed)
             model.roundsRemaining = 0;
