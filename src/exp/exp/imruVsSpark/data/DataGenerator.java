@@ -10,20 +10,30 @@ import javax.script.ScriptEngineManager;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class DataGenerator {
-    public static void generate(File templateDir, double numOfDataPoints, boolean hasLabel, File output)
-            throws Exception {
-        Random random = new Random();
+    public File templateDir;
+    public double numOfDataPoints;
+    public int dims;
+    public Distribution dims_distribution;
+    public Distribution value_distribution;
+    Random random = new Random();
+
+    public DataGenerator(double numOfDataPoints, File templateDir) throws Exception {
+        this.numOfDataPoints = numOfDataPoints;
+        this.templateDir = templateDir;
         String formula = Rt.readFile(new File(templateDir, "dimensions.txt"));
         ScriptEngineManager manager = new ScriptEngineManager();
         com.sun.script.javascript.RhinoScriptEngine engine = (com.sun.script.javascript.RhinoScriptEngine) manager
                 .getEngineByName("JavaScript");
         CompiledScript cs = engine.compile("var x=" + numOfDataPoints / 1000000.0 + ";" + formula);
-        long dims = (long) ((Double) cs.eval() * 1000000.0);
+        dims = (int) ((Double) cs.eval() * 1000000.0);
         if (dims < 1000000)
             dims = 1000000;
         Rt.p("%,d", dims);
-        Distribution dims_distribution = new Distribution(random, new File(templateDir, "non-empty-dims.txt"));
-        Distribution value_distribution = new Distribution(random, new File(templateDir, "dim_value.txt"));
+        dims_distribution = new Distribution(random, new File(templateDir, "non-empty-dims.txt"));
+        value_distribution = new Distribution(random, new File(templateDir, "dim_value.txt"));
+    }
+
+    public void generate(boolean hasLabel, File output) throws Exception {
         PrintStream ps = new PrintStream(output);
         for (int i = 0; i < numOfDataPoints; i++) {
             int numOfDims = dims_distribution.get();
@@ -42,6 +52,7 @@ public class DataGenerator {
     }
 
     public static void main(String[] args) throws Exception {
-        generate(new File("exp_data/product_name"), 51200, false, new File("/tmp/cache/productName.txt"));
+        DataGenerator d = new DataGenerator(51200, new File("exp_data/product_name"));
+        d.generate(false, new File("/data/b/data/imru/productName.txt"));
     }
 }

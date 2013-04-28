@@ -123,7 +123,11 @@ public class Client<Model extends Serializable> {
         @Option(name = "-model-file-name", usage = "Name of the model file")
         public String modelFileNameHDFS;
 
-        @Option(name = "-example-paths", usage = "HDFS path to hold input data. Or local file in the format of [nodeId]:<path>")
+        @Option(name = "-input-paths", usage = "HDFS path to hold input data. Or local file in the format of [nodeId]:<path>")
+        public String inputPaths;
+
+        @Deprecated
+        @Option(name = "-example-paths", usage = "Same as -input-paths")
         public String examplePaths = "/input/data.txt";
 
         @Option(name = "-agg-tree-type", usage = "The aggregation tree type (none, nary, or generic)")
@@ -205,8 +209,7 @@ public class Client<Model extends Serializable> {
      *            a list of ip and node names
      * @throws IOException
      */
-    public static void generateClusterConfig(File file, String... args)
-            throws IOException {
+    public static void generateClusterConfig(File file, String... args) throws IOException {
         PrintStream ps = new PrintStream(file);
         for (int i = 0; i < args.length / 2; i++)
             ps.println(args[i * 2] + " " + args[i * 2 + 1]);
@@ -222,10 +225,11 @@ public class Client<Model extends Serializable> {
         this.control = new IMRUJobControl<Model>();
         control.localIntermediateModelPath = options.localIntermediateModelPath;
         control.modelFileName = options.modelFileNameHDFS;
-        control.connect(options.host, options.port, options.imruPort,
-                options.hadoopConfPath, options.clusterConfPath);
+        control.connect(options.host, options.port, options.imruPort, options.hadoopConfPath, options.clusterConfPath);
         hcc = control.hcc;
         conf = control.confFactory.createConfiguration();
+        if (options.inputPaths != null)
+            options.examplePaths = options.inputPaths;
         // set aggregation type
         if (options.aggTreeType == null) {
             int mappers = options.examplePaths.split(",").length;
@@ -237,18 +241,14 @@ public class Client<Model extends Serializable> {
         } else if (options.aggTreeType.equals("none")) {
             control.selectNoAggregation(options.examplePaths);
         } else if (options.aggTreeType.equals("generic")) {
-            control.selectGenericAggregation(options.examplePaths,
-                    options.aggCount);
+            control.selectGenericAggregation(options.examplePaths, options.aggCount);
         } else if (options.aggTreeType.equals("nary")) {
             Map<String, NodeControllerInfo> map = hcc.getNodeControllerInfos();
             if (map.size() < 3) {
-                Rt.p("Change to generic aggregation because there are only "
-                        + map.size() + " nodes");
-                control.selectGenericAggregation(options.examplePaths,
-                        options.fanIn);
+                Rt.p("Change to generic aggregation because there are only " + map.size() + " nodes");
+                control.selectGenericAggregation(options.examplePaths, options.fanIn);
             } else {
-                control.selectNAryAggregation(options.examplePaths,
-                        options.fanIn);
+                control.selectNAryAggregation(options.examplePaths, options.fanIn);
             }
         } else {
             throw new IllegalArgumentException("Invalid aggregation tree type");
@@ -256,8 +256,7 @@ public class Client<Model extends Serializable> {
         // hyracks connection
     }
 
-    public static boolean isServerAvailable(String host, int port)
-            throws Exception {
+    public static boolean isServerAvailable(String host, int port) throws Exception {
         try {
             Socket socket = new Socket(host, port);
             socket.close();
@@ -272,8 +271,8 @@ public class Client<Model extends Serializable> {
      * 
      * @throws Exception
      */
-    public <Data extends Serializable, T extends Serializable> JobStatus run(
-            IIMRUJob<Model, Data, T> job, Model initialModel) throws Exception {
+    public <Data extends Serializable, T extends Serializable> JobStatus run(IIMRUJob<Model, Data, T> job,
+            Model initialModel) throws Exception {
         return control.run(job, initialModel, options.app);
     }
 
@@ -282,8 +281,7 @@ public class Client<Model extends Serializable> {
      * 
      * @throws Exception
      */
-    public JobStatus run(IIMRUJob2<Model> job, Model initialModel)
-            throws Exception {
+    public JobStatus run(IIMRUJob2<Model> job, Model initialModel) throws Exception {
         return control.run(job, initialModel, options.app);
     }
 
@@ -315,8 +313,7 @@ public class Client<Model extends Serializable> {
      * @param clientNetPort
      * @throws Exception
      */
-    public void startCC(String host, int clusterNetPort, int clientNetPort)
-            throws Exception {
+    public void startCC(String host, int clusterNetPort, int clientNetPort) throws Exception {
         CCConfig ccConfig = new CCConfig();
         ccConfig.clientNetIpAddress = host;
         ccConfig.clusterNetIpAddress = host;
@@ -338,8 +335,7 @@ public class Client<Model extends Serializable> {
      * @param clusterNetPort
      * @throws Exception
      */
-    public void startNC(String NC1_ID, String host, int clusterNetPort)
-            throws Exception {
+    public void startNC(String NC1_ID, String host, int clusterNetPort) throws Exception {
         NCConfig ncConfig1 = new NCConfig();
         ncConfig1.ccHost = host;
         ncConfig1.clusterNetIPAddress = host;
@@ -414,8 +410,7 @@ public class Client<Model extends Serializable> {
      */
     public void runJob(JobSpecification spec, String appName) throws Exception {
         spec.setFrameSize(FRAME_SIZE);
-        JobId jobId = hcc.startJob(appName, spec,
-                EnumSet.of(JobFlag.PROFILE_RUNTIME));
+        JobId jobId = hcc.startJob(appName, spec, EnumSet.of(JobFlag.PROFILE_RUNTIME));
         hcc.waitForCompletion(jobId);
     }
 
@@ -426,19 +421,16 @@ public class Client<Model extends Serializable> {
      * @throws Exception
      */
     public void uploadApp() throws Exception {
-        uploadApp(hcc, options.app, options.hadoopConfPath != null,
-                options.imruPort, options.ccTempPath, options.debug);
+        uploadApp(hcc, options.app, options.hadoopConfPath != null, options.imruPort, options.ccTempPath, options.debug);
     }
 
-    public static void uploadApp(IHyracksClientConnection hcc, String appName,
-            boolean includeHadoop, int imruPort, String tempDir)
-            throws Exception {
+    public static void uploadApp(IHyracksClientConnection hcc, String appName, boolean includeHadoop, int imruPort,
+            String tempDir) throws Exception {
         uploadApp(hcc, appName, includeHadoop, imruPort, tempDir, false);
     }
 
-    public static void uploadApp(IHyracksClientConnection hcc, String appName,
-            boolean includeHadoop, int imruPort, String tempDir, boolean debug)
-            throws Exception {
+    public static void uploadApp(IHyracksClientConnection hcc, String appName, boolean includeHadoop, int imruPort,
+            String tempDir, boolean debug) throws Exception {
         Timer timer = new Timer();
         File harFile = null;
         if (!debug) {
@@ -450,9 +442,10 @@ public class Client<Model extends Serializable> {
             timer.schedule(new TimerTask() {
                 @Override
                 public void run() {
-                    Rt.p("Uploading harFile "
-                            + harFile2.length()
-                            + ". If there is not respond for a while, please check nc logs, there might be ClassNotFoundException.");
+                    Rt
+                            .p("Uploading harFile "
+                                    + harFile2.length()
+                                    + ". If there is not respond for a while, please check nc logs, there might be ClassNotFoundException.");
 
                 }
             }, 2000);
@@ -520,9 +513,8 @@ public class Client<Model extends Serializable> {
      * 
      * @throws Exception
      */
-    public static <M extends Serializable, D extends Serializable, R extends Serializable> M run(
-            IIMRUJob<M, D, R> job, M initialModel, String[] args)
-            throws Exception {
+    public static <M extends Serializable, D extends Serializable, R extends Serializable> M run(IIMRUJob<M, D, R> job,
+            M initialModel, String[] args) throws Exception {
         return run(job, initialModel, args, null);
     }
 
@@ -531,9 +523,8 @@ public class Client<Model extends Serializable> {
      * 
      * @throws Exception
      */
-    public static <M extends Serializable, D extends Serializable, R extends Serializable> M run(
-            IIMRUJob<M, D, R> job, M initialModel, String[] args,
-            String overrideAppName) throws Exception {
+    public static <M extends Serializable, D extends Serializable, R extends Serializable> M run(IIMRUJob<M, D, R> job,
+            M initialModel, String[] args, String overrideAppName) throws Exception {
         // create a client object, which handles everything
         Client<M> client = new Client<M>(args);
         try {
@@ -563,17 +554,15 @@ public class Client<Model extends Serializable> {
      * 
      * @throws Exception
      */
-    public static void distributeData(File[] src, String[] targetNodes,
-            String[] dest, String[] args) throws Exception {
+    public static void distributeData(File[] src, String[] targetNodes, String[] dest, String[] args) throws Exception {
         // create a client object, which handles everything
         Client<Serializable> client = new Client<Serializable>(args);
 
         client.init();
 
         for (int i = 0; i < src.length; i++) {
-            DataSpreadDriver driver = new DataSpreadDriver(client.hcc,
-                    client.control.imruConnection, client.options.app, src[i],
-                    targetNodes, dest[i]);
+            DataSpreadDriver driver = new DataSpreadDriver(client.hcc, client.control.imruConnection,
+                    client.options.app, src[i], targetNodes, dest[i]);
             JobStatus status = driver.run();
             if (status == JobStatus.FAILURE) {
                 System.err.println("Job failed; see CC and NC logs");
