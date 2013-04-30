@@ -91,11 +91,9 @@ public class IMRUJobFactory {
     UUID id = UUID.randomUUID();
     IMRUConnection imruConnection;
 
-    public IMRUJobFactory(IMRUConnection imruConnection, String inputPaths,
-            ConfigurationFactory confFactory, String type, int fanIn,
-            int reducerCount) throws IOException, InterruptedException {
-        this(imruConnection, inputPaths, confFactory, aggType(type), fanIn,
-                reducerCount);
+    public IMRUJobFactory(IMRUConnection imruConnection, String inputPaths, ConfigurationFactory confFactory,
+            String type, int fanIn, int reducerCount) throws IOException, InterruptedException {
+        this(imruConnection, inputPaths, confFactory, aggType(type), fanIn, reducerCount);
     }
 
     public static AGGREGATION aggType(String type) {
@@ -125,22 +123,19 @@ public class IMRUJobFactory {
      * @throws InterruptedException
      * @throws HyracksException
      */
-    public IMRUJobFactory(IMRUConnection imruConnection, String inputPaths,
-            ConfigurationFactory confFactory, AGGREGATION aggType, int fanIn,
-            int reducerCount) throws IOException, InterruptedException {
+    public IMRUJobFactory(IMRUConnection imruConnection, String inputPaths, ConfigurationFactory confFactory,
+            AGGREGATION aggType, int fanIn, int reducerCount) throws IOException, InterruptedException {
         this.imruConnection = imruConnection;
         this.confFactory = confFactory;
         this.inputPaths = inputPaths;
-        inputSplits = IMRUInputSplitProvider.getInputSplits(inputPaths,
-                confFactory);
+        inputSplits = IMRUInputSplitProvider.getInputSplits(inputPaths, confFactory);
         // For repeatability of the partition assignments, seed the
         // source of
         // randomness using the job id.
         Random random = new Random(id.getLeastSignificantBits());
-        mapOperatorLocations = ClusterConfig.setLocationConstraint(null, null,
-                inputSplits, random);
-        HashSet<String> hashSet = new HashSet<String>(
-                Arrays.asList(mapOperatorLocations));
+        mapOperatorLocations = ClusterConfig.setLocationConstraint(null, null, confFactory.useHDFS() ? this
+                .getInputSplits() : null, inputSplits, random);
+        HashSet<String> hashSet = new HashSet<String>(Arrays.asList(mapOperatorLocations));
         mapNodesLocations = hashSet.toArray(new String[0]);
         mapAndUpdateNodesLocations = hashSet.toArray(new String[0]);
         modelNode = mapNodesLocations[0];
@@ -150,17 +145,30 @@ public class IMRUJobFactory {
         if (aggType == AGGREGATION.NONE) {
         } else if (aggType == AGGREGATION.GENERIC) {
             if (reducerCount < 1)
-                throw new IllegalArgumentException(
-                        "Must specify a nonnegative aggregator count");
+                throw new IllegalArgumentException("Must specify a nonnegative aggregator count");
         } else if (aggType == AGGREGATION.NARY) {
             if (fanIn <= 1)
-                throw new IllegalArgumentException(
-                        "Must specify fan in greater than 1");
+                throw new IllegalArgumentException("Must specify fan in greater than 1");
         }
     }
 
     public UUID getId() {
         return id;
+    }
+
+    public JobConf getConf() throws IOException {
+        JobConf conf = new JobConf();
+        conf.addResource(new Path(confFactory.hadoopConfPath + "/core-site.xml"));
+        conf.addResource(new Path(confFactory.hadoopConfPath + "/mapred-site.xml"));
+        conf.addResource(new Path(confFactory.hadoopConfPath + "/hdfs-site.xml"));
+        return conf;
+    }
+
+    public InputSplit[] getInputSplits() throws IOException {
+        JobConf conf = getConf();
+        FileInputFormat.setInputPaths(conf, inputPaths);
+        conf.setInputFormat(HDFSBlockFormat.class);
+        return conf.getInputFormat().getSplits(conf, 1);
     }
 
     /**
@@ -174,50 +182,31 @@ public class IMRUJobFactory {
      * @throws IOException
      */
     @SuppressWarnings("rawtypes")
-    public JobSpecification generateDataLoadJob(IIMRUJob2 model)
-            throws IOException {
+    public JobSpecification generateDataLoadJob(IIMRUJob2 model) throws IOException {
         JobSpecification spec = new JobSpecification();
         if (confFactory.useHDFS()) {
-            JobConf conf = new JobConf();
-            conf.addResource(new Path(confFactory.hadoopConfPath
-                    + "/core-site.xml"));
-            conf.addResource(new Path(confFactory.hadoopConfPath
-                    + "/mapred-site.xml"));
-            conf.addResource(new Path(confFactory.hadoopConfPath
-                    + "/hdfs-site.xml"));
-            FileInputFormat.setInputPaths(conf, inputPaths);
-            conf.setInputFormat(HDFSBlockFormat.class);
-//            conf.setInputFormat(TextInputFormat.class);
+            InputSplit[] splits = getInputSplits();
             RecordDescriptor recordDesc = new RecordDescriptor(
                     new ISerializerDeserializer[] { UTF8StringSerializerDeserializer.INSTANCE });
-            InputSplit[] splits = conf.getInputFormat().getSplits(conf, 1);
-            HDFSReadOperatorDescriptor readOperator = new HDFSReadOperatorDescriptor(
-                    spec, recordDesc, conf, splits, mapOperatorLocations,
-                    new HDFSBlockWriter());
-            PartitionConstraintHelper.addAbsoluteLocationConstraint(spec,
-                    readOperator, mapOperatorLocations);
+            HDFSReadOperatorDescriptor readOperator = new HDFSReadOperatorDescriptor(spec, recordDesc, getConf(),
+                    splits, mapOperatorLocations, new HDFSBlockWriter());
+            PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, readOperator, mapOperatorLocations);
 
-            IOperatorDescriptor writer = new DataLoadOperatorDescriptor(spec,
-                    model, inputSplits, confFactory, true);
-            PartitionConstraintHelper.addAbsoluteLocationConstraint(spec,
-                    readOperator, mapOperatorLocations);
+            IOperatorDescriptor writer = new DataLoadOperatorDescriptor(spec, model, inputSplits, confFactory, true);
+            PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, readOperator, mapOperatorLocations);
 
-            spec.connect(new OneToOneConnectorDescriptor(spec), readOperator,
-                    0, writer, 0);
+            spec.connect(new OneToOneConnectorDescriptor(spec), readOperator, 0, writer, 0);
         } else {
-            IMRUOperatorDescriptor dataLoad = new DataLoadOperatorDescriptor(
-                    spec, model, inputSplits, confFactory, false);
-            PartitionConstraintHelper.addAbsoluteLocationConstraint(spec,
-                    dataLoad, mapOperatorLocations);
+            IMRUOperatorDescriptor dataLoad = new DataLoadOperatorDescriptor(spec, model, inputSplits, confFactory,
+                    false);
+            PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, dataLoad, mapOperatorLocations);
             spec.addRoot(dataLoad);
         }
         return spec;
     }
 
-    public JobSpecification generateModelSpreadJob(String modelPath,
-            int roundNum) {
-        return generateModelSpreadJob(mapAndUpdateNodesLocations, modelNode,
-                imruConnection, modelPath, roundNum, null);
+    public JobSpecification generateModelSpreadJob(String modelPath, int roundNum) {
+        return generateModelSpreadJob(mapAndUpdateNodesLocations, modelNode, imruConnection, modelPath, roundNum, null);
     }
 
     /**
@@ -232,10 +221,8 @@ public class IMRUJobFactory {
      *            Save distributed data to a file instead of loading to memory
      * @return
      */
-    public static JobSpecification generateModelSpreadJob(
-            String[] mapNodesLocations, String initialNode,
-            IMRUConnection imruConnection, String modelName, int modelAge,
-            String dataFilePath) {
+    public static JobSpecification generateModelSpreadJob(String[] mapNodesLocations, String initialNode,
+            IMRUConnection imruConnection, String modelName, int modelAge, String dataFilePath) {
         JobSpecification job = new JobSpecification();
         //        job.setFrameSize(frameSize);
         SpreadGraph graph = new SpreadGraph(mapNodesLocations, initialNode);
@@ -244,13 +231,10 @@ public class IMRUJobFactory {
         for (int i = 0; i < graph.levels.length; i++) {
             SpreadGraph.Level level = graph.levels[i];
             String[] locations = level.getLocationContraint();
-            SpreadOD op = new SpreadOD(job, graph.levels, i, modelName,
-                    imruConnection, modelAge, dataFilePath);
+            SpreadOD op = new SpreadOD(job, graph.levels, i, modelName, imruConnection, modelAge, dataFilePath);
             if (i > 0)
-                job.connect(new SpreadConnectorDescriptor(job,
-                        graph.levels[i - 1], level), last, 0, op, 0);
-            PartitionConstraintHelper.addAbsoluteLocationConstraint(job, op,
-                    locations);
+                job.connect(new SpreadConnectorDescriptor(job, graph.levels[i - 1], level), last, 0, op, 0);
+            PartitionConstraintHelper.addAbsoluteLocationConstraint(job, op, locations);
             last = op;
         }
         job.addRoot(last);
@@ -273,9 +257,8 @@ public class IMRUJobFactory {
      * @return A JobSpecification for an iteration of IMRU.
      * @throws HyracksException
      */
-    @SuppressWarnings({ "rawtypes", "unchecked" })
-    public JobSpecification generateJob(IIMRUJob2 model, int roundNum,
-            String modelName) throws HyracksException {
+    @SuppressWarnings( { "rawtypes", "unchecked" })
+    public JobSpecification generateJob(IIMRUJob2 model, int roundNum, String modelName) throws HyracksException {
 
         JobSpecification spec = new JobSpecification();
         // Create operators
@@ -283,51 +266,38 @@ public class IMRUJobFactory {
 
         // IMRU Computation
         // We will have one Map operator per input file.
-        IMRUOperatorDescriptor mapOperator = new MapOperatorDescriptor(spec,
-                model, roundNum, "map");
-        PartitionConstraintHelper.addAbsoluteLocationConstraint(spec,
-                mapOperator, mapOperatorLocations);
+        IMRUOperatorDescriptor mapOperator = new MapOperatorDescriptor(spec, model, roundNum, "map");
+        PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, mapOperator, mapOperatorLocations);
 
         // Environment updating
-        IMRUOperatorDescriptor updateOperator = new UpdateOperatorDescriptor(
-                spec, model, modelName, imruConnection);
-        PartitionConstraintHelper.addPartitionCountConstraint(spec,
-                updateOperator, 1);
+        IMRUOperatorDescriptor updateOperator = new UpdateOperatorDescriptor(spec, model, modelName, imruConnection);
+        PartitionConstraintHelper.addPartitionCountConstraint(spec, updateOperator, 1);
         // Make sure update operator can get the model
-        PartitionConstraintHelper.addAbsoluteLocationConstraint(spec,
-                updateOperator, mapOperatorLocations[0]);
+        PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, updateOperator, mapOperatorLocations[0]);
 
         if (aggType == AGGREGATION.NONE) {
             // Connect things together
-            IConnectorDescriptor mapReduceConn = new MToNReplicatingConnectorDescriptor(
-                    spec);
+            IConnectorDescriptor mapReduceConn = new MToNReplicatingConnectorDescriptor(spec);
             spec.connect(mapReduceConn, mapOperator, 0, updateOperator, 0);
         } else if (aggType == AGGREGATION.GENERIC) {
             // One level of reducers (ala Hadoop)
-            IOperatorDescriptor reduceOperator = new ReduceOperatorDescriptor(
-                    spec, model, "generic reducer");
-            PartitionConstraintHelper.addPartitionCountConstraint(spec,
-                    reduceOperator, reducerCount);
+            IOperatorDescriptor reduceOperator = new ReduceOperatorDescriptor(spec, model, "generic reducer");
+            PartitionConstraintHelper.addPartitionCountConstraint(spec, reduceOperator, reducerCount);
 
             // Set up the local combiners (machine-local reducers)
-            IConnectorDescriptor mapReducerConn = new LocalityAwareMToNPartitioningConnectorDescriptor(
-                    spec, OneToOneTuplePartitionComputerFactory.INSTANCE,
-                    new RangeLocalityMap(mapOperatorLocations.length));
-            LocalReducerFactory.addLocalReducers(spec, mapOperator, 0,
-                    mapOperatorLocations, reduceOperator, 0, mapReducerConn,
-                    model);
+            IConnectorDescriptor mapReducerConn = new LocalityAwareMToNPartitioningConnectorDescriptor(spec,
+                    OneToOneTuplePartitionComputerFactory.INSTANCE, new RangeLocalityMap(mapOperatorLocations.length));
+            LocalReducerFactory.addLocalReducers(spec, mapOperator, 0, mapOperatorLocations, reduceOperator, 0,
+                    mapReducerConn, model);
 
             // Connect things together
-            IConnectorDescriptor reduceUpdateConn = new MToNReplicatingConnectorDescriptor(
-                    spec);
+            IConnectorDescriptor reduceUpdateConn = new MToNReplicatingConnectorDescriptor(spec);
             spec.connect(reduceUpdateConn, reduceOperator, 0, updateOperator, 0);
         } else if (aggType == AGGREGATION.NARY) {
             // Reduce aggregation tree.
-            IConnectorDescriptor reduceUpdateConn = new MToNReplicatingConnectorDescriptor(
-                    spec);
-            ReduceAggregationTreeFactory.buildAggregationTree(spec,
-                    mapOperator, 0, inputSplits.length, updateOperator, 0,
-                    reduceUpdateConn, fanIn, true, mapOperatorLocations, model);
+            IConnectorDescriptor reduceUpdateConn = new MToNReplicatingConnectorDescriptor(spec);
+            ReduceAggregationTreeFactory.buildAggregationTree(spec, mapOperator, 0, inputSplits.length, updateOperator,
+                    0, reduceUpdateConn, fanIn, true, mapOperatorLocations, model);
         }
 
         spec.addRoot(updateOperator);

@@ -32,6 +32,7 @@ import java.util.logging.Logger;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.mutable.MutableInt;
+import org.apache.hadoop.mapred.InputSplit;
 
 import edu.uci.ics.hyracks.api.client.HyracksConnection;
 import edu.uci.ics.hyracks.api.client.NodeControllerInfo;
@@ -97,13 +98,13 @@ public class ClusterConfig {
      * @throws HyracksException
      */
     public static String[] setLocationConstraint(JobSpecification spec, IMRUOperatorDescriptor operator,
-            IMRUFileSplit[] splits, Random random) throws IOException {
+            InputSplit[] hdfsSplits,IMRUFileSplit[] splits, Random random) throws IOException {
         if (NCs == null)
             loadClusterConfig();
         if (splits.length == 0)
             return new String[0];
 
-        if (!splits[0].isOnHDFS()) {
+        if (hdfsSplits==null) {
             int partitionCount = splits.length;
             String[] partitionLocations = new String[partitionCount];
             for (int partition = 0; partition < partitionCount; partition++) {
@@ -126,8 +127,7 @@ public class ClusterConfig {
         int localAssignments = 0;
         int nonlocalAssignments = 0;
         for (int partition = 0; partition < partitionCount; partition++) {
-            String[] localHosts = new String[0];
-//                    splits[partition].getLocations();
+            String[] localHosts = hdfsSplits[partition].getLocations();
             // Remove nondeterminism from the call to getLocations():
             Collections.sort(Arrays.asList(localHosts));
             Collections.shuffle(Arrays.asList(localHosts), random);

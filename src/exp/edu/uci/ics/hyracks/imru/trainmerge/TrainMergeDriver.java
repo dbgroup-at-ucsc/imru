@@ -116,9 +116,9 @@ public class TrainMergeDriver<Model extends Serializable> {
                 inputPaths, confFactory);
         Random random = new Random(id.getLeastSignificantBits());
         String[] trainOperatorLocations = ClusterConfig.setLocationConstraint(
-                null, null, inputSplits, random);
-        String[] mergeOperatorLocations = new HashSet<String>(
-                Arrays.asList(trainOperatorLocations)).toArray(new String[0]);
+                null, null, null, inputSplits, random);
+        String[] mergeOperatorLocations = new HashSet<String>(Arrays
+                .asList(trainOperatorLocations)).toArray(new String[0]);
 
         LOGGER.info("Starting training id=" + id);
         imruConnection.uploadModel(modelFileName, model);
@@ -129,8 +129,8 @@ public class TrainMergeDriver<Model extends Serializable> {
                 imruConnection, modelFileName, 0, null);
         //        byte[] bs=JavaSerializationUtils.serialize(job);
         //      Rt.p("IMRU job size: "+bs.length);
-        JobId spreadjobId = hcc.startJob(app, spreadjob,
-                EnumSet.of(JobFlag.PROFILE_RUNTIME));
+        JobId spreadjobId = hcc.startJob(app, spreadjob, EnumSet
+                .of(JobFlag.PROFILE_RUNTIME));
         //        JobId jobId = hcc.createJob(app, job);
         //        hcc.start(jobId);
         hcc.waitForCompletion(spreadjobId);
@@ -140,8 +140,8 @@ public class TrainMergeDriver<Model extends Serializable> {
         long loadStart = System.currentTimeMillis();
         JobSpecification job = buildTrainMergeJob(modelFileName, inputSplits,
                 trainOperatorLocations, mergeOperatorLocations);
-        JobId jobId = hcc.startJob(app, job,
-                EnumSet.of(JobFlag.PROFILE_RUNTIME));
+        JobId jobId = hcc.startJob(app, job, EnumSet
+                .of(JobFlag.PROFILE_RUNTIME));
         Timer timer = new Timer();
         timer.scheduleAtFixedRate(new TimerTask() {
             String lastStatus = null;
