@@ -49,9 +49,10 @@ import edu.uci.ics.hyracks.hdfs.dataflow.HDFSReadOperatorDescriptor;
 import edu.uci.ics.hyracks.imru.api.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.api.TupleWriter;
 import edu.uci.ics.hyracks.imru.dataflow.DataLoadOperatorDescriptor;
+import edu.uci.ics.hyracks.imru.dataflow.HDFSBlockFormat;
+import edu.uci.ics.hyracks.imru.dataflow.HDFSBlockWriter;
 import edu.uci.ics.hyracks.imru.dataflow.HDFSOD;
 import edu.uci.ics.hyracks.imru.dataflow.IMRUOperatorDescriptor;
-import edu.uci.ics.hyracks.imru.dataflow.LineWriter;
 import edu.uci.ics.hyracks.imru.dataflow.MapOperatorDescriptor;
 import edu.uci.ics.hyracks.imru.dataflow.ReduceOperatorDescriptor;
 import edu.uci.ics.hyracks.imru.dataflow.SpreadConnectorDescriptor;
@@ -185,13 +186,14 @@ public class IMRUJobFactory {
             conf.addResource(new Path(confFactory.hadoopConfPath
                     + "/hdfs-site.xml"));
             FileInputFormat.setInputPaths(conf, inputPaths);
-            conf.setInputFormat(TextInputFormat.class);
+            conf.setInputFormat(HDFSBlockFormat.class);
+//            conf.setInputFormat(TextInputFormat.class);
             RecordDescriptor recordDesc = new RecordDescriptor(
                     new ISerializerDeserializer[] { UTF8StringSerializerDeserializer.INSTANCE });
             InputSplit[] splits = conf.getInputFormat().getSplits(conf, 1);
             HDFSReadOperatorDescriptor readOperator = new HDFSReadOperatorDescriptor(
                     spec, recordDesc, conf, splits, mapOperatorLocations,
-                    new LineWriter());
+                    new HDFSBlockWriter());
             PartitionConstraintHelper.addAbsoluteLocationConstraint(spec,
                     readOperator, mapOperatorLocations);
 

@@ -228,7 +228,7 @@ public class DataLoadOperatorDescriptor extends
                                 byte[] bs = new byte[len];
                                 reader.readFully(bs);
                                 io.add(bs);
-                                io.add(ln);
+//                                io.add(ln);
 //                                String word = new String(bs);
 //                                Rt.p(word);
                             }
