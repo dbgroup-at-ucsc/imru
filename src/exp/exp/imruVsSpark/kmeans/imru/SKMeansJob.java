@@ -26,6 +26,7 @@ import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.IIMRUJob;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
+import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.imruVsSpark.kmeans.FilledVectors;
 import exp.imruVsSpark.kmeans.SKMeansModel;
 import exp.imruVsSpark.kmeans.SparseVector;
@@ -81,12 +82,17 @@ public class SKMeansJob implements IIMRUJob<SKMeansModel, SparseVector, FilledVe
     @Override
     public FilledVectors map(IMRUContext ctx, Iterator<SparseVector> input, SKMeansModel model) throws IOException {
         FilledVectors result = new FilledVectors(k, dimensions);
+        int n=0;
+        Rt.p("start");
+        long start=System.nanoTime();
         while (input.hasNext()) {
             SparseVector dataPoint = input.next();
             SKMeansModel.Result rs = model.classify(dataPoint);
             result.centroids[rs.belong].add(dataPoint);
             result.distanceSum += rs.dis;
+            n++;
         }
+        Rt.p(n+" "+(System.nanoTime()-start));
         return result;
     }
 

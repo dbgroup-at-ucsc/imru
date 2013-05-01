@@ -2,14 +2,19 @@ package exp.imruVsSpark.kmeans.spark;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 import java.util.zip.ZipOutputStream;
 
+import scala.Tuple2;
+import spark.api.java.JavaPairRDD;
 import spark.api.java.JavaRDD;
 import spark.api.java.JavaSparkContext;
 import spark.api.java.function.FlatMapFunction;
 import spark.api.java.function.Function;
 import spark.api.java.function.Function2;
+import spark.api.java.function.PairFunction;
 import edu.uci.ics.hyracks.imru.example.utils.CreateHar;
 import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.imruVsSpark.data.DataGenerator;
@@ -48,13 +53,22 @@ public class SparkKMeans {
         FlatMapFunction f = new FlatMapFunction<Iterator<SparseVector>, FilledVectors>() {
             public java.lang.Iterable<FilledVectors> call(
                     Iterator<SparseVector> input) throws Exception {
+                return call3(input);
+            }
+            public java.lang.Iterable<FilledVectors> call3(
+                    Iterator<SparseVector> input) throws Exception {
                 FilledVectors result = new FilledVectors(k, dimensions);
+                int n=0;
+                Rt.p("start");
+                long start=System.nanoTime();
                 while (input.hasNext()) {
                     SparseVector p = input.next();
                     SKMeansModel.Result rs = model.classify(p);
                     result.centroids[rs.belong].add(p);
                     result.distanceSum += rs.dis;
+                    n++;
                 }
+                Rt.p(n+" "+(System.nanoTime()-start));
                 return new AggregatedResult<FilledVectors>(result);
             }
         };
@@ -62,17 +76,17 @@ public class SparkKMeans {
             System.out.println("On iteration " + i);
 
             JavaRDD<FilledVectors> kmeansModels = points
-                    .map(new Function<SparseVector, FilledVectors>() {
-                        public FilledVectors call(SparseVector p) {
-                            FilledVectors result = new FilledVectors(k,
-                                    dimensions);
-                            SKMeansModel.Result rs = model.classify(p);
-                            result.centroids[rs.belong].add(p);
-                            result.distanceSum += rs.dis;
-                            return result;
-                        }
-                    });
-            //                    .mapPartitions(f);
+            //                    .map(new Function<SparseVector, FilledVectors>() {
+                    //                        public FilledVectors call(SparseVector p) {
+                    //                            FilledVectors result = new FilledVectors(k,
+                    //                                    dimensions);
+                    //                            SKMeansModel.Result rs = model.classify(p);
+                    //                            result.centroids[rs.belong].add(p);
+                    //                            result.distanceSum += rs.dis;
+                    //                            return result;
+                    //                        }
+                    //                    });
+                    .mapPartitions(f);
             FilledVectors revisedCentroids = kmeansModels
                     .reduce(new Function2<FilledVectors, FilledVectors, FilledVectors>() {
                         public FilledVectors call(FilledVectors a,

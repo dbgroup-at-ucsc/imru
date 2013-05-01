@@ -10,7 +10,7 @@ import javax.script.ScriptEngineManager;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class DataGenerator {
-    public static int DEBUG_DATA_POINTS = 100;
+    public static int DEBUG_DATA_POINTS = 1000;
     public static int DEBUG_K = 3;
     public static int DEBUG_ITERATIONS = 5;
     public File templateDir;
