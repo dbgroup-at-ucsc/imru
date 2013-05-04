@@ -33,7 +33,7 @@ public class SKMeansModel implements Serializable {
             centroids[i] = new FilledVector(dataGenerator.dims);
             centroids[i].count = 1;
             for (int j = 0; j < dataGenerator.dims; j++)
-                centroids[i].ds[j] = dataGenerator.value_distribution.get();
+                centroids[i].set(j,dataGenerator.value_distribution.get());
         }
     }
 

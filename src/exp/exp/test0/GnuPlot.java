@@ -77,7 +77,7 @@ public class GnuPlot {
 
     public boolean firstColumnIsLabel = false;
     public boolean usePercentage = false;
-    public boolean scale = false;
+    public boolean scale = true;
     public boolean logscale = false;
     public boolean xGrid = true;
     public boolean yGrid = true;

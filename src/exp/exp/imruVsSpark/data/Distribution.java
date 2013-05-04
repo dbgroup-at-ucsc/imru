@@ -23,6 +23,8 @@ public class Distribution {
         String[] lines = text.split("\n");
         probs = new double[lines.length + 10];
         for (String line : lines) {
+            if (line.startsWith("#"))
+                continue;
             String[] ss = line.split("[ |\t]+");
             probs[Integer.parseInt(ss[0])] = Double.parseDouble(ss[1]);
         }

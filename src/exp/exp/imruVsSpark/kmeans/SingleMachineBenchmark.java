@@ -22,8 +22,8 @@ public class SingleMachineBenchmark {
         plot.setPlotNames("Generate Data", "Bare", "Spark", "IMRU");
         plot.startPointType = 1;
         plot.pointSize = 1;
-        plot.reloadData();
-        for (DataGenerator.DEBUG_DATA_POINTS = 400; DataGenerator.DEBUG_DATA_POINTS <= 600; DataGenerator.DEBUG_DATA_POINTS += 100) {
+        //        plot.reloadData();
+        for (DataGenerator.DEBUG_DATA_POINTS = 100000; DataGenerator.DEBUG_DATA_POINTS <= 1000000; DataGenerator.DEBUG_DATA_POINTS += 100000) {
             long start = System.currentTimeMillis();
             DataGenerator.main(args);
             long dataTime = System.currentTimeMillis() - start;
@@ -50,8 +50,8 @@ public class SingleMachineBenchmark {
             plot.addY(bareTime / 1000.0);
             plot.addY(sparkTime / 1000.0);
             plot.addY(imruTime / 1000.0);
+            plot.finish();
         }
-        plot.finish();
         System.exit(0);
     }
 }

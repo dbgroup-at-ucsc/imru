@@ -15,9 +15,12 @@
 
 package edu.uci.ics.hyracks.imru.dataflow;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
@@ -103,15 +106,15 @@ public class DataLoadOperatorDescriptor extends
             boolean initialized = false;
 
             {
-                fileCtx = new RunFileContext(ctx,
-                        imruSpec.getCachedDataFrameSize());
+                fileCtx = new RunFileContext(ctx, imruSpec
+                        .getCachedDataFrameSize());
                 name = DataLoadOperatorDescriptor.this.getDisplayName()
                         + partition;
             }
 
             @Override
             public void initialize() throws HyracksDataException {
-//                Rt.p("initialize");
+                //                Rt.p("initialize");
                 if (initialized)
                     return;
                 initialized = true;
@@ -142,8 +145,8 @@ public class DataLoadOperatorDescriptor extends
                     final IMRUFileSplit split = inputSplits[partition];
                     try {
                         InputStream in = split.getInputStream();
-                        imruSpec.parse(imruContext, in, new FrameWriter(
-                                runFileWriter));
+                        imruSpec.parse(imruContext, new BufferedInputStream(in,
+                                1024 * 1024), new FrameWriter(runFileWriter));
                         in.close();
                     } catch (IOException e) {
                         fail();
@@ -183,7 +186,7 @@ public class DataLoadOperatorDescriptor extends
 
             @Override
             public final IFrameWriter getInputFrameWriter(int index) {
-//                Rt.p("getInputFrameWriter");
+                //                Rt.p("getInputFrameWriter");
                 try {
                     initialize();
                 } catch (HyracksDataException e1) {
@@ -219,8 +222,8 @@ public class DataLoadOperatorDescriptor extends
                     public void nextFrame(ByteBuffer buffer)
                             throws HyracksDataException {
                         try {
-                            TupleReader reader = new TupleReader(buffer,
-                                    ctx.getFrameSize(), 1);
+                            TupleReader reader = new TupleReader(buffer, ctx
+                                    .getFrameSize(), 1);
                             while (reader.nextTuple()) {
                                 //                                reader.dump();
                                 int len = reader.getFieldLength(0);
@@ -228,9 +231,9 @@ public class DataLoadOperatorDescriptor extends
                                 byte[] bs = new byte[len];
                                 reader.readFully(bs);
                                 io.add(bs);
-//                                io.add(ln);
-//                                String word = new String(bs);
-//                                Rt.p(word);
+                                //                                io.add(ln);
+                                //                                String word = new String(bs);
+                                //                                Rt.p(word);
                             }
                             reader.close();
                         } catch (IOException ex) {
