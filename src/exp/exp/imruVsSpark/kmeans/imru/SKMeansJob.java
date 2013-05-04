@@ -57,7 +57,6 @@ public class SKMeansJob implements IIMRUJob<SKMeansModel, SparseVector, FilledVe
             Pattern p = Pattern.compile("[ |\\t]+");
             Pattern p2 = Pattern.compile(":");
             BufferedReader reader = new BufferedReader(new InputStreamReader(input));
-            int n = 0;
             while (true) {
                 String line = reader.readLine();
                 if (line == null)
@@ -70,8 +69,6 @@ public class SKMeansJob implements IIMRUJob<SKMeansModel, SparseVector, FilledVe
                     dataPoint.values[i] = Integer.parseInt(kv[1]);
                 }
                 output.addData(dataPoint);
-                if (n++ > 100)
-                    break;
             }
             reader.close();
         } catch (IOException e) {
@@ -82,17 +79,12 @@ public class SKMeansJob implements IIMRUJob<SKMeansModel, SparseVector, FilledVe
     @Override
     public FilledVectors map(IMRUContext ctx, Iterator<SparseVector> input, SKMeansModel model) throws IOException {
         FilledVectors result = new FilledVectors(k, dimensions);
-        int n=0;
-        Rt.p("start");
-        long start=System.nanoTime();
         while (input.hasNext()) {
             SparseVector dataPoint = input.next();
             SKMeansModel.Result rs = model.classify(dataPoint);
             result.centroids[rs.belong].add(dataPoint);
             result.distanceSum += rs.dis;
-            n++;
         }
-        Rt.p(n+" "+(System.nanoTime()-start));
         return result;
     }
 

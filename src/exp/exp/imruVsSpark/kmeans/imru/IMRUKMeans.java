@@ -19,9 +19,11 @@ import java.io.File;
 import java.util.Random;
 
 import edu.uci.ics.hyracks.imru.example.utils.Client;
+import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.imruVsSpark.data.DataGenerator;
 import exp.imruVsSpark.data.Distribution;
 import exp.imruVsSpark.kmeans.SKMeansModel;
+import exp.imruVsSpark.kmeans.spark.SparkKMeans;
 
 /**
  * Sparse K-means
@@ -46,9 +48,12 @@ public class IMRUKMeans {
         int k = DataGenerator.DEBUG_K;
 
         File templateDir = new File("exp_data/product_name");
-        DataGenerator dataGenerator = new DataGenerator(DataGenerator.DEBUG_DATA_POINTS, templateDir);
-        SKMeansModel initModel = new SKMeansModel(k, dataGenerator, DataGenerator.DEBUG_ITERATIONS);
-        SKMeansModel finalModel = Client.run(new SKMeansJob(k, dataGenerator.dims), initModel, args);
+        DataGenerator dataGenerator = new DataGenerator(
+                DataGenerator.DEBUG_DATA_POINTS, templateDir);
+        SKMeansModel initModel = new SKMeansModel(k, dataGenerator,
+                DataGenerator.DEBUG_ITERATIONS);
+        SKMeansModel finalModel = Client.run(new SKMeansJob(k,
+                dataGenerator.dims), initModel, args);
     }
 
     public static void main(String[] args) throws Exception {

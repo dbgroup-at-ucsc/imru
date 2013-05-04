@@ -1,7 +1,9 @@
 package exp.imruVsSpark.kmeans.spark;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileReader;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -55,38 +57,23 @@ public class SparkKMeans {
                     Iterator<SparseVector> input) throws Exception {
                 return call3(input);
             }
+
             public java.lang.Iterable<FilledVectors> call3(
                     Iterator<SparseVector> input) throws Exception {
                 FilledVectors result = new FilledVectors(k, dimensions);
-                int n=0;
-                Rt.p("start");
-                long start=System.nanoTime();
+                int n = 0;
                 while (input.hasNext()) {
-                    SparseVector p = input.next();
-                    SKMeansModel.Result rs = model.classify(p);
-                    result.centroids[rs.belong].add(p);
+                    SparseVector dataPoint = input.next();
+                    SKMeansModel.Result rs = model.classify(dataPoint);
+                    result.centroids[rs.belong].add(dataPoint);
                     result.distanceSum += rs.dis;
-                    n++;
                 }
-                Rt.p(n+" "+(System.nanoTime()-start));
                 return new AggregatedResult<FilledVectors>(result);
             }
         };
         for (int i = 1; i <= DataGenerator.DEBUG_ITERATIONS; i++) {
             System.out.println("On iteration " + i);
-
-            JavaRDD<FilledVectors> kmeansModels = points
-            //                    .map(new Function<SparseVector, FilledVectors>() {
-                    //                        public FilledVectors call(SparseVector p) {
-                    //                            FilledVectors result = new FilledVectors(k,
-                    //                                    dimensions);
-                    //                            SKMeansModel.Result rs = model.classify(p);
-                    //                            result.centroids[rs.belong].add(p);
-                    //                            result.distanceSum += rs.dis;
-                    //                            return result;
-                    //                        }
-                    //                    });
-                    .mapPartitions(f);
+            JavaRDD<FilledVectors> kmeansModels = points.mapPartitions(f);
             FilledVectors revisedCentroids = kmeansModels
                     .reduce(new Function2<FilledVectors, FilledVectors, FilledVectors>() {
                         public FilledVectors call(FilledVectors a,

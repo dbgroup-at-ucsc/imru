@@ -23,7 +23,7 @@ import exp.imruVsSpark.data.DataGenerator;
  * IMRU model which will be used in map() and updated in update()
  */
 public class SKMeansModel implements Serializable {
-    FilledVector[] centroids;
+    public FilledVector[] centroids;
     public int roundsRemaining = 20;
 
     public SKMeansModel(int k, DataGenerator dataGenerator, int roundsRemaining) {
@@ -48,6 +48,7 @@ public class SKMeansModel implements Serializable {
         public int belong;
         public float dis;
     }
+
     public Result classify(SparseVector dataPoint) {
         float min = Float.MAX_VALUE;
         int belong = -1;
@@ -58,9 +59,9 @@ public class SKMeansModel implements Serializable {
                 belong = i;
             }
         }
-        Result result=new Result();
-        result.belong= belong;
-        result.dis=min;
+        Result result = new Result();
+        result.belong = belong;
+        result.dis = min;
         return result;
     }
 }

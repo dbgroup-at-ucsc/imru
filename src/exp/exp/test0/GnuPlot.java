@@ -88,19 +88,45 @@ public class GnuPlot {
     public String y2label;
 
     public enum Style {
-        lines, points, linespoints, dots, impulses, //
-        labels, steps, fsteps, histeps, errorbars, //
-        errorlines, financebars, vectors, xerrorbar, //
-        xerrorlines, xyerrorbars, xyerrorlines, //
-        yerrorbars, yerrorlines, //
+        lines,
+        points,
+        linespoints,
+        dots,
+        impulses, //
+        labels,
+        steps,
+        fsteps,
+        histeps,
+        errorbars, //
+        errorlines,
+        financebars,
+        vectors,
+        xerrorbar, //
+        xerrorlines,
+        xyerrorbars,
+        xyerrorlines, //
+        yerrorbars,
+        yerrorlines, //
         // fill style
-        boxes, boxerrorbars, boxxyerrorbars, boxplot, //
-        candlesticks, filledcurves, histograms, image, //
-        rgbimage, rgbalpha, circles, ellipses, pm3d,
+        boxes,
+        boxerrorbars,
+        boxxyerrorbars,
+        boxplot, //
+        candlesticks,
+        filledcurves,
+        histograms,
+        image, //
+        rgbimage,
+        rgbalpha,
+        circles,
+        ellipses,
+        pm3d,
     };
 
     public enum FillStyle {
-        empty, solid, pattern
+        empty,
+        solid,
+        pattern
     };
 
     public Style style = Style.linespoints;
@@ -139,6 +165,20 @@ public class GnuPlot {
     public String keyPosition = "right top";
     public String[] titles;
     int plots = 0;
+
+    public void reloadData() throws IOException {
+        String[] lines = Rt.readFile(orgDataFile).split("\r?\n");
+        for (String line : lines) {
+            String[] ss = line.split("\t");
+            double x = Double.parseDouble(ss[0]);
+            startNewX(x);
+            for (int i = 1; i < ss.length; i++) {
+                Double y = "\"\"".equals(ss[i]) ? null : Double
+                        .parseDouble(ss[i]);
+                addY(y);
+            }
+        }
+    }
 
     public void finish() throws IOException {
         int power = 0;
@@ -244,7 +284,8 @@ public class GnuPlot {
         ps.println("set boxwidth 0.9 absolute");
         ps.println("set key inside " + keyPosition
                 + " vertical noreverse noenhanced autotitles nobox");
-        ps.println("set style histogram clustered gap 1 title offset character 0, 0, 0");
+        ps
+                .println("set style histogram clustered gap 1 title offset character 0, 0, 0");
         ps.println("set datafile missing '-'");
         ps.println("set style data histograms");
         // ps.println("set xtics ()");
@@ -282,7 +323,7 @@ public class GnuPlot {
             ps.println("set key autotitle columnhead");
         ps.println("");
         ps.print("plot ");
-        if (beforePlot!=null)
+        if (beforePlot != null)
             ps.print(beforePlot);
         if (dataFiles != null) {
             for (int i = 0; i < dataFiles.length; i++) {
