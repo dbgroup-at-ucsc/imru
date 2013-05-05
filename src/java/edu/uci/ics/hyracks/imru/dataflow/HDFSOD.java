@@ -35,7 +35,7 @@ import edu.uci.ics.hyracks.imru.util.Rt;
  * 
  * @author Rui Wang
  */
-public class HDFSOD extends IMRUOperatorDescriptor<Serializable> {
+public class HDFSOD extends IMRUOperatorDescriptor<Serializable,Serializable> {
     private static final Logger LOG = Logger
             .getLogger(MapOperatorDescriptor.class.getName());
 
@@ -44,7 +44,7 @@ public class HDFSOD extends IMRUOperatorDescriptor<Serializable> {
     protected final ConfigurationFactory confFactory;
     protected final IMRUFileSplit[] inputSplits;
 
-    public HDFSOD(JobSpecification spec, IIMRUJob2<Serializable> imruSpec,
+    public HDFSOD(JobSpecification spec, IIMRUJob2<Serializable,Serializable> imruSpec,
             IMRUFileSplit[] inputSplits, ConfigurationFactory confFactory) {
         super(spec, 1, 0, "parse", imruSpec);
         this.inputSplits = inputSplits;

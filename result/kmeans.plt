@@ -21,4 +21,5 @@ set key autotitle columnhead
 plot "kmeans.data" using 1:2 with linespoints lw 4 pt 1 ps 1, \
 	"kmeans.data" using 1:3 with linespoints lw 4 pt 2 ps 1, \
 	"kmeans.data" using 1:4 with linespoints lw 4 pt 3 ps 1, \
-	"kmeans.data" using 1:5 with linespoints lw 4 pt 4 ps 1
+	"kmeans.data" using 1:5 with linespoints lw 4 pt 4 ps 1, \
+	"kmeans.data" using 1:6 with linespoints lw 4 pt 5 ps 1

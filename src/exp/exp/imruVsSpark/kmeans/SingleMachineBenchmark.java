@@ -19,7 +19,8 @@ public class SingleMachineBenchmark {
                 "Time (seconds)");
         plot.extra = "set title \"K=" + DataGenerator.DEBUG_K + ",Iteration="
                 + DataGenerator.DEBUG_ITERATIONS + "\"";
-        plot.setPlotNames("Generate Data", "Bare", "Spark", "IMRU");
+        plot.setPlotNames("Generate Data", "Bare", "Spark", "IMRU-mem",
+                "IMRU-disk");
         plot.startPointType = 1;
         plot.pointSize = 1;
         //        plot.reloadData();
@@ -33,8 +34,12 @@ public class SingleMachineBenchmark {
             long bareTime = System.currentTimeMillis() - start;
 
             start = System.currentTimeMillis();
-            IMRUKMeans.run();
-            long imruTime = System.currentTimeMillis() - start;
+            IMRUKMeans.run(true);
+            long imruMemTime = System.currentTimeMillis() - start;
+
+            start = System.currentTimeMillis();
+            IMRUKMeans.run(false);
+            long imruDiskTime = System.currentTimeMillis() - start;
 
             start = System.currentTimeMillis();
             SparkKMeans.run();
@@ -43,13 +48,15 @@ public class SingleMachineBenchmark {
             Rt.p("Data: %,d", dataTime);
             Rt.p("Bare: %,d", bareTime);
             Rt.p("Spark: %,d", sparkTime);
-            Rt.p("IMRU: %,d", imruTime);
+            Rt.p("IMRU-mem: %,d", imruMemTime);
+            Rt.p("IMRU-disk: %,d", imruDiskTime);
 
             plot.startNewX(DataGenerator.DEBUG_DATA_POINTS);
             plot.addY(dataTime / 1000.0);
             plot.addY(bareTime / 1000.0);
             plot.addY(sparkTime / 1000.0);
-            plot.addY(imruTime / 1000.0);
+            plot.addY(imruMemTime / 1000.0);
+            plot.addY(imruDiskTime / 1000.0);
             plot.finish();
         }
         System.exit(0);

@@ -17,22 +17,32 @@ package edu.uci.ics.hyracks.imru.api;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Vector;
 
 import edu.uci.ics.hyracks.api.util.JavaSerializationUtils;
 
 public class DataWriter<Data extends Serializable> {
     TupleWriter tupleWriter;
+    Vector<Data> vector;
 
     public DataWriter(TupleWriter tupleWriter) throws IOException {
         this.tupleWriter = tupleWriter;
     }
 
+    public DataWriter(Vector<Data> vector) {
+        this.vector = vector;
+    }
+
     public void addData(Data data) throws IOException {
-        byte[] objectData;
-        objectData = JavaSerializationUtils.serialize(data);
-        tupleWriter.writeInt(objectData.length);
-        tupleWriter.write(objectData);
-        tupleWriter.finishField();
-        tupleWriter.finishTuple();
+        if (tupleWriter != null) {
+            byte[] objectData;
+            objectData = JavaSerializationUtils.serialize(data);
+            tupleWriter.writeInt(objectData.length);
+            tupleWriter.write(objectData);
+            tupleWriter.finishField();
+            tupleWriter.finishTuple();
+        } else {
+            vector.add(data);
+        }
     }
 }

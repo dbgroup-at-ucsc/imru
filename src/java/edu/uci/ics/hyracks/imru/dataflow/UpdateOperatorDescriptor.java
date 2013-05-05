@@ -52,8 +52,8 @@ import edu.uci.ics.hyracks.imru.util.Rt;
  * @param <Model>
  *            Josh Rosen
  */
-public class UpdateOperatorDescriptor<Model extends Serializable> extends
-        IMRUOperatorDescriptor<Model> {
+public class UpdateOperatorDescriptor<Model extends Serializable, Data extends Serializable>
+        extends IMRUOperatorDescriptor<Model, Data> {
 
     private static final long serialVersionUID = 1L;
     private static Logger LOG = Logger.getLogger(UpdateOperatorDescriptor.class
@@ -80,7 +80,7 @@ public class UpdateOperatorDescriptor<Model extends Serializable> extends
      *            to.
      */
     public UpdateOperatorDescriptor(JobSpecification spec,
-            IIMRUJob2<Model> imruSpec, String modelName,
+            IIMRUJob2<Model,Data> imruSpec, String modelName,
             IMRUConnection imruConnection) {
         super(spec, 1, 0, "update", imruSpec);
         this.modelName = modelName;
@@ -148,8 +148,8 @@ public class UpdateOperatorDescriptor<Model extends Serializable> extends
                 enqueueChunk(chunk, senderPartition);
                 if (isLastChunk) {
                     byte[] data = IMRUSerialize
-                            .deserializeFromChunks(imruContext,
-                                    bufferedChunks.remove(senderPartition));
+                            .deserializeFromChunks(imruContext, bufferedChunks
+                                    .remove(senderPartition));
                     io.add(data);
                 }
             }

@@ -18,6 +18,7 @@ package edu.uci.ics.hyracks.imru.runtime.bootstrap;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.Vector;
 
 import edu.uci.ics.hyracks.api.dataflow.TaskId;
 import edu.uci.ics.hyracks.api.job.JobId;
@@ -30,7 +31,8 @@ import edu.uci.ics.hyracks.dataflow.std.base.AbstractStateObject;
  */
 public class MapTaskState extends AbstractStateObject {
     private RunFileWriter out;
-    
+    private Vector vector;
+
     public MapTaskState(JobId jobId, TaskId taskId) {
         super(jobId, taskId);
     }
@@ -53,4 +55,11 @@ public class MapTaskState extends AbstractStateObject {
         this.out = out;
     }
 
+    public void setMemCache(Vector vector) {
+        this.vector = vector;
+    }
+
+    public Vector getMemCache() {
+        return vector;
+    }
 }

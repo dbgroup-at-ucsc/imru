@@ -19,6 +19,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
+import java.util.Vector;
 import java.util.logging.Logger;
 
 import org.eclipse.jetty.util.log.Log;
@@ -52,8 +53,8 @@ import edu.uci.ics.hyracks.imru.util.Rt;
  *            persisted between iterations.
  * @author Josh Rosen
  */
-public class MapOperatorDescriptor<Model extends Serializable> extends
-        IMRUOperatorDescriptor<Model> {
+public class MapOperatorDescriptor<Model extends Serializable, Data extends Serializable>
+        extends IMRUOperatorDescriptor<Model, Data> {
 
     private static Logger LOG = Logger.getLogger(MapOperatorDescriptor.class
             .getName());
@@ -64,6 +65,7 @@ public class MapOperatorDescriptor<Model extends Serializable> extends
 
     //    private final String envInPath;
     private final int roundNum;
+    boolean noDiskCache;
 
     /**
      * Create a new MapOperatorDescriptor.
@@ -80,10 +82,12 @@ public class MapOperatorDescriptor<Model extends Serializable> extends
      *            The round number.
      */
     public MapOperatorDescriptor(JobSpecification spec,
-            IIMRUJob2<Model> imruSpec, int roundNum, String name) {
+            IIMRUJob2<Model, Data> imruSpec, int roundNum, String name,
+            boolean noDiskCache) {
         super(spec, 0, 1, name, imruSpec);
         recordDescriptors[0] = dummyRecordDescriptor;
         this.roundNum = roundNum;
+        this.noDiskCache = noDiskCache;
     }
 
     @Override
@@ -98,8 +102,8 @@ public class MapOperatorDescriptor<Model extends Serializable> extends
             {
                 this.name = MapOperatorDescriptor.this.getDisplayName()
                         + partition;
-                fileCtx = new RunFileContext(ctx,
-                        imruSpec.getCachedDataFrameSize());
+                fileCtx = new RunFileContext(ctx, imruSpec
+                        .getCachedDataFrameSize());
             }
 
             @SuppressWarnings("unchecked")
@@ -147,57 +151,84 @@ public class MapOperatorDescriptor<Model extends Serializable> extends
                 LOG.info("Reading cached input data in "
                         + (readInReverse ? "forwards" : "reverse")
                         + " direction");
-                RunFileWriter runFileWriter = state.getRunFileWriter();
+                if (noDiskCache) {
+                   throw new Error("Not implemented yet");
+                } else {
+                    RunFileWriter runFileWriter = state.getRunFileWriter();
+                    if (runFileWriter != null) {
+                        Log.info("Cached example file size is "
+                                + runFileWriter.getFileSize() + " bytes");
+                        final RunFileReader reader = new RunFileReader(
+                                runFileWriter.getFileReference(), ctx
+                                        .getIOManager(), runFileWriter
+                                        .getFileSize());
+                        //readInReverse
+                        reader.open();
+                        final ByteBuffer inputFrame = fileCtx.allocateFrame();
+                        ChunkFrameHelper chunkFrameHelper = new ChunkFrameHelper(
+                                ctx);
+                        imruContext = new IMRUContext(chunkFrameHelper
+                                .getContext(), name);
+                        {
+                            Iterator<ByteBuffer> input = new Iterator<ByteBuffer>() {
+                                boolean read = false;
+                                boolean hasData;
 
-                Log.info("Cached example file size is "
-                        + runFileWriter.getFileSize() + " bytes");
-                final RunFileReader reader = new RunFileReader(
-                        runFileWriter.getFileReference(), ctx.getIOManager(),
-                        runFileWriter.getFileSize());
-                //readInReverse
-                reader.open();
-                final ByteBuffer inputFrame = fileCtx.allocateFrame();
-                ChunkFrameHelper chunkFrameHelper = new ChunkFrameHelper(ctx);
-                imruContext = new IMRUContext(chunkFrameHelper.getContext(),
-                        name);
-                {
-                    Iterator<ByteBuffer> input = new Iterator<ByteBuffer>() {
-                        boolean read = false;
-                        boolean hasData;
-
-                        @Override
-                        public void remove() {
-                        }
-
-                        @Override
-                        public ByteBuffer next() {
-                            if (!hasNext())
-                                return null;
-                            read = false;
-                            return inputFrame;
-                        }
-
-                        @Override
-                        public boolean hasNext() {
-                            try {
-                                if (!read) {
-                                    hasData = reader.nextFrame(inputFrame);
-                                    read = true;
+                                @Override
+                                public void remove() {
                                 }
-                            } catch (HyracksDataException e) {
-                                e.printStackTrace();
-                            }
-                            return hasData;
-                        }
-                    };
-                    writer = chunkFrameHelper.wrapWriter(writer, partition);
 
-                    ByteArrayOutputStream out = new ByteArrayOutputStream();
-                    imruSpec.map(imruContext, input, model, out,
-                            imruSpec.getCachedDataFrameSize());
-                    byte[] objectData = out.toByteArray();
-                    IMRUSerialize.serializeToFrames(imruContext, writer,
-                            objectData);
+                                @Override
+                                public ByteBuffer next() {
+                                    if (!hasNext())
+                                        return null;
+                                    read = false;
+                                    return inputFrame;
+                                }
+
+                                @Override
+                                public boolean hasNext() {
+                                    try {
+                                        if (!read) {
+                                            hasData = reader
+                                                    .nextFrame(inputFrame);
+                                            read = true;
+                                        }
+                                    } catch (HyracksDataException e) {
+                                        e.printStackTrace();
+                                    }
+                                    return hasData;
+                                }
+                            };
+                            writer = chunkFrameHelper.wrapWriter(writer,
+                                    partition);
+
+                            ByteArrayOutputStream out = new ByteArrayOutputStream();
+                            imruSpec.map(imruContext, input, model, out,
+                                    imruSpec.getCachedDataFrameSize());
+                            byte[] objectData = out.toByteArray();
+                            IMRUSerialize.serializeToFrames(imruContext,
+                                    writer, objectData);
+                        }
+                    } else {
+                        Vector vector = state.getMemCache();
+                        Log.info("Cached in memory examples " + vector.size());
+
+                        ChunkFrameHelper chunkFrameHelper = new ChunkFrameHelper(
+                                ctx);
+                        imruContext = new IMRUContext(chunkFrameHelper
+                                .getContext(), name);
+                        writer = chunkFrameHelper.wrapWriter(writer, partition);
+
+                        ByteArrayOutputStream out = new ByteArrayOutputStream();
+                        imruSpec.mapMem(imruContext, ((Vector<Data>) vector)
+                                .iterator(), model, out, imruSpec
+                                .getCachedDataFrameSize());
+                        byte[] objectData = out.toByteArray();
+                        //                    Rt.p(objectData.length);
+                        IMRUSerialize.serializeToFrames(imruContext, writer,
+                                objectData);
+                    }
                 }
                 writer.close();
             }

@@ -19,6 +19,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 
+import org.kohsuke.args4j.Option;
+
 import edu.uci.ics.hyracks.api.client.HyracksConnection;
 import edu.uci.ics.hyracks.api.job.JobStatus;
 import edu.uci.ics.hyracks.imru.file.ConfigurationFactory;
@@ -27,17 +29,19 @@ import edu.uci.ics.hyracks.imru.jobgen.IMRUJobFactory;
 import edu.uci.ics.hyracks.imru.runtime.IMRUDriver;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
 
-public class IMRUJobControl<Model extends Serializable> {
+public class IMRUJobControl<Model extends Serializable, Data extends Serializable> {
     public HyracksConnection hcc;
     public IMRUConnection imruConnection;
     public ConfigurationFactory confFactory;
     IMRUJobFactory jobFactory;
-    IMRUDriver<Model> driver;
+    IMRUDriver<Model, Data> driver;
     public String localIntermediateModelPath;
     public String modelFileName;
+    public boolean memCache = false;
+    public boolean noDiskCache = false;
 
-    public void connect(String ccHost, int ccPort, int imruPort, String hadoopConfPath, String clusterConfPath)
-            throws Exception {
+    public void connect(String ccHost, int ccPort, int imruPort,
+            String hadoopConfPath, String clusterConfPath) throws Exception {
         hcc = new HyracksConnection(ccHost, ccPort);
         imruConnection = new IMRUConnection(ccHost, imruPort);
 
@@ -57,25 +61,29 @@ public class IMRUJobControl<Model extends Serializable> {
         }
     }
 
-    public void selectNoAggregation(String examplePaths) throws IOException, InterruptedException {
-        jobFactory = new IMRUJobFactory(imruConnection, examplePaths, confFactory, IMRUJobFactory.AGGREGATION.NONE, 0,
-                0);
+    public void selectNoAggregation(String examplePaths) throws IOException,
+            InterruptedException {
+        jobFactory = new IMRUJobFactory(imruConnection, examplePaths,
+                confFactory, IMRUJobFactory.AGGREGATION.NONE, 0, 0);
     }
 
-    public void selectGenericAggregation(String examplePaths, int aggCount) throws IOException, InterruptedException {
+    public void selectGenericAggregation(String examplePaths, int aggCount)
+            throws IOException, InterruptedException {
         if (aggCount < 1)
             throw new IllegalArgumentException(
                     "Must specify a nonnegative aggregator count using the -agg-count option");
-        jobFactory = new IMRUJobFactory(imruConnection, examplePaths, confFactory, IMRUJobFactory.AGGREGATION.GENERIC,
-                0, aggCount);
+        jobFactory = new IMRUJobFactory(imruConnection, examplePaths,
+                confFactory, IMRUJobFactory.AGGREGATION.GENERIC, 0, aggCount);
     }
 
-    public void selectNAryAggregation(String examplePaths, int fanIn) throws IOException, InterruptedException {
+    public void selectNAryAggregation(String examplePaths, int fanIn)
+            throws IOException, InterruptedException {
         if (fanIn < 1) {
-            throw new IllegalArgumentException("Must specify nonnegative -fan-in");
+            throw new IllegalArgumentException(
+                    "Must specify nonnegative -fan-in");
         }
-        jobFactory = new IMRUJobFactory(imruConnection, examplePaths, confFactory, IMRUJobFactory.AGGREGATION.NARY,
-                fanIn, 0);
+        jobFactory = new IMRUJobFactory(imruConnection, examplePaths,
+                confFactory, IMRUJobFactory.AGGREGATION.NARY, fanIn, 0);
     }
 
     /**
@@ -87,10 +95,14 @@ public class IMRUJobControl<Model extends Serializable> {
      * @return
      * @throws Exception
      */
-    public JobStatus run(IIMRUJob2<Model> job2, Model initialModel, String app) throws Exception {
+    public JobStatus run(IIMRUJob2<Model, Data> job2, Model initialModel,
+            String app) throws Exception {
         //        Model initialModel = job2.initModel();
-        driver = new IMRUDriver<Model>(hcc, imruConnection, job2, initialModel, jobFactory,
-                confFactory.createConfiguration(), app);
+        driver = new IMRUDriver<Model, Data>(hcc, imruConnection, job2,
+                initialModel, jobFactory, confFactory.createConfiguration(),
+                app);
+        driver.memCache = memCache;
+        driver.noDiskCache = noDiskCache;
         driver.modelFileName = modelFileName;
         driver.localIntermediateModelPath = localIntermediateModelPath;
         return driver.run();
@@ -105,8 +117,9 @@ public class IMRUJobControl<Model extends Serializable> {
      * @return
      * @throws Exception
      */
-    public <Data extends Serializable, T extends Serializable> JobStatus run(IIMRUJob<Model, Data, T> job,
-            Model initialModel, String app) throws Exception {
+    public <T extends Serializable> JobStatus run(
+            IIMRUJob<Model, Data, T> job, Model initialModel, String app)
+            throws Exception {
         return run(new IMRUJob2Impl<Model, Data, T>(job), initialModel, app);
     }
 

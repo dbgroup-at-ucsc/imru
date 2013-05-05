@@ -24,6 +24,8 @@ import java.io.InputStreamReader;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
+import java.util.Stack;
+import java.util.Vector;
 import java.util.concurrent.Future;
 import java.util.logging.Logger;
 
@@ -40,6 +42,7 @@ import edu.uci.ics.hyracks.dataflow.common.io.RunFileWriter;
 import edu.uci.ics.hyracks.dataflow.std.base.AbstractOperatorNodePushable;
 import edu.uci.ics.hyracks.imru.api.ASyncIO;
 import edu.uci.ics.hyracks.imru.api.ASyncInputStream;
+import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.FrameWriter;
 import edu.uci.ics.hyracks.imru.api.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
@@ -60,7 +63,7 @@ import edu.uci.ics.hyracks.imru.util.Rt;
  * @author Josh Rosen
  */
 public class DataLoadOperatorDescriptor extends
-        IMRUOperatorDescriptor<Serializable> {
+        IMRUOperatorDescriptor<Serializable, Serializable> {
     private static final Logger LOG = Logger
             .getLogger(MapOperatorDescriptor.class.getName());
 
@@ -69,6 +72,7 @@ public class DataLoadOperatorDescriptor extends
     protected final ConfigurationFactory confFactory;
     protected final IMRUFileSplit[] inputSplits;
     private boolean hdfsLoad = false;
+    private boolean memCache;
 
     /**
      * Create a new DataLoadOperatorDescriptor.
@@ -83,12 +87,14 @@ public class DataLoadOperatorDescriptor extends
      *            A Hadoop configuration, used for HDFS.
      */
     public DataLoadOperatorDescriptor(JobSpecification spec,
-            IIMRUJob2<Serializable> imruSpec, IMRUFileSplit[] inputSplits,
-            ConfigurationFactory confFactory, boolean hdfsLoad) {
+            IIMRUJob2<Serializable, Serializable> imruSpec,
+            IMRUFileSplit[] inputSplits, ConfigurationFactory confFactory,
+            boolean hdfsLoad, boolean memCache) {
         super(spec, hdfsLoad ? 1 : 0, 0, "parse", imruSpec);
         this.inputSplits = inputSplits;
         this.confFactory = confFactory;
         this.hdfsLoad = hdfsLoad;
+        this.memCache = memCache;
     }
 
     @Override
@@ -102,6 +108,7 @@ public class DataLoadOperatorDescriptor extends
             long startTime;
             MapTaskState state;
             RunFileWriter runFileWriter;
+            DataWriter dataWriter;
             IMRUContext imruContext;
             boolean initialized = false;
 
@@ -134,19 +141,32 @@ public class DataLoadOperatorDescriptor extends
                 if (state == null)
                     state = new MapTaskState(ctx.getJobletContext().getJobId(),
                             ctx.getTaskAttemptId().getTaskId());
-                FileReference file = ctx
-                        .createUnmanagedWorkspaceFile("IMRUInput");
-                runFileWriter = new RunFileWriter(file, ctx.getIOManager());
-                state.setRunFileWriter(runFileWriter);
-                runFileWriter.open();
+                if (!memCache) {
+                    FileReference file = ctx
+                            .createUnmanagedWorkspaceFile("IMRUInput");
+                    runFileWriter = new RunFileWriter(file, ctx.getIOManager());
+                    state.setRunFileWriter(runFileWriter);
+                    runFileWriter.open();
+                } else {
+                    Vector vector = new Vector();
+                    state.setMemCache(vector);
+                    dataWriter = new DataWriter<Serializable>(vector);
+                }
 
                 imruContext = new IMRUContext(fileCtx, name);
                 if (!hdfsLoad) {
                     final IMRUFileSplit split = inputSplits[partition];
                     try {
                         InputStream in = split.getInputStream();
-                        imruSpec.parse(imruContext, new BufferedInputStream(in,
-                                1024 * 1024), new FrameWriter(runFileWriter));
+                        if (runFileWriter != null) {
+                            imruSpec.parse(imruContext,
+                                    new BufferedInputStream(in, 1024 * 1024),
+                                    new FrameWriter(runFileWriter));
+                        } else {
+                            imruSpec.parse(imruContext,
+                                    new BufferedInputStream(in, 1024 * 1024),
+                                    dataWriter);
+                        }
                         in.close();
                     } catch (IOException e) {
                         fail();
@@ -158,11 +178,13 @@ public class DataLoadOperatorDescriptor extends
             }
 
             void finishDataCache() throws HyracksDataException {
-                runFileWriter.close();
-                LOG.info("Cached input data file "
-                        + runFileWriter.getFileReference().getFile()
-                                .getAbsolutePath() + " is "
-                        + runFileWriter.getFileSize() + " bytes");
+                if (runFileWriter != null) {
+                    runFileWriter.close();
+                    LOG.info("Cached input data file "
+                            + runFileWriter.getFileReference().getFile()
+                                    .getAbsolutePath() + " is "
+                            + runFileWriter.getFileSize() + " bytes");
+                }
                 long end = System.currentTimeMillis();
                 LOG.info("Parsed input data in " + (end - startTime)
                         + " milliseconds");
@@ -207,9 +229,16 @@ public class DataLoadOperatorDescriptor extends
                                     @Override
                                     public void run() {
                                         try {
-                                            imruSpec.parse(imruContext, stream,
-                                                    new FrameWriter(
-                                                            runFileWriter));
+                                            if (runFileWriter != null) {
+                                                imruSpec.parse(imruContext,
+                                                        stream,
+                                                        new FrameWriter(
+                                                                runFileWriter));
+                                            } else {
+                                                imruSpec.parse(imruContext,
+                                                        stream, dataWriter);
+                                            }
+
                                             stream.close();
                                         } catch (IOException e) {
                                             e.printStackTrace();

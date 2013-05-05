@@ -22,7 +22,6 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 
-
 /**
  * Low level IMRU job interface. Data passed through
  * is raw binary data.
@@ -30,33 +29,51 @@ import java.util.Iterator;
  * @author Rui Wang
  * @param <Model>
  */
-public interface IIMRUJob2<Model> extends Serializable {
+public interface IIMRUJob2<Model, Data extends Serializable> extends
+        Serializable {
     /**
      * Frame size must be large enough to store at least one tuple
      */
     public int getCachedDataFrameSize();
 
     /**
-     * Parse input data and output binary data
+     * Parse input data and output binary data, called if data is cached in disk
      */
-    public void parse(IMRUContext ctx, InputStream in, FrameWriter writer) throws IOException;
+    public void parse(IMRUContext ctx, InputStream in, FrameWriter writer)
+            throws IOException;
+
+    /**
+     * Parse input data and output data objects, called if data is cached in memory
+     */
+    public void parse(IMRUContext ctx, InputStream input,
+            DataWriter<Data> output) throws IOException;
 
     /**
      * For a list of binary data, return one binary data
      */
-    public void map(IMRUContext ctx, Iterator<ByteBuffer> input, Model model, OutputStream output,
-            int cachedDataFrameSize) throws IMRUDataException;
+    public void map(IMRUContext ctx, Iterator<ByteBuffer> input, Model model,
+            OutputStream output, int cachedDataFrameSize)
+            throws IMRUDataException;
+
+    /**
+     * For a list of in memory data, return one binary data
+     */
+    public void mapMem(IMRUContext ctx, Iterator<Data> input, Model model,
+            OutputStream output, int cachedDataFrameSize)
+            throws IMRUDataException;
 
     /**
      * Combine multiple raw data to one binary data
      */
-    public void reduce(IMRUReduceContext ctx, Iterator<byte[]> input, OutputStream output) throws IMRUDataException;
+    public void reduce(IMRUReduceContext ctx, Iterator<byte[]> input,
+            OutputStream output) throws IMRUDataException;
 
     /**
      * update the model using combined binary data.
      * Return the same model object or return another object.
      */
-    public Model update(IMRUContext ctx, Iterator<byte[]> input, Model model) throws IMRUDataException;
+    public Model update(IMRUContext ctx, Iterator<byte[]> input, Model model)
+            throws IMRUDataException;
 
     /**
      * Return true to exit loop
