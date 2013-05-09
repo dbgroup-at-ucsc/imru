@@ -87,6 +87,8 @@ public class CreateHar {
         for (String s : ss)
             ignoredJars.add(s);
     }
+    
+    public static boolean uploadJarFiles=true;
 
     public static void createHar(File harFile, boolean withHadoopJar, int imruPort, String tempDir) throws IOException {
         ZipOutputStream zip = new ZipOutputStream(new FileOutputStream(harFile));
@@ -122,7 +124,7 @@ public class CreateHar {
                     zip.putNextEntry(entry);
                     zip.write(memory.toByteArray());
                     zip.closeEntry();
-                } else {
+                } else if (uploadJarFiles){
                     String name = s;
                     int t = name.lastIndexOf('/');
                     if (t > 0)

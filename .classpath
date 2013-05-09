@@ -23,8 +23,6 @@
 	<classpathentry kind="lib" path="dist/lib/hadoop-core-0.20.2.jar"/>
 	<classpathentry kind="lib" path="dist/lib/hadoop-test-0.20.2.jar"/>
 	<classpathentry kind="lib" path="dist/lib/hsqldb-1.8.0.10.jar"/>
-	<classpathentry kind="lib" path="dist/lib/httpclient-4.1-alpha2.jar"/>
-	<classpathentry kind="lib" path="dist/lib/httpcore-4.1-beta1.jar"/>
 	<classpathentry kind="lib" path="dist/lib/hyracks-api-0.2.3-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="dist/lib/hyracks-control-cc-0.2.3-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="dist/lib/hyracks-control-common-0.2.3-SNAPSHOT.jar"/>
@@ -177,5 +175,7 @@
 	<classpathentry kind="lib" path="lib/spark-0.7.0/lib_managed/jars/zeromq-scala-binding_2.9.1-0.0.6.jar"/>
 	<classpathentry kind="lib" path="lib/spark-0.7.0/lib_managed/jars/zkclient-0.1.jar"/>
 	<classpathentry kind="lib" path="lib/spark-0.7.0/lib_managed/jars/zookeeper-3.3.3.jar"/>
+	<classpathentry kind="lib" path="lib/spark-0.7.0/lib_managed/jars/httpclient-4.1.jar"/>
+	<classpathentry kind="lib" path="lib/spark-0.7.0/lib_managed/jars/httpcore-4.1.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

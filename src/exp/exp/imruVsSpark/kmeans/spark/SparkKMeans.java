@@ -40,7 +40,9 @@ public class SparkKMeans {
         zip2.finish();
         Rt.write(new File("tmp/simple-project-1.0.jar"), memory.toByteArray());
 
-        JavaSparkContext sc = new JavaSparkContext("local", "JavaLR",
+        String master="local";
+        master="spark://192.168.56.101:7077";
+        JavaSparkContext sc = new JavaSparkContext(master, "JavaLR",
                 "lib/spark-0.7.0",
                 new String[] { "tmp/simple-project-1.0.jar" });
         JavaRDD<String> lines = sc
