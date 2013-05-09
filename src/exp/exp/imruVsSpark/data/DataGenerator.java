@@ -3,6 +3,7 @@ package exp.imruVsSpark.data;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.Random;
 
@@ -45,8 +46,13 @@ public class DataGenerator {
     }
 
     public void generate(boolean hasLabel, File output) throws Exception {
-        PrintStream ps = new PrintStream(new BufferedOutputStream(
-                new FileOutputStream(output), 1024 * 1024));
+        generate(hasLabel, new FileOutputStream(output));
+    }
+
+    public void generate(boolean hasLabel, OutputStream output)
+            throws Exception {
+        PrintStream ps = new PrintStream(new BufferedOutputStream(output,
+                1024 * 1024));
         for (int i = 0; i < numOfDataPoints; i++) {
             int numOfDims = dims_distribution.get();
             if (hasLabel)

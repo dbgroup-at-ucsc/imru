@@ -33,6 +33,7 @@ import edu.uci.ics.hyracks.api.job.JobFlag;
 import edu.uci.ics.hyracks.api.job.JobId;
 import edu.uci.ics.hyracks.api.job.JobSpecification;
 import edu.uci.ics.hyracks.api.job.JobStatus;
+import edu.uci.ics.hyracks.imru.api.IIMRUDataGenerator;
 import edu.uci.ics.hyracks.imru.api.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.jobgen.IMRUJobFactory;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
@@ -198,6 +199,20 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
                 memCache);
         //                byte[] bs=JavaSerializationUtils.serialize(job);
         //                Rt.p("Dataload job size: "+bs.length);
+        JobId jobId = hcc.startJob(app, job, EnumSet
+                .of(JobFlag.PROFILE_RUNTIME));
+        hcc.waitForCompletion(jobId);
+        //        JobId jobId = hcc.createJob(app, job);
+        //        hcc.start(jobId);
+        //        hcc.waitForCompletion(jobId);
+        return hcc.getJobStatus(jobId);
+    }
+
+    public JobStatus runDataGenerator(IIMRUDataGenerator generator)
+            throws Exception {
+        JobSpecification job = jobFactory.generateDataGenerateJob(generator);
+        //                byte[] bs=JavaSerializationUtils.serialize(job);
+        //                Rt.p("Data generator job size: "+bs.length);
         JobId jobId = hcc.startJob(app, job, EnumSet
                 .of(JobFlag.PROFILE_RUNTIME));
         hcc.waitForCompletion(jobId);

@@ -46,8 +46,10 @@ import edu.uci.ics.hyracks.dataflow.std.connectors.OneToOneConnectorDescriptor;
 import edu.uci.ics.hyracks.hdfs.api.IKeyValueParser;
 import edu.uci.ics.hyracks.hdfs.api.IKeyValueParserFactory;
 import edu.uci.ics.hyracks.hdfs.dataflow.HDFSReadOperatorDescriptor;
+import edu.uci.ics.hyracks.imru.api.IIMRUDataGenerator;
 import edu.uci.ics.hyracks.imru.api.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.api.TupleWriter;
+import edu.uci.ics.hyracks.imru.dataflow.DataGeneratorOperatorDescriptor;
 import edu.uci.ics.hyracks.imru.dataflow.DataLoadOperatorDescriptor;
 import edu.uci.ics.hyracks.imru.dataflow.HDFSBlockFormat;
 import edu.uci.ics.hyracks.imru.dataflow.HDFSBlockWriter;
@@ -182,6 +184,18 @@ public class IMRUJobFactory {
         FileInputFormat.setInputPaths(conf, inputPaths);
         conf.setInputFormat(HDFSBlockFormat.class);
         return conf.getInputFormat().getSplits(conf, 1);
+    }
+
+    @SuppressWarnings("rawtypes")
+    public JobSpecification generateDataGenerateJob(IIMRUDataGenerator generator)
+            throws IOException {
+        JobSpecification spec = new JobSpecification();
+        IMRUOperatorDescriptor dataLoad = new DataGeneratorOperatorDescriptor(spec,
+                generator, inputSplits, confFactory);
+        PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, dataLoad,
+                mapOperatorLocations);
+        spec.addRoot(dataLoad);
+        return spec;
     }
 
     /**

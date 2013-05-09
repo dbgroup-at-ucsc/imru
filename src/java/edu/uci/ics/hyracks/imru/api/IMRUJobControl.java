@@ -108,6 +108,17 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
         return driver.run();
     }
 
+    public JobStatus generateData(IIMRUDataGenerator generator, String app)
+            throws Exception {
+        driver = new IMRUDriver<Model, Data>(hcc, imruConnection, null, null,
+                jobFactory, confFactory.createConfiguration(), app);
+        driver.memCache = memCache;
+        driver.noDiskCache = noDiskCache;
+        driver.modelFileName = modelFileName;
+        driver.localIntermediateModelPath = localIntermediateModelPath;
+        return driver.runDataGenerator(generator);
+    }
+
     /**
      * run job using high level interface
      * 
@@ -117,9 +128,8 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
      * @return
      * @throws Exception
      */
-    public <T extends Serializable> JobStatus run(
-            IIMRUJob<Model, Data, T> job, Model initialModel, String app)
-            throws Exception {
+    public <T extends Serializable> JobStatus run(IIMRUJob<Model, Data, T> job,
+            Model initialModel, String app) throws Exception {
         return run(new IMRUJob2Impl<Model, Data, T>(job), initialModel, app);
     }
 

@@ -16,8 +16,12 @@
 package exp.imruVsSpark.kmeans.imru;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Random;
 
+import edu.uci.ics.hyracks.imru.api.IIMRUDataGenerator;
+import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.example.utils.Client;
 import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.imruVsSpark.data.DataGenerator;
@@ -58,7 +62,39 @@ public class IMRUKMeans {
                 dataGenerator.dims), initModel, args);
     }
 
+    static void generateData() throws Exception {
+        String cmdline = "";
+        if (Client.isServerAvailable(Client.getLocalIp(), 3099)) {
+            cmdline += "-host " + Client.getLocalIp() + " -port 3099";
+            System.out.println("Connecting to " + Client.getLocalIp());
+        } else {
+            cmdline += "-host localhost -port 3099 -debug -disable-logging";
+            System.out.println("Starting hyracks cluster");
+        }
+
+        cmdline += " -example-paths /data/b/data/imru/productName.txt";
+        System.out.println("Using command line: " + cmdline);
+        String[] args = cmdline.split(" ");
+
+        SKMeansModel finalModel = Client.generateData(new IIMRUDataGenerator() {
+            @Override
+            public void generate(IMRUContext ctx, OutputStream output)
+                    throws IOException {
+                try {
+                    File templateDir = new File("exp_data/product_name");
+                    DataGenerator dataGenerator = new DataGenerator(
+                            DataGenerator.DEBUG_DATA_POINTS, templateDir);
+                    dataGenerator.generate(false, output);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }, args);
+        System.exit(0);
+    }
+
     public static void main(String[] args) throws Exception {
+        generateData();
         run(true);
         System.exit(0);
     }

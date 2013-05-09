@@ -52,6 +52,7 @@ import edu.uci.ics.hyracks.control.cc.ClusterControllerService;
 import edu.uci.ics.hyracks.control.common.controllers.CCConfig;
 import edu.uci.ics.hyracks.control.common.controllers.NCConfig;
 import edu.uci.ics.hyracks.control.nc.NodeControllerService;
+import edu.uci.ics.hyracks.imru.api.IIMRUDataGenerator;
 import edu.uci.ics.hyracks.imru.api.IIMRUJob;
 import edu.uci.ics.hyracks.imru.api.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.api.IMRUJobControl;
@@ -299,6 +300,11 @@ public class Client<Model extends Serializable, Data extends Serializable> {
     public JobStatus run(IIMRUJob2<Model, Data> job, Model initialModel)
             throws Exception {
         return control.run(job, initialModel, options.app);
+    }
+
+    public JobStatus generateData(IIMRUDataGenerator generator)
+            throws Exception {
+        return control.generateData(generator, options.app);
     }
 
     /**
@@ -559,6 +565,28 @@ public class Client<Model extends Serializable, Data extends Serializable> {
 
             // run job
             JobStatus status = client.run(job, initialModel);
+            if (status == JobStatus.FAILURE) {
+                System.err.println("Job failed; see CC and NC logs");
+                System.exit(-1);
+            }
+            // System.out.println("Terminated after "
+            // + client.control.getIterationCount() + " iterations");
+
+            return client.getModel();
+        } finally {
+            //            if (client.options.debug)
+            //                System.exit(0);
+        }
+    }
+
+    public static <M extends Serializable, D extends Serializable, R extends Serializable> M generateData(
+            IIMRUDataGenerator generator, String[] args) throws Exception {
+        // create a client object, which handles everything
+        Client<M, D> client = new Client<M, D>(args);
+        try {
+            client.init();
+            // run job
+            JobStatus status = client.generateData(generator);
             if (status == JobStatus.FAILURE) {
                 System.err.println("Job failed; see CC and NC logs");
                 System.exit(-1);
