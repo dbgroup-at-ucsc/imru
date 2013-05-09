@@ -33,7 +33,7 @@ import exp.imruVsSpark.kmeans.spark.SparkKMeans;
  * Sparse K-means
  */
 public class IMRUKMeans {
-    public static void run(boolean memCache) throws Exception {
+    public static void run(boolean memCache,boolean noDiskCache) throws Exception {
         String cmdline = "";
         if (Client.isServerAvailable(Client.getLocalIp(), 3099)) {
             // hostname of cluster controller
@@ -44,6 +44,8 @@ public class IMRUKMeans {
             cmdline += "-host localhost -port 3099 -debug -disable-logging";
             if (memCache)
                 cmdline += " -mem-cache";
+            if (noDiskCache)
+                cmdline += " -no-disk-cache";
             System.out.println("Starting hyracks cluster");
         }
 
@@ -94,8 +96,8 @@ public class IMRUKMeans {
     }
 
     public static void main(String[] args) throws Exception {
-        generateData();
-        run(true);
+//        generateData();
+        run(false,true);
         System.exit(0);
     }
 }

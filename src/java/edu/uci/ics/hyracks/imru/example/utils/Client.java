@@ -109,8 +109,8 @@ public class Client<Model extends Serializable, Data extends Serializable> {
         @Option(name = "-mem-cache", usage = "Load all data into memory")
         public boolean memCache = false;
 
-        //@Option(name = "-no-disk-cache", usage = "Don't cache data on local disk")
-        //public boolean noDiskCache = false;
+        @Option(name = "-no-disk-cache", usage = "Don't cache data on local disk (only works with local data)")
+        public boolean noDiskCache = false;
 
         @Option(name = "-app", usage = "Hyracks Application name")
         public String app = "imru-examples";
@@ -234,7 +234,7 @@ public class Client<Model extends Serializable, Data extends Serializable> {
         control.localIntermediateModelPath = options.localIntermediateModelPath;
         control.modelFileName = options.modelFileNameHDFS;
         control.memCache = options.memCache;
-        control.noDiskCache = false;//options.noDiskCache;
+        control.noDiskCache = options.noDiskCache;
         control.connect(options.host, options.port, options.imruPort,
                 options.hadoopConfPath, options.clusterConfPath);
         hcc = control.hcc;

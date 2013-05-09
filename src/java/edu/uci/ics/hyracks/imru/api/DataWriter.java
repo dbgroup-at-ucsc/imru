@@ -32,6 +32,9 @@ public class DataWriter<Data extends Serializable> {
     public DataWriter(Vector<Data> vector) {
         this.vector = vector;
     }
+    
+    public DataWriter() {
+    }
 
     public void addData(Data data) throws IOException {
         if (tupleWriter != null) {

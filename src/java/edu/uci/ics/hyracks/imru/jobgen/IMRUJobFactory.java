@@ -80,7 +80,7 @@ public class IMRUJobFactory {
         NARY
     };
 
-    final ConfigurationFactory confFactory;
+    public final ConfigurationFactory confFactory;
     String inputPaths;
     IMRUFileSplit[] inputSplits;
     String[] mapOperatorLocations;
@@ -190,8 +190,8 @@ public class IMRUJobFactory {
     public JobSpecification generateDataGenerateJob(IIMRUDataGenerator generator)
             throws IOException {
         JobSpecification spec = new JobSpecification();
-        IMRUOperatorDescriptor dataLoad = new DataGeneratorOperatorDescriptor(spec,
-                generator, inputSplits, confFactory);
+        IMRUOperatorDescriptor dataLoad = new DataGeneratorOperatorDescriptor(
+                spec, generator, inputSplits, confFactory);
         PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, dataLoad,
                 mapOperatorLocations);
         spec.addRoot(dataLoad);
@@ -309,7 +309,7 @@ public class IMRUJobFactory {
         // IMRU Computation
         // We will have one Map operator per input file.
         IMRUOperatorDescriptor mapOperator = new MapOperatorDescriptor(spec,
-                model, roundNum, "map", noDiskCache);
+                model, inputSplits, roundNum, "map", noDiskCache);
         PartitionConstraintHelper.addAbsoluteLocationConstraint(spec,
                 mapOperator, mapOperatorLocations);
 

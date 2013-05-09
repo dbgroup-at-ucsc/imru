@@ -131,15 +131,17 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
         imruConnection.uploadModel(this.getModelName(), model);
 
         // Data load
-        LOGGER.info("Starting data load");
-        long loadStart = System.currentTimeMillis();
-        JobStatus status = runDataLoad();
-        long loadEnd = System.currentTimeMillis();
-        LOGGER.info("Finished data load in " + (loadEnd - loadStart)
-                + " milliseconds");
-        if (status == JobStatus.FAILURE) {
-            LOGGER.severe("Failed during data load");
-            return JobStatus.FAILURE;
+        if (!noDiskCache || jobFactory.confFactory.useHDFS()) {
+            LOGGER.info("Starting data load");
+            long loadStart = System.currentTimeMillis();
+            JobStatus status = runDataLoad();
+            long loadEnd = System.currentTimeMillis();
+            LOGGER.info("Finished data load in " + (loadEnd - loadStart)
+                    + " milliseconds");
+            if (status == JobStatus.FAILURE) {
+                LOGGER.severe("Failed during data load");
+                return JobStatus.FAILURE;
+            }
         }
 
         // Iterations
@@ -148,7 +150,7 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
 
             LOGGER.info("Starting round " + iterationCount);
             long start = System.currentTimeMillis();
-            status = runIMRUIteration(getModelName(), iterationCount);
+            JobStatus status = runIMRUIteration(getModelName(), iterationCount);
             long end = System.currentTimeMillis();
             LOGGER.info("Finished round " + iterationCount + " in "
                     + (end - start) + " milliseconds");
