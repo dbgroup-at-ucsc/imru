@@ -20,7 +20,9 @@ public class SparkTest {
         Rt.write(new File("tmp/simple-project-1.0.jar"), memory.toByteArray());
 
         String logFile = "/var/log/syslog"; // Should be some file on your system
-        JavaSparkContext sc = new JavaSparkContext("local", "Simple Job", "lib/spark-0.7.0",
+        String master="local";
+        master="spark://192.168.56.101:7077";
+        JavaSparkContext sc = new JavaSparkContext(master, "Simple Job", "lib/spark-0.7.0",
                 new String[] { "tmp/simple-project-1.0.jar" });
         JavaRDD<String> logData = sc.textFile(logFile).cache();
 
