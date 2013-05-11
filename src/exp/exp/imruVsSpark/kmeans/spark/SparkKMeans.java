@@ -26,6 +26,19 @@ import exp.imruVsSpark.kmeans.SparseVector;
 
 public class SparkKMeans {
     public static void run() throws Exception {
+        //        System.setProperty("spark.locality.wait", "3600000");
+        //        System.setProperty("spark.broadcast.blockSize", "32768");
+        //        System.setProperty("spark.akka.retry.wait", "3600000");
+        //        System.setProperty("spark.storage.blockManagerSlaveTimeoutMs",
+        //                "3600000");
+        //        System.setProperty("spark.storage.blockManagerHeartBeatMs", "3600000");
+
+        //        System.setProperty("spark.storage.blockManagerTimeoutIntervalMs",
+        //                "3600000");
+        System.setProperty("spark.akka.frameSize", "512");
+        //cd /data/b/soft/lib/spark-0.7.0;sbt/sbt package;cp core/target/scala-2.9.2/spark-core_2.9.2-0.7.0.jar /data/a/imru/ucscImru/lib/spark-0.7.0/
+        //cd /data/b/soft;lib/spark-0.7.0/run spark.deploy.master.Master -i 192.168.56.101 -p 7077
+        //cd /data/b/soft;lib/spark-0.7.0/run spark.deploy.worker.Worker spark://192.168.56.101:7077
         System.setProperty("SPARK_LOCAL_IP", "192.168.56.101");
         File templateDir = new File("exp_data/product_name");
         final DataGenerator dataGenerator = new DataGenerator(
@@ -47,7 +60,7 @@ public class SparkKMeans {
                 "lib/spark-0.7.0",
                 new String[] { "tmp/simple-project-1.0.jar" });
 
-        if (true) {
+        if (false) {
             JavaRDD<String> lines = sc
                     .textFile("/data/b/data/imru/productName.txt");
             JavaRDD<SparseVector> points = lines.map(
@@ -58,13 +71,13 @@ public class SparkKMeans {
                     }).cache();
 
             FlatMapFunction f = new FlatMapFunction<Iterator<SparseVector>, String>() {
-                public java.lang.Iterable<String> call(Iterator<SparseVector> input)
-                        throws Exception {
+                public java.lang.Iterable<String> call(
+                        Iterator<SparseVector> input) throws Exception {
                     return call3(input);
                 }
 
-                public java.lang.Iterable<String> call3(Iterator<SparseVector> input)
-                        throws Exception {
+                public java.lang.Iterable<String> call3(
+                        Iterator<SparseVector> input) throws Exception {
                     FilledVectors result = new FilledVectors(k, dimensions);
                     int n = 0;
                     while (input.hasNext()) {
@@ -73,7 +86,8 @@ public class SparkKMeans {
                         result.centroids[rs.belong].add(dataPoint);
                         result.distanceSum += rs.dis;
                     }
-                    return new AggregatedResult<String>(new String(new byte[10000000]));
+                    return new AggregatedResult<String>(new String(
+                            new byte[16 * 1024 * 1024]));
                 }
             };
             for (int i = 1; i <= DataGenerator.DEBUG_ITERATIONS; i++) {
@@ -87,7 +101,6 @@ public class SparkKMeans {
                         });
                 Rt.p(revisedCentroids.length());
             }
-
         } else {
             JavaRDD<String> lines = sc
                     .textFile("/data/b/data/imru/productName.txt");
