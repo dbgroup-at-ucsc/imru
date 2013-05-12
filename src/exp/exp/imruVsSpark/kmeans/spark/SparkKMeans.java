@@ -26,15 +26,6 @@ import exp.imruVsSpark.kmeans.SparseVector;
 
 public class SparkKMeans {
     public static void run() throws Exception {
-        //        System.setProperty("spark.locality.wait", "3600000");
-        //        System.setProperty("spark.broadcast.blockSize", "32768");
-        //        System.setProperty("spark.akka.retry.wait", "3600000");
-        //        System.setProperty("spark.storage.blockManagerSlaveTimeoutMs",
-        //                "3600000");
-        //        System.setProperty("spark.storage.blockManagerHeartBeatMs", "3600000");
-
-        //        System.setProperty("spark.storage.blockManagerTimeoutIntervalMs",
-        //                "3600000");
         System.setProperty("spark.akka.frameSize", "512");
         //cd /data/b/soft/lib/spark-0.7.0;sbt/sbt package;cp core/target/scala-2.9.2/spark-core_2.9.2-0.7.0.jar /data/a/imru/ucscImru/lib/spark-0.7.0/
         //cd /data/b/soft;lib/spark-0.7.0/run spark.deploy.master.Master -i 192.168.56.101 -p 7077
@@ -52,13 +43,13 @@ public class SparkKMeans {
         ZipOutputStream zip2 = new ZipOutputStream(memory);
         CreateHar.add("", new File("bin"), zip2);
         zip2.finish();
-        Rt.write(new File("tmp/simple-project-1.0.jar"), memory.toByteArray());
+        Rt.write(new File("/tmp/simple-project-1.0.jar"), memory.toByteArray());
 
         String master = "local";
         master = "spark://192.168.56.101:7077";
         JavaSparkContext sc = new JavaSparkContext(master, "JavaLR",
                 "lib/spark-0.7.0",
-                new String[] { "tmp/simple-project-1.0.jar" });
+                new String[] { "/tmp/simple-project-1.0.jar" });
 
         if (false) {
             JavaRDD<String> lines = sc
