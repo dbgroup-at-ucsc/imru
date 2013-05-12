@@ -3,6 +3,7 @@
 	<classpathentry kind="src" path="src/java"/>
 	<classpathentry kind="src" path="src/resource"/>
 	<classpathentry kind="src" path="src/exp"/>
+	<classpathentry kind="src" path="src/ec2"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="dist/lib/ant-1.6.5.jar"/>
 	<classpathentry kind="lib" path="dist/lib/args4j-2.0.12.jar"/>

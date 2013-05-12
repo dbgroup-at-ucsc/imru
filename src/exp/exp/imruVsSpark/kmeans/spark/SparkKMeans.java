@@ -30,10 +30,11 @@ public class SparkKMeans {
         //cd /data/b/soft/lib/spark-0.7.0;sbt/sbt package;cp core/target/scala-2.9.2/spark-core_2.9.2-0.7.0.jar /data/a/imru/ucscImru/lib/spark-0.7.0/
         //cd /data/b/soft;lib/spark-0.7.0/run spark.deploy.master.Master -i 192.168.56.101 -p 7077
         //cd /data/b/soft;lib/spark-0.7.0/run spark.deploy.worker.Worker spark://192.168.56.101:7077
-        System.setProperty("SPARK_LOCAL_IP", "192.168.56.101");
+        String host = "192.168.56.101";
+        host = "10.243.74.41";
+        System.setProperty("SPARK_LOCAL_IP", host);
         File templateDir = new File("exp_data/product_name");
-        final DataGenerator dataGenerator = new DataGenerator(
-                DataGenerator.DEBUG_DATA_POINTS, templateDir);
+        final DataGenerator dataGenerator = new DataGenerator(DataGenerator.DEBUG_DATA_POINTS, templateDir);
 
         final int k = DataGenerator.DEBUG_K;
         final int dimensions = dataGenerator.dims;
@@ -46,100 +47,51 @@ public class SparkKMeans {
         Rt.write(new File("/tmp/simple-project-1.0.jar"), memory.toByteArray());
 
         String master = "local";
-        master = "spark://192.168.56.101:7077";
-        JavaSparkContext sc = new JavaSparkContext(master, "JavaLR",
-                "lib/spark-0.7.0",
+        master = "spark://ec2-174-129-117-0.compute-1.amazonaws.com:7077";
+        master = "spark://10.243.74.41:7077";
+        JavaSparkContext sc = new JavaSparkContext(master, "JavaLR", "lib/spark-0.7.0",
                 new String[] { "/tmp/simple-project-1.0.jar" });
 
-        if (false) {
-            JavaRDD<String> lines = sc
-                    .textFile("/data/b/data/imru/productName.txt");
-            JavaRDD<SparseVector> points = lines.map(
-                    new Function<String, SparseVector>() {
-                        public SparseVector call(String line) {
-                            return new SparseVector(line);
-                        }
-                    }).cache();
-
-            FlatMapFunction f = new FlatMapFunction<Iterator<SparseVector>, String>() {
-                public java.lang.Iterable<String> call(
-                        Iterator<SparseVector> input) throws Exception {
-                    return call3(input);
-                }
-
-                public java.lang.Iterable<String> call3(
-                        Iterator<SparseVector> input) throws Exception {
-                    FilledVectors result = new FilledVectors(k, dimensions);
-                    int n = 0;
-                    while (input.hasNext()) {
-                        SparseVector dataPoint = input.next();
-                        SKMeansModel.Result rs = model.classify(dataPoint);
-                        result.centroids[rs.belong].add(dataPoint);
-                        result.distanceSum += rs.dis;
-                    }
-                    return new AggregatedResult<String>(new String(
-                            new byte[16 * 1024 * 1024]));
-                }
-            };
-            for (int i = 1; i <= DataGenerator.DEBUG_ITERATIONS; i++) {
-                System.out.println("On iteration " + i);
-                JavaRDD<String> kmeansModels = points.mapPartitions(f);
-                String revisedCentroids = kmeansModels
-                        .reduce(new Function2<String, String, String>() {
-                            public String call(String a, String b) {
-                                return a;
-                            }
-                        });
-                Rt.p(revisedCentroids.length());
+        JavaRDD<String> lines = sc.textFile("/data/b/data/imru/productName.txt");
+        JavaRDD<SparseVector> points = lines.map(new Function<String, SparseVector>() {
+            public SparseVector call(String line) {
+                return new SparseVector(line);
             }
-        } else {
-            JavaRDD<String> lines = sc
-                    .textFile("/data/b/data/imru/productName.txt");
-            JavaRDD<SparseVector> points = lines.map(
-                    new Function<String, SparseVector>() {
-                        public SparseVector call(String line) {
-                            return new SparseVector(line);
-                        }
-                    }).cache();
+        }).cache();
 
-            FlatMapFunction f = new FlatMapFunction<Iterator<SparseVector>, FilledVectors>() {
-                public java.lang.Iterable<FilledVectors> call(
-                        Iterator<SparseVector> input) throws Exception {
-                    return call3(input);
-                }
-
-                public java.lang.Iterable<FilledVectors> call3(
-                        Iterator<SparseVector> input) throws Exception {
-                    FilledVectors result = new FilledVectors(k, dimensions);
-                    while (input.hasNext()) {
-                        SparseVector dataPoint = input.next();
-                        SKMeansModel.Result rs = model.classify(dataPoint);
-                        result.centroids[rs.belong].add(dataPoint);
-                        result.distanceSum += rs.dis;
-                    }
-                    return new AggregatedResult<FilledVectors>(result);
-                }
-            };
-            for (int i = 1; i <= DataGenerator.DEBUG_ITERATIONS; i++) {
-                System.out.println("On iteration " + i);
-                JavaRDD<FilledVectors> kmeansModels = points.mapPartitions(f);
-                FilledVectors revisedCentroids = kmeansModels
-                        .reduce(new Function2<FilledVectors, FilledVectors, FilledVectors>() {
-                            public FilledVectors call(FilledVectors a,
-                                    FilledVectors b) {
-                                Rt.p("call");
-                                FilledVectors result = new FilledVectors(k,
-                                        dimensions);
-                                result.add(a);
-                                result.add(b);
-                                return result;
-                            }
-                        });
-                Rt.p(revisedCentroids.distanceSum);
-                boolean changed = model.set(revisedCentroids);
-                if (!changed)
-                    break;
+        FlatMapFunction f = new FlatMapFunction<Iterator<SparseVector>, FilledVectors>() {
+            public java.lang.Iterable<FilledVectors> call(Iterator<SparseVector> input) throws Exception {
+                return call3(input);
             }
+
+            public java.lang.Iterable<FilledVectors> call3(Iterator<SparseVector> input) throws Exception {
+                FilledVectors result = new FilledVectors(k, dimensions);
+                while (input.hasNext()) {
+                    SparseVector dataPoint = input.next();
+                    SKMeansModel.Result rs = model.classify(dataPoint);
+                    result.centroids[rs.belong].add(dataPoint);
+                    result.distanceSum += rs.dis;
+                }
+                return new AggregatedResult<FilledVectors>(result);
+            }
+        };
+        for (int i = 1; i <= DataGenerator.DEBUG_ITERATIONS; i++) {
+            System.out.println("On iteration " + i);
+            JavaRDD<FilledVectors> kmeansModels = points.mapPartitions(f);
+            FilledVectors revisedCentroids = kmeansModels
+                    .reduce(new Function2<FilledVectors, FilledVectors, FilledVectors>() {
+                        public FilledVectors call(FilledVectors a, FilledVectors b) {
+                            Rt.p("call");
+                            FilledVectors result = new FilledVectors(k, dimensions);
+                            result.add(a);
+                            result.add(b);
+                            return result;
+                        }
+                    });
+            Rt.p(revisedCentroids.distanceSum);
+            boolean changed = model.set(revisedCentroids);
+            if (!changed)
+                break;
         }
         sc.stop();
     }
