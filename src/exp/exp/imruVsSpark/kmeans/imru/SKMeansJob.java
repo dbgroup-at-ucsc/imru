@@ -31,7 +31,8 @@ import exp.imruVsSpark.kmeans.FilledVectors;
 import exp.imruVsSpark.kmeans.SKMeansModel;
 import exp.imruVsSpark.kmeans.SparseVector;
 
-public class SKMeansJob implements IIMRUJob<SKMeansModel, SparseVector, FilledVectors> {
+public class SKMeansJob implements
+        IIMRUJob<SKMeansModel, SparseVector, FilledVectors> {
     int k;
     int dimensions;
 
@@ -52,11 +53,13 @@ public class SKMeansJob implements IIMRUJob<SKMeansModel, SparseVector, FilledVe
      * Parse input data and output tuples
      */
     @Override
-    public void parse(IMRUContext ctx, InputStream input, DataWriter<SparseVector> output) throws IOException {
+    public void parse(IMRUContext ctx, InputStream input,
+            DataWriter<SparseVector> output) throws IOException {
         try {
             Pattern p = Pattern.compile("[ |\\t]+");
             Pattern p2 = Pattern.compile(":");
-            BufferedReader reader = new BufferedReader(new InputStreamReader(input));
+            BufferedReader reader = new BufferedReader(new InputStreamReader(
+                    input));
             while (true) {
                 String line = reader.readLine();
                 if (line == null)
@@ -77,7 +80,8 @@ public class SKMeansJob implements IIMRUJob<SKMeansModel, SparseVector, FilledVe
     }
 
     @Override
-    public FilledVectors map(IMRUContext ctx, Iterator<SparseVector> input, SKMeansModel model) throws IOException {
+    public FilledVectors map(IMRUContext ctx, Iterator<SparseVector> input,
+            SKMeansModel model) throws IOException {
         FilledVectors result = new FilledVectors(k, dimensions);
         while (input.hasNext()) {
             SparseVector dataPoint = input.next();
@@ -92,7 +96,8 @@ public class SKMeansJob implements IIMRUJob<SKMeansModel, SparseVector, FilledVe
      * Combine multiple results to one result
      */
     @Override
-    public FilledVectors reduce(IMRUContext ctx, Iterator<FilledVectors> input) throws IMRUDataException {
+    public FilledVectors reduce(IMRUContext ctx, Iterator<FilledVectors> input)
+            throws IMRUDataException {
         FilledVectors combined = new FilledVectors(k, dimensions);
         while (input.hasNext())
             combined.add(input.next());
@@ -103,14 +108,15 @@ public class SKMeansJob implements IIMRUJob<SKMeansModel, SparseVector, FilledVe
      * update the model using combined result
      */
     @Override
-    public SKMeansModel update(IMRUContext ctx, Iterator<FilledVectors> input, SKMeansModel model)
-            throws IMRUDataException {
+    public SKMeansModel update(IMRUContext ctx, Iterator<FilledVectors> input,
+            SKMeansModel model) throws IMRUDataException {
         FilledVectors combined = reduce(ctx, input);
         boolean changed = model.set(combined);
         model.roundsRemaining--;
         if (!changed)
             model.roundsRemaining = 0;
-        System.out.println("Total distances: " + combined.distanceSum);
+        System.out.println("Total distances: " + combined.distanceSum
+                + " remaining=" + model.roundsRemaining);
         return model;
     }
 

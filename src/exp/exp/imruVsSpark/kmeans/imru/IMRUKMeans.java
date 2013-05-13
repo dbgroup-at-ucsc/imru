@@ -26,6 +26,7 @@ import java.util.Random;
 import edu.uci.ics.hyracks.imru.api.IIMRUDataGenerator;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.example.utils.Client;
+import edu.uci.ics.hyracks.imru.example.utils.CreateHar;
 import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.imruVsSpark.data.DataGenerator;
 import exp.imruVsSpark.data.Distribution;
@@ -36,7 +37,8 @@ import exp.imruVsSpark.kmeans.spark.SparkKMeans;
  * Sparse K-means
  */
 public class IMRUKMeans {
-    public static void run(boolean memCache, boolean noDiskCache) throws Exception {
+    public static void run(boolean memCache, boolean noDiskCache)
+            throws Exception {
         String cmdline = "";
         if (Client.isServerAvailable(Client.getLocalIp(), 3099)) {
             // hostname of cluster controller
@@ -58,15 +60,22 @@ public class IMRUKMeans {
 
         int k = DataGenerator.DEBUG_K;
 
-        File templateDir = new File("exp_data/product_name");
-        DataGenerator dataGenerator = new DataGenerator(DataGenerator.DEBUG_DATA_POINTS, templateDir);
-        SKMeansModel initModel = new SKMeansModel(k, dataGenerator, DataGenerator.DEBUG_ITERATIONS);
-        SKMeansModel finalModel = Client.run(new SKMeansJob(k, dataGenerator.dims), initModel, args);
+        File templateDir = new File(DataGenerator.TEMPLATE);
+        DataGenerator dataGenerator = new DataGenerator(
+                DataGenerator.DEBUG_DATA_POINTS, templateDir);
+        SKMeansModel initModel = new SKMeansModel(k, dataGenerator,
+                DataGenerator.DEBUG_ITERATIONS);
+        SKMeansModel finalModel = Client.run(new SKMeansJob(k,
+                dataGenerator.dims), initModel, args);
+        Rt.p("Total examples: " + finalModel.totalExamples);
     }
 
-    public static void runEc2(String cc,int nodes, String path,boolean memCache, boolean noDiskCache) throws Exception {
+    public static void runEc2(String cc, int nodes, int size, String path,
+            boolean memCache, boolean noDiskCache) throws Exception {
+        DataGenerator.TEMPLATE = "/home/ubuntu/test/exp_data/product_name";
         String cmdline = "";
-        cmdline += "-host " + cc + " -port 3099";
+        cmdline += "-host " + cc + " -port 3099 -frame-size "
+                + (32 * 1024 * 1024);
         System.out.println("Connecting to " + Client.getLocalIp());
         //            cmdline += "-host localhost -port 3099 -debug -disable-logging";
         if (memCache)
@@ -75,32 +84,38 @@ public class IMRUKMeans {
             cmdline += " -no-disk-cache";
 
         cmdline += " -example-paths ";
-        for (int i=0;i< nodes;i++) {
-            if (i>0)
-                 cmdline+=",";
-             cmdline+="NC"+i+":"+path;
+        for (int i = 0; i < nodes; i++) {
+            if (i > 0)
+                cmdline += ",";
+            cmdline += "NC" + i + ":" + path;
         }
         System.out.println("Using command line: " + cmdline);
         String[] args = cmdline.split(" ");
 
         int k = DataGenerator.DEBUG_K;
 
-        File templateDir = new File("exp_data/product_name");
-        DataGenerator dataGenerator = new DataGenerator(DataGenerator.DEBUG_DATA_POINTS, templateDir);
-        SKMeansModel initModel = new SKMeansModel(k, dataGenerator, DataGenerator.DEBUG_ITERATIONS);
-        SKMeansModel finalModel = Client.run(new SKMeansJob(k, dataGenerator.dims), initModel, args);
+        File templateDir = new File(DataGenerator.TEMPLATE);
+        DataGenerator dataGenerator = new DataGenerator(size, templateDir);
+        SKMeansModel initModel = new SKMeansModel(k, dataGenerator,
+                DataGenerator.DEBUG_ITERATIONS);
+        SKMeansModel finalModel = Client.run(new SKMeansJob(k,
+                dataGenerator.dims), initModel, args);
+        Rt.p("Total examples: " + finalModel.totalExamples);
     }
 
-    public static void generateData(String host, final int count, final int splits) throws Exception {
+    public static void generateData(String host, final int count,
+            final int splits) throws Exception {
+        final File templateDir = new File(DataGenerator.TEMPLATE);
         String cmdline = "";
         //        if (Client.isServerAvailable(Client.getLocalIp(), 3099)) {
         //            cmdline += "-host " + Client.getLocalIp() + " -port 3099";
         //            System.out.println("Connecting to " + Client.getLocalIp());
         //        } else {
-        cmdline += "-host " + host + " -port 3099 -debug -disable-logging";
+        cmdline += "-host " + host + " -port 3099";
         System.out.println("Starting hyracks cluster");
         //        }
 
+        CreateHar.uploadJarFiles = false;
         cmdline += " -example-paths ";
         for (int i = 0; i < splits; i++) {
             if (i > 0)
@@ -110,21 +125,26 @@ public class IMRUKMeans {
         System.out.println("Using command line: " + cmdline);
         String[] args = cmdline.split(" ");
 
+        Rt.p("generating " + splits + " " + count);
         Client.generateData(new IIMRUDataGenerator() {
             @Override
-            public void generate(IMRUContext ctx, OutputStream output) throws IOException {
+            public void generate(IMRUContext ctx, OutputStream output)
+                    throws IOException {
                 try {
                     String nodeId = ctx.getNodeId();
                     if (!nodeId.startsWith("NC"))
                         throw new Error();
                     int id = Integer.parseInt(nodeId.substring(2));
-                    File templateDir = new File("exp_data/product_name");
-                    PrintStream psSpark = new PrintStream(new BufferedOutputStream(new FileOutputStream(new File(
-                            "/mnt/spark.txt")), 1024 * 1024));
-                    PrintStream psImru = new PrintStream(new BufferedOutputStream(output, 1024 * 1024));
-                    DataGenerator dataGenerator = new DataGenerator(count * splits, templateDir);
+                    PrintStream psSpark = new PrintStream(
+                            new BufferedOutputStream(new FileOutputStream(
+                                    new File("/mnt/spark.txt")), 1024 * 1024));
+                    PrintStream psImru = new PrintStream(
+                            new BufferedOutputStream(output, 1024 * 1024));
+                    DataGenerator dataGenerator = new DataGenerator(count
+                            * splits, templateDir);
                     for (int i = 0; i < splits; i++) {
-                        dataGenerator.generate(false, count, psSpark, i == id ? psImru : null);
+                        dataGenerator.generate(false, count, psSpark,
+                                i == id ? psImru : null);
                     }
                     psSpark.close();
                     psImru.close();
@@ -133,11 +153,12 @@ public class IMRUKMeans {
                 }
             }
         }, args);
+        Rt.p("generate data complete");
     }
 
     public static void main(String[] args) throws Exception {
         //        generateData(1000, 2);
-        //        run(false, true);
+        run(true, false);
         System.exit(0);
     }
 }

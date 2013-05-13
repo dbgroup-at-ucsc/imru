@@ -132,6 +132,8 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                         .getApplicationObject();
                 //                final IMRUContext imruContext = new IMRUContext(ctx, name);
                 Model model = (Model) context.model;
+                if (model == null)
+                    throw new HyracksDataException("model is not cached");
                 synchronized (context.envLock) {
                     if (context.modelAge < roundNum)
                         throw new HyracksDataException(

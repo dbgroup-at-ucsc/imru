@@ -24,6 +24,7 @@ import exp.imruVsSpark.data.DataGenerator;
  */
 public class SKMeansModel implements Serializable {
     public FilledVector[] centroids;
+    public int totalExamples = 0;
     public int roundsRemaining = 20;
 
     public SKMeansModel(int k, DataGenerator dataGenerator, int roundsRemaining) {
@@ -33,14 +34,16 @@ public class SKMeansModel implements Serializable {
             centroids[i] = new FilledVector(dataGenerator.dims);
             centroids[i].count = 1;
             for (int j = 0; j < dataGenerator.dims; j++)
-                centroids[i].set(j,dataGenerator.value_distribution.get());
+                centroids[i].set(j, dataGenerator.value_distribution.get());
         }
     }
 
     public boolean set(FilledVectors combined) {
         boolean changed = false;
-        for (int i = 0; i < centroids.length; i++)
+        for (int i = 0; i < centroids.length; i++) {
+            totalExamples += combined.centroids[i].count;
             changed = changed || centroids[i].set(combined.centroids[i]);
+        }
         return changed;
     }
 

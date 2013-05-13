@@ -15,6 +15,8 @@ import exp.imruVsSpark.kmeans.SKMeansModel;
 import exp.imruVsSpark.kmeans.SparseVector;
 
 public class DataGenerator {
+    public static  String TEMPLATE = "exp_data/product_name";
+
     public static int DEBUG_DATA_POINTS = 1000000;
     public static int DEBUG_K = 3;
     public static int DEBUG_ITERATIONS = 5;

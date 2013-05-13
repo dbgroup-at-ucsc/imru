@@ -150,6 +150,8 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
                     byte[] data = IMRUSerialize
                             .deserializeFromChunks(imruContext, bufferedChunks
                                     .remove(senderPartition));
+                    if (data.length==0)
+                        throw new HyracksDataException("update received empty data");
                     io.add(data);
                 }
             }

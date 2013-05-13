@@ -258,6 +258,7 @@ public class IMRUJob2Impl<Model extends Serializable, Data extends Serializable,
                 try {
                     return (T) appContext.deserialize(objectData);
                 } catch (Exception e) {
+                    Rt.p("Read reduce result failed len=%,d", objectData.length);
                     e.printStackTrace();
                 }
                 return null;

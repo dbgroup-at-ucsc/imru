@@ -25,16 +25,17 @@ import exp.imruVsSpark.kmeans.SKMeansModel;
 import exp.imruVsSpark.kmeans.SparseVector;
 
 public class SparkKMeans {
-    public static void run(String host, String sparkPath, String dataPath, int nodeCount) throws Exception {
-        System.setProperty("spark.akka.frameSize", "512");
+    public static void run(String host, int dataSize, String sparkPath,
+            String dataPath, int nodeCount) throws Exception {
+        System.setProperty("spark.akka.frameSize", "32");
         //cd /data/b/soft/lib/spark-0.7.0;sbt/sbt package;cp core/target/scala-2.9.2/spark-core_2.9.2-0.7.0.jar /data/a/imru/ucscImru/lib/spark-0.7.0/
         //cd /data/b/soft;lib/spark-0.7.0/run spark.deploy.master.Master -i 192.168.56.101 -p 7077
         //cd /data/b/soft;lib/spark-0.7.0/run spark.deploy.worker.Worker spark://192.168.56.101:7077
 
         System.setProperty("SPARK_LOCAL_IP", host);
-        File templateDir = new File("exp_data/product_name");
-        final DataGenerator dataGenerator = new DataGenerator(DataGenerator.DEBUG_DATA_POINTS, templateDir);
-
+        File templateDir = new File(DataGenerator.TEMPLATE);
+        final DataGenerator dataGenerator = new DataGenerator(dataSize,
+                templateDir);
         final int k = DataGenerator.DEBUG_K;
         final int dimensions = dataGenerator.dims;
         final SKMeansModel model = new SKMeansModel(k, dataGenerator, 20);
@@ -48,22 +49,25 @@ public class SparkKMeans {
         String master = "local";
         master = "spark://ec2-174-129-117-0.compute-1.amazonaws.com:7077";
         master = "spark://" + host + ":7077";
-        JavaSparkContext sc = new JavaSparkContext(master, "JavaKMeans", sparkPath,
-                new String[] { "/tmp/simple-project-1.0.jar" });
+        JavaSparkContext sc = new JavaSparkContext(master, "JavaKMeans",
+                sparkPath, new String[] { "/tmp/simple-project-1.0.jar" });
 
         JavaRDD<String> lines = sc.textFile(dataPath, nodeCount);
-        JavaRDD<SparseVector> points = lines.map(new Function<String, SparseVector>() {
-            public SparseVector call(String line) {
-                return new SparseVector(line);
-            }
-        }).cache();
+        JavaRDD<SparseVector> points = lines.map(
+                new Function<String, SparseVector>() {
+                    public SparseVector call(String line) {
+                        return new SparseVector(line);
+                    }
+                }).cache();
 
         FlatMapFunction f = new FlatMapFunction<Iterator<SparseVector>, FilledVectors>() {
-            public java.lang.Iterable<FilledVectors> call(Iterator<SparseVector> input) throws Exception {
+            public java.lang.Iterable<FilledVectors> call(
+                    Iterator<SparseVector> input) throws Exception {
                 return call3(input);
             }
 
-            public java.lang.Iterable<FilledVectors> call3(Iterator<SparseVector> input) throws Exception {
+            public java.lang.Iterable<FilledVectors> call3(
+                    Iterator<SparseVector> input) throws Exception {
                 FilledVectors result = new FilledVectors(k, dimensions);
                 while (input.hasNext()) {
                     SparseVector dataPoint = input.next();
@@ -79,9 +83,11 @@ public class SparkKMeans {
             JavaRDD<FilledVectors> kmeansModels = points.mapPartitions(f);
             FilledVectors revisedCentroids = kmeansModels
                     .reduce(new Function2<FilledVectors, FilledVectors, FilledVectors>() {
-                        public FilledVectors call(FilledVectors a, FilledVectors b) {
+                        public FilledVectors call(FilledVectors a,
+                                FilledVectors b) {
                             Rt.p("call");
-                            FilledVectors result = new FilledVectors(k, dimensions);
+                            FilledVectors result = new FilledVectors(k,
+                                    dimensions);
                             result.add(a);
                             result.add(b);
                             return result;
@@ -92,13 +98,14 @@ public class SparkKMeans {
             if (!changed)
                 break;
         }
+        Rt.p("Total examples: " + model.totalExamples);
         sc.stop();
     }
 
     public static void main(String[] args) throws Exception {
         String host = "192.168.56.101";
-        host = "10.243.74.41";
-        run(host, "lib/spark-0.7.0", "/data/b/data/imru/productName.txt",1);
+        run(host, DataGenerator.DEBUG_DATA_POINTS,"/data/b/soft/lib/spark-0.7.0",
+                "/data/b/data/imru/productName.txt", 1);
         System.exit(0);
     }
 }

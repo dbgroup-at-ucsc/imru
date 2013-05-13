@@ -149,6 +149,9 @@ public class Client<Model extends Serializable, Data extends Serializable> {
         @Option(name = "-model-file", usage = "Local file to write the final weights to")
         public String modelFilename;
 
+        @Option(name = "-frame-size", usage = "Hyracks frame size")
+        public int frameSize = 0;
+
         //        @Option(name = "-num-rounds", usage = "The number of iterations to perform")
         //        public int numRounds = 5;
     }
@@ -235,6 +238,7 @@ public class Client<Model extends Serializable, Data extends Serializable> {
         control.modelFileName = options.modelFileNameHDFS;
         control.memCache = options.memCache;
         control.noDiskCache = options.noDiskCache;
+        control.frameSize=options.frameSize;
         control.connect(options.host, options.port, options.imruPort,
                 options.hadoopConfPath, options.clusterConfPath);
         hcc = control.hcc;

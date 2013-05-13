@@ -15,9 +15,12 @@ import exp.test0.lr.SparkLR;
 public class SingleMachineBenchmark {
     public static void main(String[] args) throws Exception {
         Client.disableLogging();
-        GnuPlot plot = new GnuPlot(new File("result"), "kmeans", "Data points (10^5)", "Time (seconds)");
-        plot.extra = "set title \"K=" + DataGenerator.DEBUG_K + ",Iteration=" + DataGenerator.DEBUG_ITERATIONS + "\"";
-        plot.setPlotNames("Generate Data", "Bare", "Spark", "IMRU-mem", "IMRU-disk", "IMRU-parse");
+        GnuPlot plot = new GnuPlot(new File("result"), "kmeans",
+                "Data points (10^5)", "Time (seconds)");
+        plot.extra = "set title \"K=" + DataGenerator.DEBUG_K + ",Iteration="
+                + DataGenerator.DEBUG_ITERATIONS + "\"";
+        plot.setPlotNames("Generate Data", "Bare", "Spark", "IMRU-mem",
+                "IMRU-disk", "IMRU-parse");
         plot.startPointType = 1;
         plot.pointSize = 1;
         plot.reloadData();
@@ -49,7 +52,8 @@ public class SingleMachineBenchmark {
             start = System.currentTimeMillis();
             String host = "192.168.56.101";
             host = "10.243.74.41";
-            SparkKMeans.run(host, "lib/spark-0.7.0", "/data/b/data/imru/productName.txt", 1);
+            SparkKMeans.run(host, DataGenerator.DEBUG_DATA_POINTS,
+                    "lib/spark-0.7.0", "/data/b/data/imru/productName.txt", 1);
             long sparkTime = System.currentTimeMillis() - start;
 
             Rt.p("Data: %,d", dataTime);

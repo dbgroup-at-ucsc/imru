@@ -13,7 +13,7 @@ import exp.imruVsSpark.data.DataGenerator;
 
 public class SparseKMeans {
     public static void run(String path) throws Exception {
-        File templateDir = new File("exp_data/product_name");
+        File templateDir = new File(DataGenerator.TEMPLATE);
         final DataGenerator dataGenerator = new DataGenerator(
                 DataGenerator.DEBUG_DATA_POINTS, templateDir);
 

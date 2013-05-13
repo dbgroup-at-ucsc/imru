@@ -61,6 +61,7 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
     private int iterationCount;
     public boolean memCache = false;
     public boolean noDiskCache = false;
+    public int frameSize;
     public String modelFileName;
     public String localIntermediateModelPath;
 
@@ -160,6 +161,8 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
                 return JobStatus.FAILURE;
             }
             model = (Model) imruConnection.downloadModel(this.getModelName());
+            if (model == null)
+                throw new Exception("Can't download model");
             if (localIntermediateModelPath != null)
                 writeModelToFile(model, new File(localIntermediateModelPath,
                         getModelName() + "-iter" + iterationCount));
@@ -258,6 +261,9 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
 
         JobSpecification job = jobFactory.generateJob(imruSpec, iterationNum,
                 modelName, noDiskCache);
+        if (frameSize != 0)
+            job.setFrameSize(frameSize);
+        LOGGER.info("job frame size " + job.getFrameSize());
         //                byte[] bs=JavaSerializationUtils.serialize(job);
         //              Rt.p("IMRU job size: "+bs.length);
         JobId jobId = hcc.startJob(app, job, EnumSet

@@ -363,7 +363,8 @@ public class GnuPlot {
             }
         }
         ps.close();
-        Rt.runAndShowCommand("gnuplot " + name + ".plt", dir);
+        if (new File("/usr/bin/gnuplot").exists())
+            Rt.runAndShowCommand("gnuplot " + name + ".plt", dir);
     }
 
     public void show() throws IOException {

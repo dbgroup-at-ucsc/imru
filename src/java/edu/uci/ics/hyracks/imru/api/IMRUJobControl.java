@@ -39,6 +39,7 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
     public String modelFileName;
     public boolean memCache = false;
     public boolean noDiskCache = false;
+    public int frameSize;
 
     public void connect(String ccHost, int ccPort, int imruPort,
             String hadoopConfPath, String clusterConfPath) throws Exception {
@@ -104,6 +105,7 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
         driver.memCache = memCache;
         driver.noDiskCache = noDiskCache;
         driver.modelFileName = modelFileName;
+        driver.frameSize= frameSize;
         driver.localIntermediateModelPath = localIntermediateModelPath;
         return driver.run();
     }

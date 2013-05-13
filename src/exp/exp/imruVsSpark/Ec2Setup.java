@@ -32,19 +32,20 @@ public class Ec2Setup {
             boolean hasWorker = result.contains("spark.deploy.worker.Worker");
 
             if (i == 0 && !hasMaster) {
-                String cmd = "/home/ubuntu/spark-0.7.0/run spark.deploy.master.Master -i " + nodes[0].interalIp
-                        + " -p 7077";
+                String cmd = "/home/ubuntu/spark-0.7.0/run spark.deploy.master.Master -i "
+                        + nodes[0].interalIp + " -p 7077";
                 cmd = "/home/ubuntu/spark-0.7.0/bin/start-master.sh";
-                cmd = "nohup /home/ubuntu/spark-0.7.0/run spark.deploy.master.Master -i " + nodes[0].interalIp
-                        + " -p 7077 &";
+                cmd = "nohup /home/ubuntu/spark-0.7.0/run spark.deploy.master.Master -i "
+                        + nodes[0].interalIp + " -p 7077 &";
                 Rt.np(cmd);
                 ssh.execute(cmd);
                 ssh.execute("sleep 2s");
             }
             if (!hasWorker) {
-                String cmd = "/home/ubuntu/spark-0.7.0/bin/start-slave.sh spark://" + nodes[0].interalIp + ":7077";
-                cmd = "nohup /home/ubuntu/spark-0.7.0/run spark.deploy.worker.Worker spark://" + nodes[0].interalIp
-                        + ":7077 &";
+                String cmd = "/home/ubuntu/spark-0.7.0/bin/start-slave.sh spark://"
+                        + nodes[0].interalIp + ":7077";
+                cmd = "nohup /home/ubuntu/spark-0.7.0/run spark.deploy.worker.Worker spark://"
+                        + nodes[0].interalIp + ":7077 &";
                 Rt.np(cmd);
                 ssh.execute(cmd);
             }
@@ -65,28 +66,39 @@ public class Ec2Setup {
     }
 
     static void testSpark(HyracksEC2Cluster cluster) throws Exception {
+        cluster.stopHyrackCluster();
         cluster.startHyrackCluster();
         startSpark(cluster);
 
         HyracksEC2Node[] nodes = cluster.getNodes();
+        for (HyracksEC2Node node : nodes) {
+            SSH ssh = cluster.ssh(node.getNodeId());
+            ssh.execute("sudo chmod ugo+rw /mnt -R");
+            ssh.close();
+        }
         Rt.p("http://" + nodes[0].publicIp + ":8080/");
-
         HyracksEC2Node node = nodes[0];
-        Rt.runAndShowCommand("rsync -vrultzCc /home/wangrui/ucscImru/bin/ ubuntu@" + node.publicIp
-                + ":/home/ubuntu/test/bin/");
-        Rt.runAndShowCommand("rsync -vrultzCc /home/wangrui/ucscImru/lib/ec2runSpark.sh ubuntu@" + node.publicIp
-                + ":/home/ubuntu/test/st.sh");
-        Rt.runAndShowCommand("rsync -vrultzCc /home/wangrui/ucscImru/exp_data/ ubuntu@" + node.publicIp
-                + ":/home/ubuntu/test/exp_data/");
+        Rt
+                .runAndShowCommand("rsync -vrultzCc /home/wangrui/ucscImru/bin/ ubuntu@"
+                        + node.publicIp + ":/home/ubuntu/test/bin/");
+        Rt
+                .runAndShowCommand("rsync -vrultzCc /home/wangrui/ucscImru/lib/ec2runSpark.sh ubuntu@"
+                        + node.publicIp + ":/home/ubuntu/test/st.sh");
+        Rt
+                .runAndShowCommand("rsync -vrultzCc /home/wangrui/ucscImru/exp_data/ ubuntu@"
+                        + node.publicIp + ":/home/ubuntu/test/exp_data/");
 
         SSH ssh = cluster.ssh(0);
         ssh.execute("cd test;");
-        ssh.execute("sh st.sh exp.imruVsSpark.kmeans.EC2Benchmark " + nodes[0].interalIp + " " + nodes.length);
+        ssh.execute("sh st.sh exp.imruVsSpark.kmeans.EC2Benchmark "
+                + nodes[0].interalIp + " " + nodes.length);
         ssh.close();
+
+        cluster.printLogs(0, 100);
     }
 
     public static void main(String[] args) throws Exception {
-        int nodeCount=2;
+        int nodeCount = 2;
         File home = new File(System.getProperty("user.home"));
         File credentialsFile = new File(home, "AwsCredentials.properties");
         File privateKey = new File(home, "ruiwang.pem");
@@ -100,7 +112,7 @@ public class Ec2Setup {
         //        ec2.setup(hyracksEc2Root, 1, "m1.small");
         ec2.cluster.setTotalInstances(nodeCount);
         testSpark(ec2.cluster);
-        
+
         System.exit(0);
         //        ec2.cluster.setImageId("ami-c9dcb0a0");
         ec2.cluster.setImageId("ami-fdff9094");
