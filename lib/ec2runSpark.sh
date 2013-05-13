@@ -172,4 +172,4 @@ java -Xmx512m -cp bin\
 :/home/ubuntu/spark-0.7.0/lib_managed/jars/zookeeper-3.3.3.jar\
 :/home/ubuntu/spark-0.7.0/lib_managed/jars/httpclient-4.1.jar\
 :/home/ubuntu/spark-0.7.0/lib_managed/jars/httpcore-4.1.jar\
- $1 $2 $3 $4
+ $1 $2 $3 $4 $5

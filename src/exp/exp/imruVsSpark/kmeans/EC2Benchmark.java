@@ -11,19 +11,20 @@ import exp.imruVsSpark.kmeans.spark.SparkKMeans;
 import exp.test0.GnuPlot;
 
 public class EC2Benchmark {
-    public static void exp(String master, int nodeCount) throws Exception {
-//        Client.disableLogging();
+    public static void exp(String master, int nodeCount, boolean imru)
+            throws Exception {
+        //        Client.disableLogging();
         DataGenerator.TEMPLATE = "/home/ubuntu/test/exp_data/product_name";
         new File("result").mkdir();
-        GnuPlot plot = new GnuPlot(new File("result"), "kmeans",
-                "Data points (10^5)", "Time (seconds)");
+        GnuPlot plot = new GnuPlot(new File("result"), "kmeans"
+                + (imru ? "imru" : "spark"), "Data points (10^5)",
+                "Time (seconds)");
         plot.extra = "set title \"K=" + DataGenerator.DEBUG_K + ",Iteration="
                 + DataGenerator.DEBUG_ITERATIONS + "\"";
-        plot.setPlotNames("Generate Data",
-        //                "Bare", 
-                "Spark", "IMRU-mem", "IMRU-disk"
-        //                , "IMRU-parse"
-                );
+        if (imru)
+            plot.setPlotNames("Generate Data", "IMRU-mem", "IMRU-disk");
+        else
+            plot.setPlotNames("Generate Data", "Spark");
         plot.startPointType = 1;
         plot.pointSize = 1;
         //        plot.reloadData();
@@ -55,49 +56,42 @@ public class EC2Benchmark {
             //            start = System.currentTimeMillis();
             //            SparseKMeans.run();
             //            long bareTime = System.currentTimeMillis() - start;
+            if (imru) {
+                Rt.p("running IMRU in memory");
+                start = System.currentTimeMillis();
+                IMRUKMeans.runEc2(master, nodeCount, dataSize, "/mnt/imru.txt",
+                        true, false);
+                long imruMemTime = System.currentTimeMillis() - start;
 
-            Rt.p("running IMRU in memory");
-            start = System.currentTimeMillis();
-            IMRUKMeans.runEc2(master, nodeCount, dataSize, "/mnt/imru.txt",
-                    true, false);
-            long imruMemTime = System.currentTimeMillis() - start;
+                //            start = System.currentTimeMillis();
+                //            IMRUKMeans.runEc2(master, false, true);
+                //            long imruParseTime = System.currentTimeMillis() - start;
 
-            //            start = System.currentTimeMillis();
-            //            IMRUKMeans.runEc2(master, false, true);
-            //            long imruParseTime = System.currentTimeMillis() - start;
-
-            Rt.p("running IMRU in disk");
-            start = System.currentTimeMillis();
-            IMRUKMeans.runEc2(master, nodeCount, dataSize, "/mnt/imru.txt",
-                    false, false);
-            long imruDiskTime = System.currentTimeMillis() - start;
-
-            Rt.p("running spark");
-            start = System.currentTimeMillis();
-            SparkKMeans.run(master, dataSize, "/home/ubuntu/spark-0.7.0",
-                    "/mnt/spark.txt", nodeCount);
-            long sparkTime = System.currentTimeMillis() - start;
-
-            Rt.p("Data: %,d", dataTime);
-            //            Rt.p("Bare: %,d", bareTime);
-            Rt.p("Spark: %,d", sparkTime);
-            Rt.p("IMRU-mem: %,d", imruMemTime);
-            Rt.p("IMRU-disk: %,d", imruDiskTime);
-            //            Rt.p("IMRU-parse: %,d", imruParseTime);
-
-            plot.startNewX(DataGenerator.DEBUG_DATA_POINTS / 100000);
-            plot.addY(dataTime / 1000.0);
-            //            plot.addY(bareTime / 1000.0);
-            plot.addY(sparkTime / 1000.0);
-            plot.addY(imruMemTime / 1000.0);
-            plot.addY(imruDiskTime / 1000.0);
-            //            plot.addY(imruParseTime / 1000.0);
+                Rt.p("running IMRU in disk");
+                start = System.currentTimeMillis();
+                IMRUKMeans.runEc2(master, nodeCount, dataSize, "/mnt/imru.txt",
+                        false, false);
+                long imruDiskTime = System.currentTimeMillis() - start;
+                plot.startNewX(DataGenerator.DEBUG_DATA_POINTS / 100000);
+                plot.addY(dataTime / 1000.0);
+                plot.addY(imruMemTime / 1000.0);
+                plot.addY(imruDiskTime / 1000.0);
+            } else {
+                Rt.p("running spark");
+                start = System.currentTimeMillis();
+                SparkKMeans.run(master, dataSize, "/home/ubuntu/spark-0.7.0",
+                        "/mnt/spark.txt", nodeCount);
+                long sparkTime = System.currentTimeMillis() - start;
+                plot.startNewX(DataGenerator.DEBUG_DATA_POINTS / 100000);
+                plot.addY(dataTime / 1000.0);
+                plot.addY(sparkTime / 1000.0);
+            }
             plot.finish();
         }
         System.exit(0);
     }
 
     public static void main(String[] args) throws Exception {
-        exp(args[0], Integer.parseInt(args[1]));
+        exp(args[0], Integer.parseInt(args[1]), Boolean.parseBoolean(args[2]));
     }
 }

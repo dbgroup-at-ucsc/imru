@@ -95,10 +95,10 @@ public class SparkKMeans {
                     });
             Rt.p(revisedCentroids.distanceSum);
             boolean changed = model.set(revisedCentroids);
+            Rt.p("Total examples: " + model.totalExamples);
             if (!changed)
                 break;
         }
-        Rt.p("Total examples: " + model.totalExamples);
         sc.stop();
     }
 

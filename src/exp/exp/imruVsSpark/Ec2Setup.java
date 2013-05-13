@@ -60,15 +60,22 @@ public class Ec2Setup {
         Rt.p("http://" + nodes[0].publicIp + ":8080/");
         SSH ssh = cluster.ssh(0);
         String cmd = "/home/ubuntu/spark-0.7.0/bin/stop-all.sh";
+        cmd="ps aux | grep spark";
         Rt.np(cmd);
-        ssh.execute(cmd);
+        for (String line : ssh.execute(cmd,true).split("\n")) {
+            if (line.contains("spark.deploy.master.Master")) {
+                String[] ss=line.split("[ |\t]+");
+                int pid=Integer.parseInt(ss[1]);
+                ssh.execute("kill "+pid);
+            }
+        }
         ssh.close();
     }
 
     static void testSpark(HyracksEC2Cluster cluster) throws Exception {
+        stopSpark(cluster);
         cluster.stopHyrackCluster();
         cluster.startHyrackCluster();
-        startSpark(cluster);
 
         HyracksEC2Node[] nodes = cluster.getNodes();
         for (HyracksEC2Node node : nodes) {
@@ -91,10 +98,17 @@ public class Ec2Setup {
         SSH ssh = cluster.ssh(0);
         ssh.execute("cd test;");
         ssh.execute("sh st.sh exp.imruVsSpark.kmeans.EC2Benchmark "
-                + nodes[0].interalIp + " " + nodes.length);
+                + nodes[0].interalIp + " " + nodes.length+" true");
         ssh.close();
+        cluster.printLogs(-1, 100);
+        cluster.stopHyrackCluster();
 
-        cluster.printLogs(0, 100);
+        startSpark(cluster);
+        ssh = cluster.ssh(0);
+        ssh.execute("cd test;");
+        ssh.execute("sh st.sh exp.imruVsSpark.kmeans.EC2Benchmark "
+                + nodes[0].interalIp + " " + nodes.length+" false");
+        ssh.close();
     }
 
     public static void main(String[] args) throws Exception {
