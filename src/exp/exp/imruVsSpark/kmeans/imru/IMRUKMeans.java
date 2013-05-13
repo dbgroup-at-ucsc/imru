@@ -15,9 +15,12 @@
 
 package exp.imruVsSpark.kmeans.imru;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.PrintStream;
 import java.util.Random;
 
 import edu.uci.ics.hyracks.imru.api.IIMRUDataGenerator;
@@ -61,7 +64,7 @@ public class IMRUKMeans {
         SKMeansModel finalModel = Client.run(new SKMeansJob(k, dataGenerator.dims), initModel, args);
     }
 
-    public static void runEc2(String cc, boolean memCache, boolean noDiskCache) throws Exception {
+    public static void runEc2(String cc,int nodes, String path,boolean memCache, boolean noDiskCache) throws Exception {
         String cmdline = "";
         cmdline += "-host " + cc + " -port 3099";
         System.out.println("Connecting to " + Client.getLocalIp());
@@ -71,7 +74,12 @@ public class IMRUKMeans {
         if (noDiskCache)
             cmdline += " -no-disk-cache";
 
-        cmdline += " -example-paths /home/ubuntu/test/data.txt";
+        cmdline += " -example-paths ";
+        for (int i=0;i< nodes;i++) {
+            if (i>0)
+                 cmdline+=",";
+             cmdline+="NC"+i+":"+path;
+        }
         System.out.println("Using command line: " + cmdline);
         String[] args = cmdline.split(" ");
 
@@ -83,38 +91,53 @@ public class IMRUKMeans {
         SKMeansModel finalModel = Client.run(new SKMeansJob(k, dataGenerator.dims), initModel, args);
     }
 
-    static void generateData() throws Exception {
+    public static void generateData(String host, final int count, final int splits) throws Exception {
         String cmdline = "";
-        if (Client.isServerAvailable(Client.getLocalIp(), 3099)) {
-            cmdline += "-host " + Client.getLocalIp() + " -port 3099";
-            System.out.println("Connecting to " + Client.getLocalIp());
-        } else {
-            cmdline += "-host localhost -port 3099 -debug -disable-logging";
-            System.out.println("Starting hyracks cluster");
-        }
+        //        if (Client.isServerAvailable(Client.getLocalIp(), 3099)) {
+        //            cmdline += "-host " + Client.getLocalIp() + " -port 3099";
+        //            System.out.println("Connecting to " + Client.getLocalIp());
+        //        } else {
+        cmdline += "-host " + host + " -port 3099 -debug -disable-logging";
+        System.out.println("Starting hyracks cluster");
+        //        }
 
-        cmdline += " -example-paths /data/b/data/imru/productName.txt";
+        cmdline += " -example-paths ";
+        for (int i = 0; i < splits; i++) {
+            if (i > 0)
+                cmdline += ",";
+            cmdline += "NC" + i + ":/mnt/imru.txt";
+        }
         System.out.println("Using command line: " + cmdline);
         String[] args = cmdline.split(" ");
 
-        SKMeansModel finalModel = Client.generateData(new IIMRUDataGenerator() {
+        Client.generateData(new IIMRUDataGenerator() {
             @Override
             public void generate(IMRUContext ctx, OutputStream output) throws IOException {
                 try {
+                    String nodeId = ctx.getNodeId();
+                    if (!nodeId.startsWith("NC"))
+                        throw new Error();
+                    int id = Integer.parseInt(nodeId.substring(2));
                     File templateDir = new File("exp_data/product_name");
-                    DataGenerator dataGenerator = new DataGenerator(DataGenerator.DEBUG_DATA_POINTS, templateDir);
-                    dataGenerator.generate(false, output);
+                    PrintStream psSpark = new PrintStream(new BufferedOutputStream(new FileOutputStream(new File(
+                            "/mnt/spark.txt")), 1024 * 1024));
+                    PrintStream psImru = new PrintStream(new BufferedOutputStream(output, 1024 * 1024));
+                    DataGenerator dataGenerator = new DataGenerator(count * splits, templateDir);
+                    for (int i = 0; i < splits; i++) {
+                        dataGenerator.generate(false, count, psSpark, i == id ? psImru : null);
+                    }
+                    psSpark.close();
+                    psImru.close();
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
         }, args);
-        System.exit(0);
     }
 
     public static void main(String[] args) throws Exception {
-        //        generateData();
-        run(false, true);
+        //        generateData(1000, 2);
+        //        run(false, true);
         System.exit(0);
     }
 }

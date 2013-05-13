@@ -23,7 +23,7 @@ public class DataGenerator {
     public int dims;
     public Distribution dims_distribution;
     public Distribution value_distribution;
-    Random random = new Random();
+    Random random = new Random(1000);
 
     public DataGenerator(double numOfDataPoints, File templateDir) throws Exception {
         this.numOfDataPoints = numOfDataPoints;
@@ -61,6 +61,25 @@ public class DataGenerator {
             ps.println();
         }
         ps.close();
+    }
+
+    public void generate(boolean hasLabel, int n, PrintStream ps1, PrintStream ps2) throws Exception {
+        for (int i = 0; i < n; i++) {
+            int numOfDims = dims_distribution.get();
+            StringBuilder sb = new StringBuilder();
+            if (hasLabel)
+                sb.append(random.nextBoolean() ? 1 : 0 + " ");
+            for (int j = 0; j < numOfDims; j++) {
+                if (j > 0)
+                    sb.append(" ");
+                sb.append((long) (random.nextDouble() * dims));
+                sb.append(":");
+                sb.append(value_distribution.get());
+            }
+            ps1.println(sb);
+            if (ps2 != null)
+                ps2.println(sb);
+        }
     }
 
     public static void main(String[] args) throws Exception {

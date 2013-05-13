@@ -15,17 +15,14 @@ import exp.test0.lr.SparkLR;
 public class SingleMachineBenchmark {
     public static void main(String[] args) throws Exception {
         Client.disableLogging();
-        GnuPlot plot = new GnuPlot(new File("result"), "kmeans",
-                "Data points (10^5)", "Time (seconds)");
-        plot.extra = "set title \"K=" + DataGenerator.DEBUG_K + ",Iteration="
-                + DataGenerator.DEBUG_ITERATIONS + "\"";
-        plot.setPlotNames("Generate Data", "Bare", "Spark", "IMRU-mem",
-                "IMRU-disk", "IMRU-parse");
+        GnuPlot plot = new GnuPlot(new File("result"), "kmeans", "Data points (10^5)", "Time (seconds)");
+        plot.extra = "set title \"K=" + DataGenerator.DEBUG_K + ",Iteration=" + DataGenerator.DEBUG_ITERATIONS + "\"";
+        plot.setPlotNames("Generate Data", "Bare", "Spark", "IMRU-mem", "IMRU-disk", "IMRU-parse");
         plot.startPointType = 1;
         plot.pointSize = 1;
         plot.reloadData();
-//        for (int i = 0; i < plot.vs.size(); i++)
-//            plot.vs.get(i).set(0, plot.vs.get(i).get(0) / 100000);
+        //        for (int i = 0; i < plot.vs.size(); i++)
+        //            plot.vs.get(i).set(0, plot.vs.get(i).get(0) / 100000);
         plot.finish();
         System.exit(0);
         for (DataGenerator.DEBUG_DATA_POINTS = 100000; DataGenerator.DEBUG_DATA_POINTS <= 1000000; DataGenerator.DEBUG_DATA_POINTS += 100000) {
@@ -34,7 +31,7 @@ public class SingleMachineBenchmark {
             long dataTime = System.currentTimeMillis() - start;
 
             start = System.currentTimeMillis();
-            SparseKMeans.run();
+            SparseKMeans.run("/data/b/data/imru/productName.txt");
             long bareTime = System.currentTimeMillis() - start;
 
             start = System.currentTimeMillis();
@@ -50,7 +47,9 @@ public class SingleMachineBenchmark {
             long imruDiskTime = System.currentTimeMillis() - start;
 
             start = System.currentTimeMillis();
-            SparkKMeans.run();
+            String host = "192.168.56.101";
+            host = "10.243.74.41";
+            SparkKMeans.run(host, "lib/spark-0.7.0", "/data/b/data/imru/productName.txt", 1);
             long sparkTime = System.currentTimeMillis() - start;
 
             Rt.p("Data: %,d", dataTime);

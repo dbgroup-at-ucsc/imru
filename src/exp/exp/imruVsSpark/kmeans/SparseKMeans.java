@@ -12,7 +12,7 @@ import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.imruVsSpark.data.DataGenerator;
 
 public class SparseKMeans {
-    public static void run() throws Exception {
+    public static void run(String path) throws Exception {
         File templateDir = new File("exp_data/product_name");
         final DataGenerator dataGenerator = new DataGenerator(
                 DataGenerator.DEBUG_DATA_POINTS, templateDir);
@@ -25,7 +25,7 @@ public class SparseKMeans {
 
         BufferedReader br = new BufferedReader(new InputStreamReader(
                 new BufferedInputStream(new FileInputStream(
-                        "/data/b/data/imru/productName.txt"), 1024 * 1024)));
+                        path), 1024 * 1024)));
         for (String line = br.readLine(); line != null; line = br.readLine())
             data.add(new SparseVector(line));
         br.close();
@@ -52,6 +52,6 @@ public class SparseKMeans {
     }
 
     public static void main(String[] args) throws Exception {
-        run();
+        run("/data/b/data/imru/productName.txt");
     }
 }

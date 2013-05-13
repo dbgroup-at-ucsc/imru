@@ -65,88 +65,28 @@ public class Ec2Setup {
     }
 
     static void testSpark(HyracksEC2Cluster cluster) throws Exception {
+        cluster.startHyrackCluster();
+        startSpark(cluster);
+
         HyracksEC2Node[] nodes = cluster.getNodes();
         Rt.p("http://" + nodes[0].publicIp + ":8080/");
 
         HyracksEC2Node node = nodes[0];
         Rt.runAndShowCommand("rsync -vrultzCc /home/wangrui/ucscImru/bin/ ubuntu@" + node.publicIp
                 + ":/home/ubuntu/test/bin/");
-        //        Rt.runAndShowCommand("rsync -vrultzCc /home/wangrui/ucscImru/lib/ec2runSpark.sh ubuntu@" + node.publicIp
-        //                + ":/home/ubuntu/test/st.sh");
+        Rt.runAndShowCommand("rsync -vrultzCc /home/wangrui/ucscImru/lib/ec2runSpark.sh ubuntu@" + node.publicIp
+                + ":/home/ubuntu/test/st.sh");
         Rt.runAndShowCommand("rsync -vrultzCc /home/wangrui/ucscImru/exp_data/ ubuntu@" + node.publicIp
                 + ":/home/ubuntu/test/exp_data/");
 
         SSH ssh = cluster.ssh(0);
         ssh.execute("cd test;");
-        //        ssh.execute("sh st.sh " + nodes[0].interalIp);
+        ssh.execute("sh st.sh exp.imruVsSpark.kmeans.EC2Benchmark " + nodes[0].interalIp + " " + nodes.length);
         ssh.close();
     }
 
-    public static void exp(String master) throws Exception {
-        Client.disableLogging();
-        new File("result").mkdir();
-        GnuPlot plot = new GnuPlot(new File("result"), "kmeans", "Data points (10^5)", "Time (seconds)");
-        plot.extra = "set title \"K=" + DataGenerator.DEBUG_K + ",Iteration=" + DataGenerator.DEBUG_ITERATIONS + "\"";
-        plot.setPlotNames("Generate Data", "Bare", "Spark", "IMRU-mem", "IMRU-disk"
-//                , "IMRU-parse"
-                );
-        plot.startPointType = 1;
-        plot.pointSize = 1;
-        //        plot.reloadData();
-        //        for (int i = 0; i < plot.vs.size(); i++)
-        //            plot.vs.get(i).set(0, plot.vs.get(i).get(0) / 100000);
-        //        plot.finish();
-        //        System.exit(0);
-        for (DataGenerator.DEBUG_DATA_POINTS = 100000; DataGenerator.DEBUG_DATA_POINTS <= 1000000; DataGenerator.DEBUG_DATA_POINTS += 100000) {
-            long start = System.currentTimeMillis();
-            DataGenerator.main(new String[] { "/home/ubuntu/test/data.txt" });
-            long dataTime = System.currentTimeMillis() - start;
-
-            start = System.currentTimeMillis();
-            SparseKMeans.run();
-            long bareTime = System.currentTimeMillis() - start;
-
-            start = System.currentTimeMillis();
-            IMRUKMeans.runEc2(master, true, false);
-            long imruMemTime = System.currentTimeMillis() - start;
-
-//            start = System.currentTimeMillis();
-//            IMRUKMeans.runEc2(master, false, true);
-//            long imruParseTime = System.currentTimeMillis() - start;
-
-            start = System.currentTimeMillis();
-            IMRUKMeans.runEc2(master,false, false);
-            long imruDiskTime = System.currentTimeMillis() - start;
-
-            start = System.currentTimeMillis();
-            SparkKMeans.run();
-            long sparkTime = System.currentTimeMillis() - start;
-
-            Rt.p("Data: %,d", dataTime);
-            Rt.p("Bare: %,d", bareTime);
-            Rt.p("Spark: %,d", sparkTime);
-            Rt.p("IMRU-mem: %,d", imruMemTime);
-            Rt.p("IMRU-disk: %,d", imruDiskTime);
-//            Rt.p("IMRU-parse: %,d", imruParseTime);
-
-            plot.startNewX(DataGenerator.DEBUG_DATA_POINTS / 100000);
-            plot.addY(dataTime / 1000.0);
-            plot.addY(bareTime / 1000.0);
-            plot.addY(sparkTime / 1000.0);
-            plot.addY(imruMemTime / 1000.0);
-            plot.addY(imruDiskTime / 1000.0);
-//            plot.addY(imruParseTime / 1000.0);
-            plot.finish();
-        }
-        System.exit(0);
-    }
-
-    static void imru(HyracksEC2Cluster cluster) throws Exception {
-        cluster.startHyrackCluster();
-        startSpark(cluster);
-    }
-
     public static void main(String[] args) throws Exception {
+        int nodeCount=2;
         File home = new File(System.getProperty("user.home"));
         File credentialsFile = new File(home, "AwsCredentials.properties");
         File privateKey = new File(home, "ruiwang.pem");
@@ -155,7 +95,12 @@ public class Ec2Setup {
         HyracksEC2Cluster cluster = ec2.cluster;
         //        startSpark(ec2.cluster);
         //                stopSpark(ec2.cluster);
+        ec2.cluster.setImageId("ami-fdff9094");
+        ec2.cluster.setMachineType("m1.small");
+        //        ec2.setup(hyracksEc2Root, 1, "m1.small");
+        ec2.cluster.setTotalInstances(nodeCount);
         testSpark(ec2.cluster);
+        
         System.exit(0);
         //        ec2.cluster.setImageId("ami-c9dcb0a0");
         ec2.cluster.setImageId("ami-fdff9094");

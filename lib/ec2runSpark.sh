@@ -1,4 +1,4 @@
-java -cp bin\
+java -Xmx512m -cp bin\
 :/home/ubuntu/hyracks-ec2/lib/ant-1.6.5.jar\
 :/home/ubuntu/hyracks-ec2/lib/args4j-2.0.12.jar\
 :/home/ubuntu/hyracks-ec2/lib/aws-java-sdk-1.3.27.jar\
@@ -172,4 +172,4 @@ java -cp bin\
 :/home/ubuntu/spark-0.7.0/lib_managed/jars/zookeeper-3.3.3.jar\
 :/home/ubuntu/spark-0.7.0/lib_managed/jars/httpclient-4.1.jar\
 :/home/ubuntu/spark-0.7.0/lib_managed/jars/httpcore-4.1.jar\
- exp.test0.SparkDebug $1
+ $1 $2 $3 $4

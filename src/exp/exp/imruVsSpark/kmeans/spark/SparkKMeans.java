@@ -25,13 +25,12 @@ import exp.imruVsSpark.kmeans.SKMeansModel;
 import exp.imruVsSpark.kmeans.SparseVector;
 
 public class SparkKMeans {
-    public static void run() throws Exception {
+    public static void run(String host, String sparkPath, String dataPath, int nodeCount) throws Exception {
         System.setProperty("spark.akka.frameSize", "512");
         //cd /data/b/soft/lib/spark-0.7.0;sbt/sbt package;cp core/target/scala-2.9.2/spark-core_2.9.2-0.7.0.jar /data/a/imru/ucscImru/lib/spark-0.7.0/
         //cd /data/b/soft;lib/spark-0.7.0/run spark.deploy.master.Master -i 192.168.56.101 -p 7077
         //cd /data/b/soft;lib/spark-0.7.0/run spark.deploy.worker.Worker spark://192.168.56.101:7077
-        String host = "192.168.56.101";
-        host = "10.243.74.41";
+
         System.setProperty("SPARK_LOCAL_IP", host);
         File templateDir = new File("exp_data/product_name");
         final DataGenerator dataGenerator = new DataGenerator(DataGenerator.DEBUG_DATA_POINTS, templateDir);
@@ -48,11 +47,11 @@ public class SparkKMeans {
 
         String master = "local";
         master = "spark://ec2-174-129-117-0.compute-1.amazonaws.com:7077";
-        master = "spark://10.243.74.41:7077";
-        JavaSparkContext sc = new JavaSparkContext(master, "JavaLR", "lib/spark-0.7.0",
+        master = "spark://" + host + ":7077";
+        JavaSparkContext sc = new JavaSparkContext(master, "JavaKMeans", sparkPath,
                 new String[] { "/tmp/simple-project-1.0.jar" });
 
-        JavaRDD<String> lines = sc.textFile("/data/b/data/imru/productName.txt");
+        JavaRDD<String> lines = sc.textFile(dataPath, nodeCount);
         JavaRDD<SparseVector> points = lines.map(new Function<String, SparseVector>() {
             public SparseVector call(String line) {
                 return new SparseVector(line);
@@ -97,7 +96,9 @@ public class SparkKMeans {
     }
 
     public static void main(String[] args) throws Exception {
-        run();
+        String host = "192.168.56.101";
+        host = "10.243.74.41";
+        run(host, "lib/spark-0.7.0", "/data/b/data/imru/productName.txt",1);
         System.exit(0);
     }
 }
