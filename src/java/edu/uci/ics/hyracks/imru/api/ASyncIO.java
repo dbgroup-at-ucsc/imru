@@ -21,13 +21,13 @@ import java.util.LinkedList;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 
 public class ASyncIO<Data> {
-    private int size = 8;
+    private int size = 32;
     private LinkedList<Data> queue = new LinkedList<Data>();
     private Object fullSync = new Object();
     private boolean more = true;
 
     public ASyncIO() {
-        this(32);
+        this(1);
     }
 
     public ASyncIO(int size) {

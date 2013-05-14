@@ -214,11 +214,11 @@ public class Ec2Experiments {
         //        System.exit(0);
 
         uploadExperimentCode();
-        generateData();
-        stopAll();
+//        generateData();
+//        stopAll();
         runImru();
-        //        stopAll();
-        //        runSpark();
+//                stopAll();
+//                runSpark();
     }
 
     public static void main(String[] args) throws Exception {

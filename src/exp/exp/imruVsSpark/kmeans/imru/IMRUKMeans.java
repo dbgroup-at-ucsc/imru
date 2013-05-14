@@ -75,8 +75,9 @@ public class IMRUKMeans {
         CreateHar.uploadJarFiles = false;
         DataGenerator.TEMPLATE = "/home/ubuntu/test/exp_data/product_name";
         String cmdline = "";
-        cmdline += "-host " + cc + " -port 3099 -frame-size "
-                + (16 * 1024 * 1024);
+        cmdline += "-host " + cc + " -port 3099";
+        cmdline += " -frame-size " + (16 * 1024 * 1024);
+        cmdline += " -agg-tree-type nary -fan-in 2";
         System.out.println("Connecting to " + Client.getLocalIp());
         //            cmdline += "-host localhost -port 3099 -debug -disable-logging";
         if (memCache)

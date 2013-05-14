@@ -18,7 +18,7 @@ public class EC2Benchmark {
 
     public static void exp(String master, int nodeCount, boolean imru)
             throws Exception {
-        boolean mem = true;
+        boolean mem = false;
         //        Client.disableLogging();
         DataGenerator.TEMPLATE = "/home/ubuntu/test/exp_data/product_name";
         new File("result").mkdir();

@@ -47,7 +47,7 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
     private static final RecordDescriptor dummyRecordDescriptor = new RecordDescriptor(
             new ISerializerDeserializer[1]);
 
-    private final IIMRUJob2<?,?> imruSpec;
+    private final IIMRUJob2<?, ?> imruSpec;
     public boolean isLocal = false;
     public int level = 0;
 
@@ -60,7 +60,7 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
      *            The IMRU Job specification
      */
     public ReduceOperatorDescriptor(JobSpecification spec,
-            IIMRUJob2<?,?> imruSpec, String name) {
+            IIMRUJob2<?, ?> imruSpec, String name) {
         super(spec, 1, 1, name, imruSpec);
         this.imruSpec = imruSpec;
         recordDescriptors[0] = dummyRecordDescriptor;
@@ -89,12 +89,11 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
             @Override
             public void open() throws HyracksDataException {
                 writer.open();
-                imruContext = new IMRUReduceContext(
-                        chunkFrameHelper.getContext(), name, isLocal,
-                        level);
+                imruContext = new IMRUReduceContext(chunkFrameHelper
+                        .getContext(), name, isLocal, level);
 
                 writer = chunkFrameHelper.wrapWriter(writer, partition);
-                io = new ASyncIO<byte[]>();
+                io = new ASyncIO<byte[]>(1);
                 future = IMRUSerialize.threadPool.submit(new Runnable() {
                     @Override
                     public void run() {
@@ -107,6 +106,11 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
                                     writer, objectData);
                         } catch (HyracksDataException e) {
                             e.printStackTrace();
+                            try {
+                                fail();
+                            } catch (HyracksDataException e1) {
+                                e1.printStackTrace();
+                            }
                         }
                     }
                 });
@@ -115,18 +119,26 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
             @Override
             public void nextFrame(ByteBuffer encapsulatedChunk)
                     throws HyracksDataException {
-                ByteBuffer chunk = chunkFrameHelper
-                        .extractChunk(encapsulatedChunk);
-                int senderPartition = chunkFrameHelper
-                        .getPartition(encapsulatedChunk);
-                boolean isLastChunk = chunkFrameHelper
-                        .isLastChunk(encapsulatedChunk);
-                enqueueChunk(chunk, senderPartition);
-                if (isLastChunk) {
-                    byte[] data = IMRUSerialize
-                            .deserializeFromChunks(imruContext,
-                                    bufferedChunks.remove(senderPartition));
-                    io.add(data);
+                try {
+                    ByteBuffer chunk = chunkFrameHelper
+                            .extractChunk(encapsulatedChunk);
+                    int senderPartition = chunkFrameHelper
+                            .getPartition(encapsulatedChunk);
+                    boolean isLastChunk = chunkFrameHelper
+                            .isLastChunk(encapsulatedChunk);
+                    enqueueChunk(chunk, senderPartition);
+                    if (isLastChunk) {
+                        byte[] data = IMRUSerialize.deserializeFromChunks(
+                                imruContext, bufferedChunks
+                                        .remove(senderPartition));
+                        io.add(data);
+                    }
+                } catch (HyracksDataException e) {
+                    fail();
+                    throw e;
+                } catch (Throwable e) {
+                    fail();
+                    throw new HyracksDataException(e);
                 }
             }
 
@@ -157,5 +169,4 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
 
         };
     }
-
 }
