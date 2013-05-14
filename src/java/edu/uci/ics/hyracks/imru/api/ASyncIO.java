@@ -21,10 +21,17 @@ import java.util.LinkedList;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 
 public class ASyncIO<Data> {
+    private int size = 8;
     private LinkedList<Data> queue = new LinkedList<Data>();
+    private Object fullSync = new Object();
     private boolean more = true;
 
     public ASyncIO() {
+        this(32);
+    }
+
+    public ASyncIO(int size) {
+        this.size = size;
     }
 
     public void close() throws HyracksDataException {
@@ -35,6 +42,17 @@ public class ASyncIO<Data> {
     }
 
     public void add(Data data) throws HyracksDataException {
+        if (queue.size() > size) {
+            synchronized (fullSync) {
+                if (queue.size() > size) {
+                    try {
+                        fullSync.wait();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
         synchronized (queue) {
             queue.addLast(data);
             queue.notifyAll();
@@ -68,6 +86,9 @@ public class ASyncIO<Data> {
                             }
                             if (queue.size() > 0)
                                 data = queue.removeFirst();
+                        }
+                        synchronized (fullSync) {
+                            fullSync.notifyAll();
                         }
                     }
                 } catch (InterruptedException e) {

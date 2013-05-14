@@ -16,6 +16,7 @@ import exp.imruVsSpark.kmeans.spark.SparkKMeans;
 import exp.test0.GnuPlot;
 
 public class Ec2Experiments {
+    String rsync = "rsync -e \"ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no\" -vrultzCc";
     HyracksEC2Cluster cluster;
     HyracksEC2Node[] nodes;
     File resultDir;
@@ -46,20 +47,18 @@ public class Ec2Experiments {
             boolean hasWorker = result.contains("spark.deploy.worker.Worker");
 
             if (i == 0 && !hasMaster) {
-                String cmd = "/home/ubuntu/spark-0.7.0/run spark.deploy.master.Master -i "
-                        + master + " -p 7077";
+                String cmd = "/home/ubuntu/spark-0.7.0/run spark.deploy.master.Master -i " + master + " -p 7077";
                 cmd = "/home/ubuntu/spark-0.7.0/bin/start-master.sh";
-                cmd = "nohup bash -c \"/home/ubuntu/spark-0.7.0/run spark.deploy.master.Master -i "
-                        + master + " -p 7077 > masterSpark.log 2>&1 \" &";
+                cmd = "nohup bash -c \"/home/ubuntu/spark-0.7.0/run spark.deploy.master.Master -i " + master
+                        + " -p 7077 > masterSpark.log 2>&1 \" &";
                 Rt.np(cmd);
                 ssh.execute(cmd);
                 ssh.execute("sleep 5s");
             }
             if (!hasWorker) {
-                String cmd = "/home/ubuntu/spark-0.7.0/bin/start-slave.sh spark://"
-                        + nodes[0].interalIp + ":7077";
-                cmd = "nohup bash -c \"/home/ubuntu/spark-0.7.0/run spark.deploy.worker.Worker spark://"
-                        + master + ":7077  > slaveSpark.log 2>&1 \" &";
+                String cmd = "/home/ubuntu/spark-0.7.0/bin/start-slave.sh spark://" + nodes[0].interalIp + ":7077";
+                cmd = "nohup bash -c \"/home/ubuntu/spark-0.7.0/run spark.deploy.worker.Worker spark://" + master
+                        + ":7077  > slaveSpark.log 2>&1 \" &";
                 Rt.np(cmd);
                 ssh.execute(cmd);
             }
@@ -91,25 +90,21 @@ public class Ec2Experiments {
     void stopAll() throws Exception {
         for (HyracksEC2Node node : nodes) {
             SSH ssh = cluster.ssh(node.getNodeId());
-            for (String line : ssh.execute("ps aux | grep spark", true).split(
-                    "\n")) {
-                if (line.contains("spark.deploy.master.Master")
-                        || line.contains("spark.deploy.worker.Worker")) {
+            for (String line : ssh.execute("ps aux | grep spark", true).split("\n")) {
+                if (line.contains("spark.deploy.master.Master") || line.contains("spark.deploy.worker.Worker")) {
                     String[] ss = line.split("[ |\t]+");
                     int pid = Integer.parseInt(ss[1]);
                     ssh.execute("kill " + pid);
                 }
             }
-            for (String line : ssh.execute("ps aux | grep Xrunjdwp", true)
-                    .split("\n")) {
+            for (String line : ssh.execute("ps aux | grep Xrunjdwp", true).split("\n")) {
                 if (line.contains("hyracks")) {
                     String[] ss = line.split("[ |\t]+");
                     int pid = Integer.parseInt(ss[1]);
                     ssh.execute("kill " + pid);
                 }
             }
-            for (String line : ssh.execute("ps aux | grep java", true).split(
-                    "\n")) {
+            for (String line : ssh.execute("ps aux | grep java", true).split("\n")) {
                 if (line.contains("hyracks")) {
                     String[] ss = line.split("[ |\t]+");
                     int pid = Integer.parseInt(ss[1]);
@@ -130,8 +125,7 @@ public class Ec2Experiments {
         Rt.p(hcc.getNodeControllerInfos());
         if (hcc.getNodeControllerInfos().size() != nodes.length) {
             cluster.printLogs(-1, 100);
-            throw new Error("Only " + hcc.getNodeControllerInfos().size()
-                    + " NC");
+            throw new Error("Only " + hcc.getNodeControllerInfos().size() + " NC");
         }
     }
 
@@ -140,20 +134,18 @@ public class Ec2Experiments {
         Thread.sleep(2000);
         checkHyracks();
 
-        PrintStream ps = new PrintStream(
-                new File(resultDir, "generateTime.txt"));
+        PrintStream ps = new PrintStream(new File(resultDir, "generateTime.txt"));
         for (int aaa = EC2Benchmark.STARTC; aaa <= EC2Benchmark.ENDC; aaa += EC2Benchmark.STEPC) {
             DataGenerator.DEBUG_DATA_POINTS = aaa * EC2Benchmark.BATCH;
             int dataSize = DataGenerator.DEBUG_DATA_POINTS * nodes.length;
 
             long start = System.currentTimeMillis();
-            Rt.p("generating data " + DataGenerator.DEBUG_DATA_POINTS + " "
-                    + nodes.length);
+            Rt.p("generating data " + DataGenerator.DEBUG_DATA_POINTS + " " + nodes.length);
             //            DataGenerator.main(new String[] { "/home/ubuntu/test/data.txt" });
-            IMRUKMeans.generateData(nodes[0].publicIp,
-                    DataGenerator.DEBUG_DATA_POINTS, nodes.length, new File(
-                            "/home/ubuntu/test/exp_data/product_name"),
-                    "/mnt/imru" + aaa + ".txt", "/mnt/spark" + aaa + ".txt");
+            IMRUKMeans
+                    .generateData(nodes[0].publicIp, DataGenerator.DEBUG_DATA_POINTS, nodes.length, new File(
+                            "/home/ubuntu/test/exp_data/product_name"), "/mnt/imru" + aaa + ".txt", "/mnt/spark" + aaa
+                            + ".txt");
             long dataTime = System.currentTimeMillis() - start;
             Rt.p(aaa + "\t" + dataTime);
             ps.println(aaa + "\t" + dataTime);
@@ -171,15 +163,14 @@ public class Ec2Experiments {
 
     void uploadExperimentCode() throws Exception {
         HyracksEC2Node node = nodes[0];
+        Rt.p(rsync + " /home/wangrui/ucscImru/bin/ ubuntu@" + node.publicIp + ":/home/ubuntu/test/bin/");
         Rt
-                .runAndShowCommand("rsync -vrultzCc /home/wangrui/ucscImru/bin/ ubuntu@"
-                        + node.publicIp + ":/home/ubuntu/test/bin/");
-        Rt
-                .runAndShowCommand("rsync -vrultzCc /home/wangrui/ucscImru/lib/ec2runSpark.sh ubuntu@"
-                        + node.publicIp + ":/home/ubuntu/test/st.sh");
-        Rt
-                .runAndShowCommand("rsync -vrultzCc /home/wangrui/ucscImru/exp_data/ ubuntu@"
-                        + node.publicIp + ":/home/ubuntu/test/exp_data/");
+                .runAndShowCommand(rsync + " /home/wangrui/ucscImru/bin/ ubuntu@" + node.publicIp
+                        + ":/home/ubuntu/test/bin/");
+        Rt.runAndShowCommand(rsync + " /home/wangrui/ucscImru/lib/ec2runSpark.sh ubuntu@" + node.publicIp
+                + ":/home/ubuntu/test/st.sh");
+        Rt.runAndShowCommand(rsync + " /home/wangrui/ucscImru/exp_data/ ubuntu@" + node.publicIp
+                + ":/home/ubuntu/test/exp_data/");
     }
 
     void runImru() throws Exception {
@@ -189,10 +180,10 @@ public class Ec2Experiments {
         checkHyracks();
         SSH ssh = cluster.ssh(0);
         ssh.execute("cd test;");
-        ssh.execute("sh st.sh exp.imruVsSpark.kmeans.EC2Benchmark "
-                + nodes[0].interalIp + " " + nodes.length + " true");
-        String result = new String(Rt.read(ssh
-                .get("/home/ubuntu/test/result/kmeansimru_org.data")));
+        ssh
+                .execute("sh st.sh exp.imruVsSpark.kmeans.EC2Benchmark " + nodes[0].interalIp + " " + nodes.length
+                        + " true");
+        String result = new String(Rt.read(ssh.get("/home/ubuntu/test/result/kmeansimru_org.data")));
         Rt.p(result);
         Rt.write(new File(resultDir, "imru.txt"), result.getBytes());
         ssh.close();
@@ -202,13 +193,12 @@ public class Ec2Experiments {
 
     void runSpark() throws Exception {
         Rt.p("testing spark");
-                startSpark();
+        startSpark();
         SSH ssh = cluster.ssh(0);
-                ssh.execute("cd test;");
-                ssh.execute("sh st.sh exp.imruVsSpark.kmeans.EC2Benchmark "
-                        + nodes[0].interalIp + " " + nodes.length + " false");
-        String result = new String(Rt.read(ssh
-                .get("/home/ubuntu/test/result/kmeansspark_org.data")));
+        ssh.execute("cd test;");
+        ssh.execute("sh st.sh exp.imruVsSpark.kmeans.EC2Benchmark " + nodes[0].interalIp + " " + nodes.length
+                + " false");
+        String result = new String(Rt.read(ssh.get("/home/ubuntu/test/result/kmeansspark_org.data")));
         Rt.p(result);
         Rt.write(new File(resultDir, "spark.txt"), result.getBytes());
         stopSpark();
@@ -221,14 +211,14 @@ public class Ec2Experiments {
         //        stopSpark(cluster);
         //        cluster.stopHyrackCluster();
         stopAll();
-//        System.exit(0);
+        //        System.exit(0);
 
-        //        generateData();
-        //        stopAll();
-//        uploadExperimentCode();
+        uploadExperimentCode();
+        generateData();
+        stopAll();
         runImru();
-//        stopAll();
-//        runSpark();
+        //        stopAll();
+        //        runSpark();
     }
 
     public static void main(String[] args) throws Exception {
@@ -242,7 +232,7 @@ public class Ec2Experiments {
         //        startSpark(ec2.cluster);
         //                stopSpark(ec2.cluster);
         ec2.cluster.MAX_COUNT = 21;
-        ec2.cluster.setImageId("ami-fdff9094");
+        ec2.cluster.setImageId("ami-1f0c6276");
         ec2.cluster.setMachineType("m1.small");
         //        ec2.setup(hyracksEc2Root, 1, "m1.small");
         ec2.cluster.setTotalInstances(nodeCount);

@@ -24,6 +24,8 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Stack;
+import java.util.Vector;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
@@ -166,7 +168,27 @@ public class Rt {
     }
 
     public static String runAndShowCommand(String cmd, File dir) throws IOException {
-        Process process = Runtime.getRuntime().exec(cmd, null, dir);
+        Vector<String> v = new Vector<String>();
+        while (cmd.length() > 0) {
+            int t = cmd.indexOf('\"');
+            if (t < 0) {
+                for (String s : cmd.trim().split(" +"))
+                    v.add(s);
+                break;
+            } else {
+                String s2 = cmd.substring(0, t).trim();
+                if (s2.length() > 0) {
+                    for (String s : s2.split(" +"))
+                        v.add(s);
+                }
+                cmd=cmd.substring(t+1);
+                t=cmd.indexOf("\"");
+                v.add(cmd.substring(0,t));
+                cmd=cmd.substring(t+1).trim();
+            }
+        }
+        String [] ss=v.toArray(new String[v.size()]);
+        Process process = Runtime.getRuntime().exec(ss, null, dir);
         StringBuilder sb = new StringBuilder();
         showInputStream(process.getInputStream(), sb);
         showInputStream(process.getErrorStream(), sb);
@@ -231,7 +253,7 @@ public class Rt {
         }
         return sb.toString();
     }
-    
+
     public static void disableLogging() throws Exception {
         Logger globalLogger = Logger.getLogger("");
         Handler[] handlers = globalLogger.getHandlers();
