@@ -27,7 +27,7 @@ import exp.imruVsSpark.kmeans.SparseVector;
 public class SparkKMeans {
     public static int run(String host, int dataSize, String sparkPath,
             String dataPath, int nodeCount) throws Exception {
-        System.setProperty("spark.akka.frameSize", "32");
+        System.setProperty("spark.akka.frameSize", "16");
         //cd /data/b/soft/lib/spark-0.7.0;sbt/sbt package;cp core/target/scala-2.9.2/spark-core_2.9.2-0.7.0.jar /data/a/imru/ucscImru/lib/spark-0.7.0/
         //cd /data/b/soft;lib/spark-0.7.0/run spark.deploy.master.Master -i 192.168.56.101 -p 7077
         //cd /data/b/soft;lib/spark-0.7.0/run spark.deploy.worker.Worker spark://192.168.56.101:7077

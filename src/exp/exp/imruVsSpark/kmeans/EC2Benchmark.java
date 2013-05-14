@@ -18,6 +18,7 @@ public class EC2Benchmark {
 
     public static void exp(String master, int nodeCount, boolean imru)
             throws Exception {
+        boolean mem = true;
         //        Client.disableLogging();
         DataGenerator.TEMPLATE = "/home/ubuntu/test/exp_data/product_name";
         new File("result").mkdir();
@@ -26,9 +27,9 @@ public class EC2Benchmark {
                 "Time (seconds)");
         plot.extra = "set title \"K=" + DataGenerator.DEBUG_K + ",Iteration="
                 + DataGenerator.DEBUG_ITERATIONS + "\"";
-        if (imru)
+        if (imru) {
             plot.setPlotNames("IMRU-mem", "IMRU-disk", "data1", "data2");
-        else
+        } else
             plot.setPlotNames("Spark", "data");
         plot.startPointType = 1;
         plot.pointSize = 1;
@@ -63,17 +64,19 @@ public class EC2Benchmark {
             //            SparseKMeans.run();
             //            long bareTime = System.currentTimeMillis() - start;
             if (imru) {
-                Rt.p("running IMRU in memory");
+                Rt.p("running IMRU in memory " + aaa);
                 start = System.currentTimeMillis();
-                int processed1 = IMRUKMeans.runEc2(master, nodeCount, dataSize,
-                        "/mnt/imru" + aaa + ".txt", true, false);
+                int processed1 = 0;
+                if (mem)
+                    processed1 = IMRUKMeans.runEc2(master, nodeCount, dataSize,
+                            "/mnt/imru" + aaa + ".txt", true, false);
                 long imruMemTime = System.currentTimeMillis() - start;
 
                 //            start = System.currentTimeMillis();
                 //            IMRUKMeans.runEc2(master, false, true);
                 //            long imruParseTime = System.currentTimeMillis() - start;
 
-                Rt.p("running IMRU in disk");
+                Rt.p("running IMRU in disk " + aaa);
                 start = System.currentTimeMillis();
                 int processed2 = IMRUKMeans.runEc2(master, nodeCount, dataSize,
                         "/mnt/imru" + aaa + ".txt", false, false);
@@ -85,7 +88,7 @@ public class EC2Benchmark {
                 plot.addY(processed1);
                 plot.addY(processed2);
             } else {
-                Rt.p("running spark");
+                Rt.p("running spark " + aaa);
                 start = System.currentTimeMillis();
                 int processed = SparkKMeans.run(master, dataSize,
                         "/home/ubuntu/spark-0.7.0",

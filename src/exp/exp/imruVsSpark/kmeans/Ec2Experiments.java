@@ -62,13 +62,13 @@ public class Ec2Experiments {
                         + master + ":7077  > slaveSpark.log 2>&1 \" &";
                 Rt.np(cmd);
                 ssh.execute(cmd);
-                ssh.execute("sleep 2s");
             }
             if (i == 0)
                 ssh.execute("tail -n 100 /home/ubuntu/masterSpark.log");
             ssh.execute("tail -n 100 /home/ubuntu/slaveSpark.log");
             ssh.close();
         }
+        Thread.sleep(2000);
     }
 
     void stopSpark() throws Exception {
@@ -120,13 +120,12 @@ public class Ec2Experiments {
             //                    .execute("rm /home/ubuntu/masterSpark.log /home/ubuntu/slaveSpark.log");
             //            ssh.execute("rm /tmp/t1/logs/* /tmp/t2/logs/*");
             ssh.execute("sudo chmod ugo+rw /mnt -R");
+            ssh.execute("free -m");
             ssh.close();
         }
     }
 
-    void generateData() throws Exception {
-        cluster.startHyrackCluster();
-        Thread.sleep(2000);
+    void checkHyracks() throws Exception {
         HyracksConnection hcc = new HyracksConnection(nodes[0].publicIp, 3099);
         Rt.p(hcc.getNodeControllerInfos());
         if (hcc.getNodeControllerInfos().size() != nodes.length) {
@@ -134,6 +133,12 @@ public class Ec2Experiments {
             throw new Error("Only " + hcc.getNodeControllerInfos().size()
                     + " NC");
         }
+    }
+
+    void generateData() throws Exception {
+        cluster.startHyrackCluster();
+        Thread.sleep(2000);
+        checkHyracks();
 
         PrintStream ps = new PrintStream(
                 new File(resultDir, "generateTime.txt"));
@@ -151,7 +156,7 @@ public class Ec2Experiments {
                     "/mnt/imru" + aaa + ".txt", "/mnt/spark" + aaa + ".txt");
             long dataTime = System.currentTimeMillis() - start;
             Rt.p(aaa + "\t" + dataTime);
-            ps.println(aaa+"\t"+ dataTime);
+            ps.println(aaa + "\t" + dataTime);
         }
         ps.close();
         cluster.printLogs(-1, 100);
@@ -180,6 +185,8 @@ public class Ec2Experiments {
     void runImru() throws Exception {
         Rt.p("testing IMRU");
         cluster.startHyrackCluster();
+        Thread.sleep(5000);
+        checkHyracks();
         SSH ssh = cluster.ssh(0);
         ssh.execute("cd test;");
         ssh.execute("sh st.sh exp.imruVsSpark.kmeans.EC2Benchmark "
@@ -195,11 +202,11 @@ public class Ec2Experiments {
 
     void runSpark() throws Exception {
         Rt.p("testing spark");
-        //        startSpark();
+                startSpark();
         SSH ssh = cluster.ssh(0);
-        //        ssh.execute("cd test;");
-        //        ssh.execute("sh st.sh exp.imruVsSpark.kmeans.EC2Benchmark "
-        //                + nodes[0].interalIp + " " + nodes.length + " false");
+                ssh.execute("cd test;");
+                ssh.execute("sh st.sh exp.imruVsSpark.kmeans.EC2Benchmark "
+                        + nodes[0].interalIp + " " + nodes.length + " false");
         String result = new String(Rt.read(ssh
                 .get("/home/ubuntu/test/result/kmeansspark_org.data")));
         Rt.p(result);
@@ -214,12 +221,14 @@ public class Ec2Experiments {
         //        stopSpark(cluster);
         //        cluster.stopHyrackCluster();
         stopAll();
+//        System.exit(0);
 
-        generateData();
-        uploadExperimentCode();
+        //        generateData();
+        //        stopAll();
+//        uploadExperimentCode();
         runImru();
-        stopAll();
-        runSpark();
+//        stopAll();
+//        runSpark();
     }
 
     public static void main(String[] args) throws Exception {
@@ -232,7 +241,7 @@ public class Ec2Experiments {
         HyracksEC2Cluster cluster = ec2.cluster;
         //        startSpark(ec2.cluster);
         //                stopSpark(ec2.cluster);
-        ec2.cluster.MAX_COUNT=21;
+        ec2.cluster.MAX_COUNT = 21;
         ec2.cluster.setImageId("ami-fdff9094");
         ec2.cluster.setMachineType("m1.small");
         //        ec2.setup(hyracksEc2Root, 1, "m1.small");

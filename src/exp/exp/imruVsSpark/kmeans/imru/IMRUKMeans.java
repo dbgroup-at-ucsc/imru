@@ -76,7 +76,7 @@ public class IMRUKMeans {
         DataGenerator.TEMPLATE = "/home/ubuntu/test/exp_data/product_name";
         String cmdline = "";
         cmdline += "-host " + cc + " -port 3099 -frame-size "
-                + (32 * 1024 * 1024);
+                + (16 * 1024 * 1024);
         System.out.println("Connecting to " + Client.getLocalIp());
         //            cmdline += "-host localhost -port 3099 -debug -disable-logging";
         if (memCache)

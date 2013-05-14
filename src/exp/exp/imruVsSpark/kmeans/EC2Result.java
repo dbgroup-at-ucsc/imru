@@ -37,12 +37,12 @@ public class EC2Result {
             if ((int) Double.parseDouble(s[0]) != aaa)
                 throw new Error();
             plot.startNewX(aaa);
-            Rt.p(d[1]+"\t"+s[1]+"\t"+m[1]+"\t"+m[2]);
-            plot.addY(Double.parseDouble(d[1])/1000);
+            Rt.p(d[1] + "\t" + s[1] + "\t" + m[1] + "\t" + m[2]);
+            plot.addY(Double.parseDouble(d[1]) / 1000);
             plot.addY(Double.parseDouble(s[1]));
             plot.addY(Double.parseDouble(m[1]));
             plot.addY(Double.parseDouble(m[2]));
-            Rt.p(s[2]+"\t"+m[3]+"\t"+m[4]);
+            Rt.p(s[2] + "\t" + m[3] + "\t" + m[4]);
             if (!s[2].equals(m[3]))
                 throw new Error();
             if (!s[2].equals(m[4]))
@@ -51,7 +51,11 @@ public class EC2Result {
         //        for (int i = 0; i < plot.vs.size(); i++)
         //            plot.vs.get(i).set(0, plot.vs.get(i).get(0) / 100000);
         plot.finish();
-        plot.show();
+        Rt.runAndShowCommand("epstopdf --outfile="
+                + new File(resultDir, nodeCount + "_nodes.pdf")
+                        .getAbsolutePath() + " "
+                + new File("/tmp/cache/kmeans.eps").getAbsolutePath());
+        //        plot.show();
         System.exit(0);
     }
 }

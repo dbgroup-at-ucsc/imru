@@ -56,6 +56,7 @@ public class SKMeansJob implements
     public void parse(IMRUContext ctx, InputStream input,
             DataWriter<SparseVector> output) throws IOException {
         try {
+            Rt.p("%,d", input.available());
             Pattern p = Pattern.compile("[ |\\t]+");
             Pattern p2 = Pattern.compile(":");
             BufferedReader reader = new BufferedReader(new InputStreamReader(
