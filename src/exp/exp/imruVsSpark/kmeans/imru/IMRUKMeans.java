@@ -70,8 +70,9 @@ public class IMRUKMeans {
         Rt.p("Total examples: " + finalModel.totalExamples);
     }
 
-    public static void runEc2(String cc, int nodes, int size, String path,
+    public static int runEc2(String cc, int nodes, int size, String path,
             boolean memCache, boolean noDiskCache) throws Exception {
+        CreateHar.uploadJarFiles = false;
         DataGenerator.TEMPLATE = "/home/ubuntu/test/exp_data/product_name";
         String cmdline = "";
         cmdline += "-host " + cc + " -port 3099 -frame-size "
@@ -101,11 +102,12 @@ public class IMRUKMeans {
         SKMeansModel finalModel = Client.run(new SKMeansJob(k,
                 dataGenerator.dims), initModel, args);
         Rt.p("Total examples: " + finalModel.totalExamples);
+        return finalModel.totalExamples;
     }
 
     public static void generateData(String host, final int count,
-            final int splits) throws Exception {
-        final File templateDir = new File(DataGenerator.TEMPLATE);
+            final int splits, final File templateDir, String imruPath,
+            final String sparkPath) throws Exception {
         String cmdline = "";
         //        if (Client.isServerAvailable(Client.getLocalIp(), 3099)) {
         //            cmdline += "-host " + Client.getLocalIp() + " -port 3099";
@@ -120,7 +122,7 @@ public class IMRUKMeans {
         for (int i = 0; i < splits; i++) {
             if (i > 0)
                 cmdline += ",";
-            cmdline += "NC" + i + ":/mnt/imru.txt";
+            cmdline += "NC" + i + ":" + imruPath;
         }
         System.out.println("Using command line: " + cmdline);
         String[] args = cmdline.split(" ");
@@ -137,7 +139,7 @@ public class IMRUKMeans {
                     int id = Integer.parseInt(nodeId.substring(2));
                     PrintStream psSpark = new PrintStream(
                             new BufferedOutputStream(new FileOutputStream(
-                                    new File("/mnt/spark.txt")), 1024 * 1024));
+                                    new File(sparkPath)), 1024 * 1024));
                     PrintStream psImru = new PrintStream(
                             new BufferedOutputStream(output, 1024 * 1024));
                     DataGenerator dataGenerator = new DataGenerator(count

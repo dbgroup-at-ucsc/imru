@@ -11,6 +11,11 @@ import exp.imruVsSpark.kmeans.spark.SparkKMeans;
 import exp.test0.GnuPlot;
 
 public class EC2Benchmark {
+    public static int STARTC = 1;
+    public static int ENDC = 10;
+    public static int BATCH = 100000;
+    public static int STEPC = 3;
+
     public static void exp(String master, int nodeCount, boolean imru)
             throws Exception {
         //        Client.disableLogging();
@@ -22,9 +27,9 @@ public class EC2Benchmark {
         plot.extra = "set title \"K=" + DataGenerator.DEBUG_K + ",Iteration="
                 + DataGenerator.DEBUG_ITERATIONS + "\"";
         if (imru)
-            plot.setPlotNames("Generate Data", "IMRU-mem", "IMRU-disk");
+            plot.setPlotNames("IMRU-mem", "IMRU-disk", "data1", "data2");
         else
-            plot.setPlotNames("Generate Data", "Spark");
+            plot.setPlotNames("Spark", "data");
         plot.startPointType = 1;
         plot.pointSize = 1;
         //        plot.reloadData();
@@ -43,15 +48,16 @@ public class EC2Benchmark {
             byte[] bs = JavaSerializationUtils.serialize(model);
             Rt.p("Max model size: %,d", bs.length);
         }
-        for (DataGenerator.DEBUG_DATA_POINTS = 100000; DataGenerator.DEBUG_DATA_POINTS <= 1000000; DataGenerator.DEBUG_DATA_POINTS += 300000) {
+        for (int aaa = EC2Benchmark.STARTC; aaa <= EC2Benchmark.ENDC; aaa += EC2Benchmark.STEPC) {
+            DataGenerator.DEBUG_DATA_POINTS = aaa * EC2Benchmark.BATCH;
             int dataSize = DataGenerator.DEBUG_DATA_POINTS * nodeCount;
 
             long start = System.currentTimeMillis();
-            Rt.p("generating data");
+            //            Rt.p("generating data");
             //            DataGenerator.main(new String[] { "/home/ubuntu/test/data.txt" });
-            IMRUKMeans.generateData(master, DataGenerator.DEBUG_DATA_POINTS,
-                    nodeCount);
-            long dataTime = System.currentTimeMillis() - start;
+            //            IMRUKMeans.generateData(master, DataGenerator.DEBUG_DATA_POINTS,
+            //                    nodeCount,new File(DataGenerator.TEMPLATE),);
+            //            long dataTime = System.currentTimeMillis() - start;
 
             //            start = System.currentTimeMillis();
             //            SparseKMeans.run();
@@ -59,8 +65,8 @@ public class EC2Benchmark {
             if (imru) {
                 Rt.p("running IMRU in memory");
                 start = System.currentTimeMillis();
-                IMRUKMeans.runEc2(master, nodeCount, dataSize, "/mnt/imru.txt",
-                        true, false);
+                int processed1 = IMRUKMeans.runEc2(master, nodeCount, dataSize,
+                        "/mnt/imru" + aaa + ".txt", true, false);
                 long imruMemTime = System.currentTimeMillis() - start;
 
                 //            start = System.currentTimeMillis();
@@ -69,22 +75,26 @@ public class EC2Benchmark {
 
                 Rt.p("running IMRU in disk");
                 start = System.currentTimeMillis();
-                IMRUKMeans.runEc2(master, nodeCount, dataSize, "/mnt/imru.txt",
-                        false, false);
+                int processed2 = IMRUKMeans.runEc2(master, nodeCount, dataSize,
+                        "/mnt/imru" + aaa + ".txt", false, false);
                 long imruDiskTime = System.currentTimeMillis() - start;
                 plot.startNewX(DataGenerator.DEBUG_DATA_POINTS / 100000);
-                plot.addY(dataTime / 1000.0);
+                //                plot.addY(dataTime / 1000.0);
                 plot.addY(imruMemTime / 1000.0);
                 plot.addY(imruDiskTime / 1000.0);
+                plot.addY(processed1);
+                plot.addY(processed2);
             } else {
                 Rt.p("running spark");
                 start = System.currentTimeMillis();
-                SparkKMeans.run(master, dataSize, "/home/ubuntu/spark-0.7.0",
-                        "/mnt/spark.txt", nodeCount);
+                int processed = SparkKMeans.run(master, dataSize,
+                        "/home/ubuntu/spark-0.7.0",
+                        "/mnt/spark" + aaa + ".txt", nodeCount);
                 long sparkTime = System.currentTimeMillis() - start;
                 plot.startNewX(DataGenerator.DEBUG_DATA_POINTS / 100000);
-                plot.addY(dataTime / 1000.0);
+                //                plot.addY(dataTime / 1000.0);
                 plot.addY(sparkTime / 1000.0);
+                plot.addY(processed);
             }
             plot.finish();
         }

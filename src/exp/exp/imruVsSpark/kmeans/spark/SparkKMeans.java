@@ -25,7 +25,7 @@ import exp.imruVsSpark.kmeans.SKMeansModel;
 import exp.imruVsSpark.kmeans.SparseVector;
 
 public class SparkKMeans {
-    public static void run(String host, int dataSize, String sparkPath,
+    public static int run(String host, int dataSize, String sparkPath,
             String dataPath, int nodeCount) throws Exception {
         System.setProperty("spark.akka.frameSize", "32");
         //cd /data/b/soft/lib/spark-0.7.0;sbt/sbt package;cp core/target/scala-2.9.2/spark-core_2.9.2-0.7.0.jar /data/a/imru/ucscImru/lib/spark-0.7.0/
@@ -85,7 +85,6 @@ public class SparkKMeans {
                     .reduce(new Function2<FilledVectors, FilledVectors, FilledVectors>() {
                         public FilledVectors call(FilledVectors a,
                                 FilledVectors b) {
-                            Rt.p("call");
                             FilledVectors result = new FilledVectors(k,
                                     dimensions);
                             result.add(a);
@@ -100,6 +99,7 @@ public class SparkKMeans {
                 break;
         }
         sc.stop();
+        return model.totalExamples;
     }
 
     public static void main(String[] args) throws Exception {
