@@ -19,8 +19,13 @@ public class EC2Benchmark {
     public static void exp(String master, int nodeCount, boolean imru)
             throws Exception {
         boolean mem = false;
+        String user="ubuntu";
         //        Client.disableLogging();
         DataGenerator.TEMPLATE = "/home/ubuntu/test/exp_data/product_name";
+        if (!new File(DataGenerator.TEMPLATE).exists()) {
+            user="wangrui";
+            DataGenerator.TEMPLATE = "/home/wangrui/test/exp_data/product_name";
+        }
         new File("result").mkdir();
         GnuPlot plot = new GnuPlot(new File("result"), "kmeans"
                 + (imru ? "imru" : "spark"), "Data points (10^5)",
@@ -91,7 +96,7 @@ public class EC2Benchmark {
                 Rt.p("running spark " + aaa);
                 start = System.currentTimeMillis();
                 int processed = SparkKMeans.run(master, dataSize,
-                        "/home/ubuntu/spark-0.7.0",
+                        "/home/"+user+"/spark-0.7.0",
                         "/mnt/spark" + aaa + ".txt", nodeCount);
                 long sparkTime = System.currentTimeMillis() - start;
                 plot.startNewX(DataGenerator.DEBUG_DATA_POINTS / 100000);

@@ -19,7 +19,7 @@ public class DataGenerator {
 
     public static int DEBUG_DATA_POINTS = 1000000;
     public static int DEBUG_K = 3;
-    public static int DEBUG_ITERATIONS = 5;
+    public static int DEBUG_ITERATIONS = 1;
     public File templateDir;
     public double numOfDataPoints;
     public int dims;

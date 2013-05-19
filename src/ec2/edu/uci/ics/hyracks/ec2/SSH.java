@@ -14,6 +14,7 @@
  */
 package edu.uci.ics.hyracks.ec2;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -64,8 +65,8 @@ public class SSH implements Runnable {
             throw new Error();
         }
 
-        public String[] promptKeyboardInteractive(String destination, String name, String instruction, String[] prompt,
-                boolean[] echo) {
+        public String[] promptKeyboardInteractive(String destination,
+                String name, String instruction, String[] prompt, boolean[] echo) {
             throw new Error();
         }
     }
@@ -76,6 +77,7 @@ public class SSH implements Runnable {
     ChannelSftp ftp;
     PrintStream out;
     private boolean exitFlag = false;
+    public boolean verbose = true;
 
     public SSH(String user, String ip, int port, File pemFile) throws Exception {
         if (pemFile != null)
@@ -112,7 +114,8 @@ public class SSH implements Runnable {
         }
     }
 
-    public void upload(File localDir, String remoteDir) throws SftpException, IOException {
+    public void upload(File localDir, String remoteDir) throws SftpException,
+            IOException {
         if (localDir.isDirectory()) {
             execute("mkdir -p " + remoteDir);
             for (File file : localDir.listFiles()) {
@@ -124,7 +127,8 @@ public class SSH implements Runnable {
                 attr = ftp.lstat(remoteDir);
             } catch (Exception e) {
             }
-            if (attr == null || localDir.lastModified() > attr.getMTime() * 1000L
+            if (attr == null
+                    || localDir.lastModified() > attr.getMTime() * 1000L
                     || attr.getSize() != localDir.length()) {
                 Rt.np("uploading " + localDir);
                 ftp.put(localDir.getAbsolutePath(), remoteDir);
@@ -134,7 +138,12 @@ public class SSH implements Runnable {
         }
     }
 
-    public void put(String path, InputStream in) throws SftpException, IOException {
+    public void put(String path, byte[] bs) throws SftpException, IOException {
+        put(path, new ByteArrayInputStream(bs));
+    }
+
+    public void put(String path, InputStream in) throws SftpException,
+            IOException {
         ftp.put(in, path);
         in.close();
     }
@@ -229,8 +238,10 @@ public class SSH implements Runnable {
                         input.append(line);
                     }
                 }
-                if (line.endsWith("$ ") || line.endsWith("# ")||line.contains("$ ")) {
-                    Rt.np(line);
+                if (line.endsWith("$ ") || line.endsWith("# ")
+                        || line.contains("$ ")) {
+                    if (verbose)
+                        Rt.np(line);
                     if (executed) {
                         executed = false;
                         result = "";
@@ -247,7 +258,8 @@ public class SSH implements Runnable {
                     out.flush();
                     Rt.sleep(50);
                 } else {
-                    System.out.print(line);
+                    if (verbose)
+                        System.out.print(line);
                 }
             }
         } catch (Exception e) {

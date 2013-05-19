@@ -74,6 +74,9 @@ public class IMRUKMeans {
             boolean memCache, boolean noDiskCache) throws Exception {
         CreateHar.uploadJarFiles = false;
         DataGenerator.TEMPLATE = "/home/ubuntu/test/exp_data/product_name";
+        if (!new File(DataGenerator.TEMPLATE).exists())
+            DataGenerator.TEMPLATE = "/home/wangrui/test/exp_data/product_name";
+
         String cmdline = "";
         cmdline += "-host " + cc + " -port 3099";
         cmdline += " -frame-size " + (16 * 1024 * 1024);

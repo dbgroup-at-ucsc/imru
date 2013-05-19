@@ -44,32 +44,32 @@ import edu.uci.ics.hyracks.api.client.HyracksConnection;
 /**
  * @author wangrui
  */
-public class HyracksEC2Cluster {
+public class HyracksEC2Cluster extends HyracksCluster {
     public static final String FULLSTACK_IMRU_IMAGE_ID = "ami-5eb02637";
     public static int MAX_COUNT = 3;
     public static final String HYRACKS_SECURITY_GROUP = "hyracks-security-group";
     public static final String OPENED_PORTS = "22,1099,3099,16001";
     public static String NODE_NAME_PREFIX = "hyracks-auto-deploy-";
     EC2Wrapper ec2;
+    HyracksEC2Node ec2Controller;
+    HyracksEC2Node[] ec2Nodes;
     String keyName;
     String instancePrefix;
     String securityGroup = HYRACKS_SECURITY_GROUP;
     String openPorts = OPENED_PORTS;
 
-    HyracksEC2Node controller;
-    HyracksEC2Node[] nodes;
     String machineType = "t1.micro";
     // ubuntu image: ami-3d4ff254
     // hyracks-ec2: ami-5eb02637
     String imageId = FULLSTACK_IMRU_IMAGE_ID;
-    Hashtable<Integer, HyracksEC2Node> nodeIdHash = new Hashtable<Integer, HyracksEC2Node>();
-    Hashtable<String, HyracksEC2Node> nodeNameHash = new Hashtable<String, HyracksEC2Node>();
 
-    public HyracksEC2Cluster(File credentialsFile, File privateKeyFile) throws Exception {
+    public HyracksEC2Cluster(File credentialsFile, File privateKeyFile)
+            throws Exception {
         this(credentialsFile, privateKeyFile, NODE_NAME_PREFIX);
     }
 
-    public HyracksEC2Cluster(File credentialsFile, File privateKeyFile, String instancePrefix) throws Exception {
+    public HyracksEC2Cluster(File credentialsFile, File privateKeyFile,
+            String instancePrefix) throws Exception {
         if (!credentialsFile.exists())
             throw new IOException(
                     credentialsFile.getAbsolutePath()
@@ -77,13 +77,16 @@ public class HyracksEC2Cluster {
                             + "Insert your AWS Credentials from http://aws.amazon.com/security-credentials to a file with content\r\naccessKey=xx\r\n"
                             + "secretKey=xx");
         if (!privateKeyFile.exists())
-            throw new Error("Key pair needed. Please create "
-                    + "a key pair in https://console.aws.amazon.com/ec2/ and download it to "
-                    + privateKeyFile.getParent() + "/");
-        this.ec2 = new EC2Wrapper(credentialsFile, privateKeyFile.getParentFile());
+            throw new Error(
+                    "Key pair needed. Please create "
+                            + "a key pair in https://console.aws.amazon.com/ec2/ and download it to "
+                            + privateKeyFile.getParent() + "/");
+        this.ec2 = new EC2Wrapper(credentialsFile, privateKeyFile
+                .getParentFile());
         this.keyName = privateKeyFile.getName();
         if (this.keyName.indexOf('.') > 0)
-            this.keyName = this.keyName.substring(0, this.keyName.lastIndexOf('.'));
+            this.keyName = this.keyName.substring(0, this.keyName
+                    .lastIndexOf('.'));
         this.instancePrefix = instancePrefix;
         refresh();
     }
@@ -95,9 +98,9 @@ public class HyracksEC2Cluster {
     public String getMachineType() {
         return machineType;
     }
-    
+
     public HyracksEC2Node[] getNodes() {
-        return nodes;
+        return ec2Nodes;
     }
 
     public void setMachineType(String machineType) {
@@ -135,7 +138,8 @@ public class HyracksEC2Cluster {
             String name = ec2.getName(instance);
             if (!name.startsWith(instancePrefix))
                 throw new Error("not a instance belong to this cluster");
-            HyracksEC2Node node = new HyracksEC2Node(this, Integer.parseInt(name.substring(instancePrefix.length())),
+            HyracksEC2Node node = new HyracksEC2Node(this, Integer
+                    .parseInt(name.substring(instancePrefix.length())),
                     instance);
             if (node.nodeId == 0)
                 controller = node;
@@ -148,8 +152,8 @@ public class HyracksEC2Cluster {
                 return o1.nodeId - o2.nodeId;
             }
         });
-        this.controller = controller;
-        this.nodes = nodes;
+        this.controller=this.ec2Controller = controller;
+        this.nodes =  this.ec2Nodes = nodes;
         for (HyracksEC2Node node : nodes) {
             nodeIdHash.put(node.nodeId, node);
             nodeNameHash.put(node.name, node);
@@ -164,61 +168,16 @@ public class HyracksEC2Cluster {
         ec2.createSecurityGroup(securityGroup, "Hyracks Security Group", is);
     }
 
-    /**
-     * Wait until it's possible to ssh to all instances
-     * 
-     * @throws Exception
-     */
-    public void waitSSH() throws Exception {
-        LinkedList<HyracksEC2Node> queue = new LinkedList<HyracksEC2Node>();
-        for (HyracksEC2Node node : nodes)
-            queue.add(node);
-        while (queue.size() > 0) {
-            HyracksEC2Node node = queue.remove();
-            int n = 0;
-            while (true) {
-                try {
-                    String result = ec2.ssh(node.instance, "whoami");
-                    if (!result.contains("timed out") && !result.contains("refused"))
-                        break;
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                Thread.sleep(1000);
-                if ((n % 5) == 0)
-                    Rt.p(node.name + " hasn't started ssh yet");
-                n++;
-            }
-        }
-    }
-
-    /**
-     * Make sure all instances are added to known host list
-     * 
-     * @throws Exception
-     */
-    public void sshTest() throws Exception {
-        for (HyracksEC2Node node : nodes) {
-            String result = ec2.ssh(node.instance, "whoami");
-            if (result.contains("failed"))
-                throw new Exception("host key verification of " + node.instance.getPublicDnsName() + " failed");
-        }
-    }
-
-    public void install(File hyracksEc2Root) throws Exception {
-        for (HyracksEC2Node node : nodes)
-            node.install(hyracksEc2Root);
-    }
-
     public void setTotalInstances(int count) throws Exception {
         if (count > MAX_COUNT)
-            throw new Error("For safety reason, please modify " + this.getClass().getName() + ".MAX_COUNT first");
-        if (nodes.length < count) {
-            addInstances(count - nodes.length);
-        } else if (nodes.length > count) {
-            for (int i = count; i < nodes.length; i++) {
-                nodes[i].stopNC();
-                nodes[i].terminateInstance();
+            throw new Error("For safety reason, please modify "
+                    + this.getClass().getName() + ".MAX_COUNT first");
+        if (ec2Nodes.length < count) {
+            addInstances(count - ec2Nodes.length);
+        } else if (ec2Nodes.length > count) {
+            for (int i = count; i < ec2Nodes.length; i++) {
+                ec2Nodes[i].stopNC();
+                ec2Nodes[i].terminateInstance();
             }
             refresh();
         }
@@ -232,7 +191,7 @@ public class HyracksEC2Cluster {
     public int getTotalMachines(String state) {
         refresh();
         int pending = 0;
-        for (HyracksEC2Node node : nodes) {
+        for (HyracksEC2Node node : ec2Nodes) {
             //pending, running, shutting-down, terminated, stopping, stopped
             String s = node.instance.getState().getName();
             if (state.equals(s))
@@ -269,19 +228,22 @@ public class HyracksEC2Cluster {
 
     public void addInstances(int count) {
         if (nodes.length + count > MAX_COUNT)
-            throw new Error("For safety reason, please modify " + this.getClass().getName() + ".MAX_COUNT first");
+            throw new Error("For safety reason, please modify "
+                    + this.getClass().getName() + ".MAX_COUNT first");
 
         createSecurityGroup();
         //        ec2.setEndpoint("ec2.us-east-1.amazonaws.com");
 
-        RunInstancesRequest runInstancesRequest = new RunInstancesRequest().withInstanceType(machineType)
-                .withImageId(imageId).withMinCount(count).withMaxCount(count).withSecurityGroupIds(securityGroup)
-                .withKeyName(keyName);
+        RunInstancesRequest runInstancesRequest = new RunInstancesRequest()
+                .withInstanceType(machineType).withImageId(imageId)
+                .withMinCount(count).withMaxCount(count).withSecurityGroupIds(
+                        securityGroup).withKeyName(keyName);
 
-        RunInstancesResult runInstances = ec2.ec2.runInstances(runInstancesRequest);
+        RunInstancesResult runInstances = ec2.ec2
+                .runInstances(runInstancesRequest);
 
         BitSet bs = new BitSet();
-        for (HyracksEC2Node node : nodes)
+        for (HyracksEC2Node node : ec2Nodes)
             bs.set(node.nodeId);
         List<Instance> instances = runInstances.getReservation().getInstances();
         int idx = 0;
@@ -300,24 +262,27 @@ public class HyracksEC2Cluster {
     public void startInstances() {
         refresh();
         Vector<String> instanceIds = new Vector<String>();
-        for (HyracksEC2Node node : nodes) {
+        for (HyracksEC2Node node : ec2Nodes) {
             //pending, running, shutting-down, terminated, stopping, stopped
             String state = node.instance.getState().getName();
             if ("stopped".equals(state))
                 instanceIds.add(node.instance.getInstanceId());
         }
-        StartInstancesRequest startInstancesRequest = new StartInstancesRequest().withInstanceIds(instanceIds);
-        StartInstancesResult result = ec2.ec2.startInstances(startInstancesRequest);
+        StartInstancesRequest startInstancesRequest = new StartInstancesRequest()
+                .withInstanceIds(instanceIds);
+        StartInstancesResult result = ec2.ec2
+                .startInstances(startInstancesRequest);
         Rt.p(result);
     }
 
     public void stopInstances() {
         Vector<String> instanceIds = new Vector<String>();
-        for (HyracksEC2Node node : nodes)
+        for (HyracksEC2Node node : ec2Nodes)
             instanceIds.add(node.instance.getInstanceId());
-        StopInstancesRequest stopInstancesRequest = new StopInstancesRequest().withForce(false).withInstanceIds(
-                instanceIds);
-        StopInstancesResult result = ec2.ec2.stopInstances(stopInstancesRequest);
+        StopInstancesRequest stopInstancesRequest = new StopInstancesRequest()
+                .withForce(false).withInstanceIds(instanceIds);
+        StopInstancesResult result = ec2.ec2
+                .stopInstances(stopInstancesRequest);
         Rt.p(result);
     }
 
@@ -326,11 +291,12 @@ public class HyracksEC2Cluster {
      */
     public void terminateInstances() {
         Vector<String> instanceIds = new Vector<String>();
-        for (HyracksEC2Node node : nodes)
+        for (HyracksEC2Node node : ec2Nodes)
             instanceIds.add(node.instance.getInstanceId());
         TerminateInstancesRequest terminateInstancesRequest = new TerminateInstancesRequest()
                 .withInstanceIds(instanceIds);
-        TerminateInstancesResult result = ec2.ec2.terminateInstances(terminateInstancesRequest);
+        TerminateInstancesResult result = ec2.ec2
+                .terminateInstances(terminateInstancesRequest);
         Rt.p(result);
     }
 
@@ -342,10 +308,11 @@ public class HyracksEC2Cluster {
         int shutting = 0;
         int stopping = 0;
         int stopped = 0;
-        for (HyracksEC2Node node : nodes) {
+        for (HyracksEC2Node node : ec2Nodes) {
             //pending, running, shutting-down, terminated, stopping, stopped
             String state = node.instance.getState().getName();
-            Rt.np(node.name + ": " + state + " " + node.instance.getPrivateIpAddress() + " "
+            Rt.np(node.name + ": " + state + " "
+                    + node.instance.getPrivateIpAddress() + " "
                     + node.instance.getPublicDnsName());
             if ("pending".equals(state))
                 pending++;
@@ -368,163 +335,6 @@ public class HyracksEC2Cluster {
     public String getClusterControllerPublicDnsName() {
         if (controller == null)
             return null;
-        return controller.instance.getPublicDnsName();
-    }
-
-    public String[] getNodeNames() {
-        String[] ss = new String[nodes.length];
-        for (int i = 0; i < ss.length; i++)
-            ss[i] = nodes[i].name;
-        return ss;
-    }
-
-    public String getAdminURL() {
-        if (controller == null)
-            return null;
-        return "http://" + controller.instance.getPublicDnsName() + ":16001/adminconsole/";
-    }
-
-    public void startHyrackCluster() throws Exception {
-        controller.startCC();
-        for (HyracksEC2Node node : nodes)
-            node.startNC();
-    }
-
-    public void stopHyrackCluster() throws Exception {
-        for (HyracksEC2Node node : nodes) {
-            if (node.nodeId == 0)
-                node.stopAll();
-            else
-                node.stopNC();
-        }
-    }
-
-    public void uploadData(String[] localAndremote) throws Exception {
-        String[] local = new String[localAndremote.length];
-        String[] remote = new String[localAndremote.length];
-        for (int i = 0; i < local.length; i++) {
-            String[] ss = localAndremote[i].split("\t");
-            local[i] = ss[0];
-            remote[i] = ss[1];
-        }
-        uploadData(local, remote);
-    }
-
-    public void uploadData(String[] local, String[] remote) throws Exception {
-        if (local.length != remote.length)
-            throw new IOException("local.length!=remote.length");
-        Vector<String> nodeNames = new Vector<String>();
-        Hashtable<String, Vector<String>> hashtable = new Hashtable<String, Vector<String>>();
-        for (int i = 0; i < local.length; i++) {
-            String localPath = local[i];
-            String remotePath = remote[i];
-            int t = remotePath.indexOf(':');
-            if (t < 0)
-                throw new IOException("Please specify remote location in the <node>:<path> format. " + remotePath);
-            String nodeName = remotePath.substring(0, t);
-            remotePath = remotePath.substring(t + 1);
-            Vector<String> v = hashtable.get(nodeName);
-            if (v == null) {
-                v = new Vector<String>();
-                nodeNames.add(nodeName);
-                hashtable.put(nodeName, v);
-            }
-            v.add(localPath);
-            v.add(remotePath);
-        }
-        for (String nodeName : nodeNames) {
-            HyracksEC2Node node = nodeNameHash.get(nodeName);
-            Vector<String> v = hashtable.get(nodeName);
-            String[] localPath = new String[v.size() / 2];
-            String[] remotePath = new String[v.size() / 2];
-            for (int i = 0; i < localPath.length; i++) {
-                localPath[i] = v.get(i + i);
-                remotePath[i] = v.get(i + i + 1);
-            }
-            node.uploadData(localPath, remotePath);
-        }
-    }
-
-    public SSH ssh(int nodeId) throws Exception {
-        HyracksEC2Node node = nodeIdHash.get(nodeId);
-        if (node == null)
-            throw new Exception("Can't find node " + nodeId);
-        return node.ssh();
-    }
-
-    public String getControllerPublicDnsName() {
-        return controller.instance.getPublicDnsName();
-    }
-
-    public String getNodePublicDnsName(int nodeId) throws IOException {
-        HyracksEC2Node node = nodeIdHash.get(nodeId);
-        if (node == null)
-            throw new IOException("Can't find node " + nodeId);
-        return node.instance.getPublicDnsName();
-    }
-
-    public void write(int nodeId, String path, byte[] data) throws Exception {
-        SSH ssh = ssh(nodeId);
-        try {
-            ssh.put(path, new ByteArrayInputStream(data));
-        } finally {
-            ssh.close();
-        }
-    }
-
-    public byte[] read(int nodeId, String path) throws Exception {
-        SSH ssh = ssh(nodeId);
-        try {
-            return Rt.read(ssh.get(path));
-        } finally {
-            ssh.close();
-        }
-    }
-
-    public HyracksConnection getHyracksConnection() throws Exception {
-        return new HyracksConnection(controller.instance.getPublicDnsName(), 3099);
-    }
-
-    public void printProcesses(int id) throws Exception {
-        if (id < 0) {
-            for (HyracksEC2Node node : nodes)
-                node.printProcesses();
-        } else {
-            HyracksEC2Node node = nodeIdHash.get(id);
-            if (node != null)
-                node.printProcesses();
-        }
-    }
-
-    public void printLogs(int id, int lines) throws Exception {
-        if (id < 0) {
-            for (HyracksEC2Node node : nodes)
-                node.printLogs(lines);
-        } else {
-            HyracksEC2Node node = nodeIdHash.get(id);
-            if (node != null)
-                node.printLogs(lines);
-        }
-    }
-
-    public void printOutputs(int id) throws Exception {
-        if (id < 0) {
-            for (HyracksEC2Node node : nodes)
-                node.printOutputs();
-        } else {
-            HyracksEC2Node node = nodeIdHash.get(id);
-            if (node != null)
-                node.printOutputs();
-        }
-    }
-
-    public void listDir(String path) throws Exception {
-        for (HyracksEC2Node node : nodes)
-            node.listDir(path);
-    }
-
-    public void rmrDir(String path) throws Exception {
-        for (HyracksEC2Node node : nodes)
-            node.rmrDir(path);
+        return ec2Controller.instance.getPublicDnsName();
     }
 }

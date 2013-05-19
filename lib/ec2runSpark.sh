@@ -74,6 +74,7 @@ java -Xmx512m -cp bin\
 :/home/ubuntu/scala-2.9.2/lib/scala-swing.jar\
 :/home/ubuntu/scala-2.9.2/lib/scalacheck.jar\
 :/home/ubuntu/scala-2.9.2/lib/scalap.jar\
+:/home/ubuntu/spark-0.7.0/spark-core_2.9.2-0.7.0.jar\
 :/home/ubuntu/spark-0.7.0/core/target/scala-2.9.2/spark-core_2.9.2-0.7.0.jar\
 :/home/ubuntu/spark-0.7.0/lib_managed/bundles/compress-lzf-0.8.4.jar\
 :/home/ubuntu/spark-0.7.0/lib_managed/bundles/config-0.3.1.jar\
