@@ -65,7 +65,8 @@ public class HyracksCluster {
 
     private void closeAllSsh() throws Exception {
         for (int i = 0; i < nodes.length; i++) {
-            sshs[i].close();
+            if (sshs[i] != null)
+                sshs[i].close();
         }
     }
 

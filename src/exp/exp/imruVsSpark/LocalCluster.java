@@ -101,7 +101,8 @@ public class LocalCluster {
             }
             for (String line : ssh.execute("ps aux | grep java", true).split(
                     "\n")) {
-                if (line.contains("hyracks")) {
+                if (line.contains("hyracks")
+                        && !line.contains("Ec2Experiments")) {
                     String[] ss = line.split("[ |\t]+");
                     int pid = Integer.parseInt(ss[1]);
                     ssh.execute("kill " + pid);

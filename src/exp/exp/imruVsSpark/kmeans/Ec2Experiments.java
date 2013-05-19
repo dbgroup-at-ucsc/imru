@@ -206,9 +206,9 @@ public class Ec2Experiments {
         //name="ec2";
 
         HyracksNode.HYRACKS_PATH = "/home/wangrui/hyracks-ec2";
-        String[] nodes = { "192.168.56.102", };
-        name = "local3G1core";
-        cluster = new LocalCluster(new HyracksCluster("192.168.56.102", nodes,
+        String[] nodes = { "192.168.56.103", };
+        name = "local3G1coreT";
+        cluster = new LocalCluster(new HyracksCluster(nodes[0], nodes,
                 "wangrui", new File(home, ".ssh/id_rsa")), "wangrui");
         //                cluster.cluster.install(hyracksEc2Root);
         Ec2Experiments exp = new Ec2Experiments(cluster, name);
