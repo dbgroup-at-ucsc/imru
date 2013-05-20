@@ -65,7 +65,7 @@ public class LocalCluster {
 
     public void stopSpark() throws Exception {
         Rt.p("http://" + cluster.controller.publicIp + ":8080/");
-        SSH ssh = cluster.ssh(0);
+        SSH ssh = cluster.controller.ssh();
         String cmd = "" + home + "/spark-0.7.0/bin/stop-all.sh";
         cmd = "ps aux | grep spark";
         Rt.np(cmd);
@@ -80,8 +80,8 @@ public class LocalCluster {
     }
 
     public void stopAll() throws Exception {
-        for (HyracksNode node : cluster.nodes) {
-            SSH ssh = cluster.ssh(node.getNodeId());
+        for (HyracksNode node : cluster.allNodes) {
+            SSH ssh = node.ssh();
             for (String line : ssh.execute("ps aux | grep spark", true).split(
                     "\n")) {
                 if (line.contains("spark.deploy.master.Master")
@@ -111,7 +111,7 @@ public class LocalCluster {
             ssh.execute("rm " + home + "/masterSpark.log " + home
                     + "/slaveSpark.log");
             ssh.execute("rm /tmp/t1/logs/* /tmp/t2/logs/*");
-            ssh.execute("sudo chmod ugo+rw /mnt -R");
+            //            ssh.execute("sudo chmod ugo+rw /mnt -R");
             ssh.execute("free -m");
             ssh.close();
         }
@@ -120,11 +120,14 @@ public class LocalCluster {
     public void checkHyracks() throws Exception {
         HyracksConnection hcc = new HyracksConnection(
                 cluster.controller.publicIp, 3099);
-        Rt.p(hcc.getNodeControllerInfos());
-        if (hcc.getNodeControllerInfos().size() != cluster.nodes.length) {
-            cluster.printLogs(-1, 100);
-            throw new Error("Only " + hcc.getNodeControllerInfos().size()
-                    + " NC");
+        for (int i = 0; i < 20; i++) {
+            Rt.p(hcc.getNodeControllerInfos());
+            if (hcc.getNodeControllerInfos().size() == cluster.nodes.length)
+                return;
+            Rt.p("Only " + hcc.getNodeControllerInfos().size() + " NC");
+            Thread.sleep(1000);
         }
+        cluster.printLogs(-1, 100);
+        throw new Error("Only " + hcc.getNodeControllerInfos().size() + " NC");
     }
 }

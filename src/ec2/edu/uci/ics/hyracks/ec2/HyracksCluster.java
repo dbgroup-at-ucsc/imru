@@ -13,7 +13,7 @@ import exp.test0.GnuPlot;
 public class HyracksCluster {
     public HyracksNode controller;
     public HyracksNode[] nodes;
-    private SSH[] sshs;
+    public HyracksNode[] allNodes;
     Hashtable<String, HyracksNode> nodeNameHash = new Hashtable<String, HyracksNode>();
     Hashtable<Integer, HyracksNode> nodeIdHash = new Hashtable<Integer, HyracksNode>();
 
@@ -25,9 +25,11 @@ public class HyracksCluster {
         this.controller = new RegularNode(this, -1, controller, controller,
                 "CC", user, privateKey);
         this.nodes = new HyracksNode[nodes.length];
+        this.allNodes = new HyracksNode[nodes.length + 1];
+        this.allNodes[0] = this.controller;
         for (int i = 0; i < nodes.length; i++) {
-            this.nodes[i] = new RegularNode(this, i, nodes[i], nodes[i], "NC"
-                    + i, user, privateKey);
+            this.allNodes[i + 1] = this.nodes[i] = new RegularNode(this, i,
+                    nodes[i], nodes[i], "NC" + i, user, privateKey);
         }
         for (HyracksNode node : this.nodes) {
             nodeIdHash.put(node.nodeId, node);
@@ -35,20 +37,17 @@ public class HyracksCluster {
         }
     }
 
-    private void sshAllNodes() throws Exception {
-        sshs = new SSH[nodes.length];
-        for (int i = 0; i < nodes.length; i++) {
-            sshs[i] = nodes[i].ssh();
-        }
-    }
-
     public void reportAllMemory(GnuPlot plot) throws Exception {
         int time = 0;
-        sshAllNodes();
+        SSH[] sshs = new SSH[nodes.length + 1];
+        sshs[0] = controller.ssh();
+        for (int i = 0; i < nodes.length; i++) {
+            sshs[i + 1] = nodes[i].ssh();
+        }
         try {
             while (true) {
                 plot.startNewX(time++);
-                for (int i = 0; i < nodes.length; i++) {
+                for (int i = 0; i < sshs.length; i++) {
                     sshs[i].verbose = false;
                     String result = sshs[i].execute("free -m", true);
                     String[] lines = result.split("\n");
@@ -59,14 +58,10 @@ public class HyracksCluster {
             }
         } finally {
             plot.finish();
-            closeAllSsh();
-        }
-    }
-
-    private void closeAllSsh() throws Exception {
-        for (int i = 0; i < nodes.length; i++) {
-            if (sshs[i] != null)
-                sshs[i].close();
+            for (int i = 0; i < nodes.length; i++) {
+                if (sshs[i] != null)
+                    sshs[i].close();
+            }
         }
     }
 

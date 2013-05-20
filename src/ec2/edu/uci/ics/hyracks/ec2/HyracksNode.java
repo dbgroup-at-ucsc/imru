@@ -97,6 +97,9 @@ public abstract class HyracksNode {
             }
             Rt.p("starting " + name);
             ssh.execute("cd " + HYRACKS_PATH);
+            Rt.p("nohup bin/startncWithHostIpAndNodeId.sh "
+                    + cluster.controller.internalIp + " " + internalIp + " "
+                    + name);
             ssh.execute("nohup bin/startncWithHostIpAndNodeId.sh "
                     + cluster.controller.internalIp + " " + internalIp + " "
                     + name);
@@ -154,16 +157,20 @@ public abstract class HyracksNode {
     }
 
     public void printLogs(int lines) throws Exception {
-        SSH ssh = ssh();
         try {
-            if (nodeId == -1) {
-                Rt.np("CC log:");
-                ssh.execute("tail -n " + lines + " /tmp/t1/logs/cc.log");
+            SSH ssh = ssh();
+            try {
+                if (nodeId == -1) {
+                    Rt.np("CC log:");
+                    ssh.execute("tail -n " + lines + " /tmp/t1/logs/cc.log");
+                }
+                Rt.np(name + " log:");
+                ssh.execute("tail -n " + lines + " /tmp/t2/logs/" + name + ".log");
+            } finally {
+                ssh.close();
             }
-            Rt.np(name + " log:");
-            ssh.execute("tail -n " + lines + " /tmp/t2/logs/" + name + ".log");
-        } finally {
-            ssh.close();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
