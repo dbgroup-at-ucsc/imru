@@ -53,7 +53,7 @@ public class SingleMachineBenchmark {
             String host = "192.168.56.101";
             host = "10.243.74.41";
             SparkKMeans.run(host, DataGenerator.DEBUG_DATA_POINTS,
-                    "lib/spark-0.7.0", "/data/b/data/imru/productName.txt", 1);
+                    "/data/b/soft/spark-0.7.0", "/data/b/data/imru/productName.txt", 1);
             long sparkTime = System.currentTimeMillis() - start;
 
             Rt.p("Data: %,d", dataTime);

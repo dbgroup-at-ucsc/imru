@@ -1,5 +1,11 @@
 package exp.imruVsSpark;
 
+import java.util.Stack;
+import java.util.Vector;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+
 import edu.uci.ics.hyracks.api.client.HyracksConnection;
 import edu.uci.ics.hyracks.ec2.HyracksCluster;
 import edu.uci.ics.hyracks.ec2.HyracksNode;
@@ -19,48 +25,41 @@ public class LocalCluster {
 
     public void startSpark() throws Exception {
         //rsync -vrultzCc  /home/wangrui/ucscImru/bin/exp/test0/ ubuntu@ec2-54-242-134-180.compute-1.amazonaws.com:"+home+"/test/bin/exp/test0/
-        //screen -d -m -S m "+home+"/spark-0.7.0/run spark.deploy.master.Master -i ${IP} -p 7077
-        //screen -d -m -S s "+home+"/spark-0.7.0/run spark.deploy.worker.Worker spark://${IP}:7077
         Rt.p("Starting spark");
         Rt.p("http://" + cluster.controller.publicIp + ":8080/");
         String master = cluster.controller.internalIp;
+        String sshCmd = "ssh -l ubuntu -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ";
         {
             HyracksNode node = cluster.controller;
             Rt.p(node.getName());
-            SSH ssh = node.ssh();
-            String result = ssh.execute("ps aux | grep spark", true);
+            String result = Rt.runCommand(sshCmd + node.internalIp
+                    + " \"ps aux | grep spark\"");
             boolean hasMaster = result.contains("spark.deploy.master.Master");
             if (!hasMaster) {
-                String cmd = "bash -c \"" + home
+                String cmd = home
                         + "/spark-0.7.0/run spark.deploy.master.Master -i "
-                        + master + " -p 7077 > masterSpark.log 2>&1 &\"";
+                        + master + " -p 7077 > masterSpark.log 2>&1 &";
                 Rt.np(cmd);
-                ssh.execute(cmd);
-                ssh.execute("sleep 2s");
-                ssh.execute("tail -n 100 " + home + "/masterSpark.log");
-                ssh.close();
+                Rt.runCommand(sshCmd + node.internalIp + " \"" + cmd + "\"");
             }
         }
+        Rt.sleep(30000); //Must wait until UI start
         for (int i = 0; i < cluster.nodes.length; i++) {
             HyracksNode node = cluster.nodes[i];
             Rt.p(node.getName());
-            SSH ssh = node.ssh();
-            String result = ssh.execute("ps aux | grep spark", true);
+            String result = Rt.runCommand(sshCmd + node.internalIp
+                    + " \"ps aux | grep spark\"");
             boolean hasWorker = result.contains("spark.deploy.worker.Worker");
-
             if (!hasWorker) {
-                String cmd = "bash -c \"" + home
+                String cmd = home
                         + "/spark-0.7.0/run spark.deploy.worker.Worker -i "
                         + node.internalIp + " spark://" + master
-                        + ":7077  > slaveSpark.log 2>&1 &\"";
+                        + ":7077 --webui-port 8082  > slaveSpark.log 2>&1 &";
                 Rt.np(cmd);
-                ssh.execute(cmd);
-                ssh.execute("sleep 2s");
+                Rt.runCommand(sshCmd + node.internalIp + " \"" + cmd + "\"");
             }
-            ssh.execute("tail -n 100 " + home + "/slaveSpark.log");
-            ssh.close();
         }
-        Thread.sleep(2000);
+        Thread.sleep(30000);
     }
 
     public void stopSpark() throws Exception {
@@ -79,42 +78,62 @@ public class LocalCluster {
         ssh.close();
     }
 
+    static ExecutorService pool = java.util.concurrent.Executors
+            .newCachedThreadPool();
+
     public void stopAll() throws Exception {
+        Rt.p("Stopping Spark and Hyracks");
+        Vector<Future> fs = new Vector<Future>();
         for (HyracksNode node : cluster.allNodes) {
-            SSH ssh = node.ssh();
-            for (String line : ssh.execute("ps aux | grep spark", true).split(
-                    "\n")) {
-                if (line.contains("spark.deploy.master.Master")
-                        || line.contains("spark.deploy.worker.Worker")) {
-                    String[] ss = line.split("[ |\t]+");
-                    int pid = Integer.parseInt(ss[1]);
-                    ssh.execute("kill " + pid);
+            final HyracksNode node2 = node;
+            Future<Integer> f = pool.submit(new Callable<Integer>() {
+                @Override
+                public Integer call() throws Exception {
+                    try {
+                        SSH ssh = node2.ssh();
+                        ssh.verbose = false;
+                        for (String line : ssh.execute("ps aux | grep spark",
+                                true).split("\n")) {
+                            if (line.contains("spark.deploy.master.Master")
+                                    || line
+                                            .contains("spark.deploy.worker.Worker")) {
+                                String[] ss = line.split("[ |\t]+");
+                                int pid = Integer.parseInt(ss[1]);
+                                ssh.execute("kill " + pid);
+                            }
+                        }
+                        for (String line : ssh.execute(
+                                "ps aux | grep Xrunjdwp", true).split("\n")) {
+                            if (line.contains("hyracks")) {
+                                String[] ss = line.split("[ |\t]+");
+                                int pid = Integer.parseInt(ss[1]);
+                                ssh.execute("kill " + pid);
+                            }
+                        }
+                        for (String line : ssh.execute("ps aux | grep java",
+                                true).split("\n")) {
+                            if (line.contains("hyracks")
+                                    && !line.contains("Ec2Experiments")) {
+                                String[] ss = line.split("[ |\t]+");
+                                int pid = Integer.parseInt(ss[1]);
+                                ssh.execute("kill " + pid);
+                            }
+                        }
+                        ssh.execute("rm " + home + "/masterSpark.log " + home
+                                + "/slaveSpark.log");
+                        ssh.execute("rm /tmp/t1/logs/* /tmp/t2/logs/*");
+                        ssh.close();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                    return 0;
                 }
-            }
-            for (String line : ssh.execute("ps aux | grep Xrunjdwp", true)
-                    .split("\n")) {
-                if (line.contains("hyracks")) {
-                    String[] ss = line.split("[ |\t]+");
-                    int pid = Integer.parseInt(ss[1]);
-                    ssh.execute("kill " + pid);
-                }
-            }
-            for (String line : ssh.execute("ps aux | grep java", true).split(
-                    "\n")) {
-                if (line.contains("hyracks")
-                        && !line.contains("Ec2Experiments")) {
-                    String[] ss = line.split("[ |\t]+");
-                    int pid = Integer.parseInt(ss[1]);
-                    ssh.execute("kill " + pid);
-                }
-            }
-            ssh.execute("rm " + home + "/masterSpark.log " + home
-                    + "/slaveSpark.log");
-            ssh.execute("rm /tmp/t1/logs/* /tmp/t2/logs/*");
-            //            ssh.execute("sudo chmod ugo+rw /mnt -R");
-            ssh.execute("free -m");
-            ssh.close();
+            });
+            fs.add(f);
         }
+        for (Future f : fs)
+            f.get();
+        Rt.p("All nodes stopped");
     }
 
     public void checkHyracks() throws Exception {

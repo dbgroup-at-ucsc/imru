@@ -51,7 +51,10 @@ public class Rt {
             }
         }
         String line = "(" + e2.getFileName() + ":" + e2.getLineNumber() + ")";
-        String info = (showTime ? new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()) + " " : "") + line;
+        String info = (showTime ? new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                .format(new Date())
+                + " " : "")
+                + line;
         synchronized (System.out) {
             System.out.println(info + ": " + String.format(format, args));
         }
@@ -122,7 +125,8 @@ public class Rt {
         fileOutputStream.close();
     }
 
-    public static void showInputStream(final InputStream is, final StringBuilder sb) {
+    public static void showInputStream(final InputStream is,
+            final StringBuilder sb) {
         new Thread() {
             @Override
             public void run() {
@@ -134,6 +138,28 @@ public class Rt {
                             break;
                         String s = new String(bs, 0, len);
                         System.out.print(s);
+                        if (sb != null)
+                            sb.append(s);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }.start();
+    }
+
+    public static void consumeInputStream(final InputStream is,
+            final StringBuilder sb) {
+        new Thread() {
+            @Override
+            public void run() {
+                byte[] bs = new byte[1024];
+                try {
+                    while (true) {
+                        int len = is.read(bs);
+                        if (len < 0)
+                            break;
+                        String s = new String(bs, 0, len);
                         if (sb != null)
                             sb.append(s);
                     }
@@ -167,7 +193,8 @@ public class Rt {
         return runAndShowCommand(cmd, null);
     }
 
-    public static String runAndShowCommand(String cmd, File dir) throws IOException {
+    public static String runAndShowCommand(String cmd, File dir)
+            throws IOException {
         Vector<String> v = new Vector<String>();
         while (cmd.length() > 0) {
             int t = cmd.indexOf('\"');
@@ -181,17 +208,54 @@ public class Rt {
                     for (String s : s2.split(" +"))
                         v.add(s);
                 }
-                cmd=cmd.substring(t+1);
-                t=cmd.indexOf("\"");
-                v.add(cmd.substring(0,t));
-                cmd=cmd.substring(t+1).trim();
+                cmd = cmd.substring(t + 1);
+                t = cmd.indexOf("\"");
+                v.add(cmd.substring(0, t));
+                cmd = cmd.substring(t + 1).trim();
             }
         }
-        String [] ss=v.toArray(new String[v.size()]);
+        String[] ss = v.toArray(new String[v.size()]);
         Process process = Runtime.getRuntime().exec(ss, null, dir);
         StringBuilder sb = new StringBuilder();
         showInputStream(process.getInputStream(), sb);
         showInputStream(process.getErrorStream(), sb);
+        try {
+            process.waitFor();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return sb.toString();
+    }
+
+    public static String runCommand(String cmd) throws IOException {
+        return runCommand(cmd, null);
+    }
+
+    public static String runCommand(String cmd, File dir) throws IOException {
+        Vector<String> v = new Vector<String>();
+        while (cmd.length() > 0) {
+            int t = cmd.indexOf('\"');
+            if (t < 0) {
+                for (String s : cmd.trim().split(" +"))
+                    v.add(s);
+                break;
+            } else {
+                String s2 = cmd.substring(0, t).trim();
+                if (s2.length() > 0) {
+                    for (String s : s2.split(" +"))
+                        v.add(s);
+                }
+                cmd = cmd.substring(t + 1);
+                t = cmd.indexOf("\"");
+                v.add(cmd.substring(0, t));
+                cmd = cmd.substring(t + 1).trim();
+            }
+        }
+        String[] ss = v.toArray(new String[v.size()]);
+        Process process = Runtime.getRuntime().exec(ss, null, dir);
+        StringBuilder sb = new StringBuilder();
+        consumeInputStream(process.getInputStream(), sb);
+        consumeInputStream(process.getErrorStream(), sb);
         try {
             process.waitFor();
         } catch (InterruptedException e) {
@@ -208,7 +272,8 @@ public class Rt {
         Rt.p(Rt.getHex(0, bs, 0, bs.length, false));
     }
 
-    public static String getHex(long address, byte[] bs, int offset, int length, boolean simple) {
+    public static String getHex(long address, byte[] bs, int offset,
+            int length, boolean simple) {
         if (length > bs.length - offset)
             length = bs.length - offset;
         int col = 16;

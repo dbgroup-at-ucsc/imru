@@ -30,7 +30,7 @@ public class SparkLR {
         zip2.finish();
         Rt.write(new File("tmp/simple-project-1.0.jar"), memory.toByteArray());
 
-        JavaSparkContext sc = new JavaSparkContext("local", "JavaLR", "lib/spark-0.7.0",
+        JavaSparkContext sc = new JavaSparkContext("local", "JavaLR", "/data/b/soft/spark-0.7.0",
                 new String[] { "tmp/simple-project-1.0.jar" });
         JavaRDD<String> lines = sc.textFile(LR.datafile.getAbsolutePath());
         JavaRDD<DataPoint> points = lines.map(new Function<String, DataPoint>() {

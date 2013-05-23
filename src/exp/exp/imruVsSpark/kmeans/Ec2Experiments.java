@@ -16,6 +16,7 @@ import edu.uci.ics.hyracks.ec2.SSH;
 import edu.uci.ics.hyracks.imru.example.utils.Client;
 import edu.uci.ics.hyracks.imru.example.utils.ImruEC2;
 import edu.uci.ics.hyracks.imru.util.Rt;
+import exp.ClusterMonitor;
 import exp.imruVsSpark.LocalCluster;
 import exp.imruVsSpark.data.DataGenerator;
 import exp.imruVsSpark.kmeans.imru.IMRUKMeans;
@@ -28,6 +29,7 @@ public class Ec2Experiments {
     HyracksNode controller;
     HyracksNode[] nodes;
     File resultDir;
+    static ClusterMonitor monitor;
 
     public Ec2Experiments(LocalCluster cluster, String name) {
         this.cluster = cluster;
@@ -105,12 +107,18 @@ public class Ec2Experiments {
         SSH ssh = node.ssh();
         node.rsync(ssh, new File("/home/wangrui/ucscImru/bin"), "/home/"
                 + cluster.user + "/test/bin/");
-        //        node.rsync(ssh, new File("/home/wangrui/b/soft/scala-2.9.2"), "/home/" + cluster.user
-        //                + "/scala-2.9.2/");
-        //        node.rsync(ssh, new File("/home/wangrui/b/soft/lib/spark-0.7.0"), "/home/" + cluster.user
-        //                + "/spark-0.7.0/");
-        //        node.rsync(ssh, new File("/home/wangrui/b/soft/lib/spark-0.7.0/core/target/scala-2.9.2/classes"), "/home/" + cluster.user
-        //                + "/spark-0.7.0/core/target/scala-2.9.2/classes/");
+        //        node.rsync(ssh, new File("/home/wangrui/b/soft/scala-2.9.2"), "/home/"
+        //                + cluster.user + "/scala-2.9.2/");
+        //        node.rsync(ssh, new File("/home/wangrui/b/soft/spark-0.7.0"), "/home/"
+        //                + cluster.user + "/spark-0.7.0/");
+        //        node
+        //                .rsync(
+        //                        ssh,
+        //                        new File(
+        //                                "/home/wangrui/b/soft/spark-0.7.0/core/target/scala-2.9.2/classes"),
+        //                        "/home/"
+        //                                + cluster.user
+        //                                + "/spark-0.7.0/core/target/scala-2.9.2/classes/");
         String startScript = Rt.readFile(new File(
                 "/home/wangrui/ucscImru/lib/ec2runSpark.sh"));
         startScript = startScript.replaceAll("/home/ubuntu", "/home/"
@@ -148,6 +156,8 @@ public class Ec2Experiments {
         ssh.execute("cd test;");
         ssh.execute("sh st.sh exp.imruVsSpark.kmeans.EC2Benchmark "
                 + controller.internalIp + " " + nodes.length + " false");
+        ssh.execute("cat " + "/home/" + cluster.user + "/masterSpark.log");
+        ssh.execute("cat " + "/home/" + cluster.user + "/slaveSpark.log");
         String result = new String(Rt.read(ssh.get("/home/" + cluster.user
                 + "/test/result/kmeansspark_org.data")));
         Rt.p(result);
@@ -161,18 +171,25 @@ public class Ec2Experiments {
 
     void startMem(String name) {
         plot = new GnuPlot(resultDir, name, "time", "free (MB)");
-        String[] ss = new String[nodes.length + 1];
-        ss[0] = "CC";
-        for (int i = 0; i < nodes.length; i++) {
-            ss[i + 1] = nodes[i].name;
-        }
+        String[] ss = new String[nodes.length];
+        //        ss[0] = "CC";
+        for (int i = 0; i < nodes.length; i++)
+            ss[i] = nodes[i].name;
         plot.scale = false;
         plot.setPlotNames(ss);
         memThread = new Thread() {
             @Override
             public void run() {
                 try {
-                    cluster.cluster.reportAllMemory(plot);
+                    int time = 0;
+                    while (true) {
+                        plot.startNewX(time++);
+                        for (int i = 0; i < monitor.nodes; i++)
+                            plot.addY(monitor.memory[i]);
+                        if (time > 0)
+                            plot.finish();
+                        Thread.sleep(1000);
+                    }
                 } catch (InterruptedException e) {
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -189,20 +206,19 @@ public class Ec2Experiments {
     void runExperiments() throws Exception {
         Rt.p("Spark: http://" + controller.publicIp + ":8080/");
         Rt.p("IMRU: " + cluster.cluster.getAdminURL());
-        cluster.stopAll();
-//        uploadExperimentCode();
-//        startMem("generateDataMemory");
-//        generateData();
-//        stopMem();
-//
-//        System.exit(0);
-
-//        cluster.stopAll();
-//        startMem("imruMemory");
-//        runImru();
-//        stopMem();
+        //        cluster.stopAll();
+        //        uploadExperimentCode();
+        //        startMem("generateDataMemory");
+        //        generateData();
+        //        stopMem();
+        //
+        //        cluster.stopAll();
+        //        startMem("imruMemory");
+        //        runImru();
+        //        stopMem();
 
         cluster.stopAll();
+        Rt.sleep(10000);
         startMem("sparkMemory");
         runSpark();
         stopMem();
@@ -232,28 +248,41 @@ public class Ec2Experiments {
     }
 
     public static void main(String[] args) throws Exception {
-        String ip = getIp();
-        Rt.p(ip);
-        if (!ip.startsWith("192"))
-            throw new Error();
+        monitor = new ClusterMonitor();
+        while (true) {
+            Rt.p(monitor.nodes);
+            boolean hasIp = true;
+            for (int i = 0; i < monitor.nodes; i++) {
+                if (monitor.ip[i] == null)
+                    hasIp = false;
+            }
+            if (hasIp && monitor.nodes == 8)
+                break;
+            Thread.sleep(500);
+        }
+        String[] nodes = new String[monitor.nodes];
+        for (int i = 0; i < nodes.length; i++)
+            nodes[i] = monitor.ip[i];
+        //        String ip = getIp();
+        //        Rt.p(ip);
+        //        if (!ip.startsWith("192"))
+        //            throw new Error();
 
         File home = new File(System.getProperty("user.home"));
         File hyracksEc2Root = new File(home, "ucscImru/dist");
         LocalCluster cluster;
         String name;
+        String userName = "ubuntu";
 
         //        cluster= getEc2Cluster(5);
         //name="ec2";
 
-        HyracksNode.HYRACKS_PATH = "/home/wangrui/hyracks-ec2";
-        String[] nodes = { "192.168.56.103", "192.168.56.104",
-                "192.168.56.105", "192.168.56.106", "192.168.56.107",
-                "192.168.56.108", "192.168.56.109", "192.168.56.110", };
+        HyracksNode.HYRACKS_PATH = "/home/" + userName + "/hyracks-ec2";
         name = "local2G0.5core";
-        ip = nodes[0];
-        cluster = new LocalCluster(new HyracksCluster(ip, nodes, "wangrui",
-                new File(home, ".ssh/id_rsa")), "wangrui");
-        //                cluster.cluster.install(hyracksEc2Root);
+        String cc = nodes[0];
+        cluster = new LocalCluster(new HyracksCluster(cc, nodes, userName,
+                new File(home, ".ssh/id_rsa")), userName);
+        //        cluster.cluster.install(hyracksEc2Root);
         Ec2Experiments exp = new Ec2Experiments(cluster, name);
         exp.runExperiments();
         System.exit(0);

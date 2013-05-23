@@ -18,10 +18,4 @@ set grid xtics ytics
 set key autotitle columnhead
 
 plot "imruMemory.data" using 1:2 with linespoints lw 4 pt 0 ps 0, \
-	"imruMemory.data" using 1:3 with linespoints lw 4 pt 0 ps 0, \
-	"imruMemory.data" using 1:4 with linespoints lw 4 pt 0 ps 0, \
-	"imruMemory.data" using 1:5 with linespoints lw 4 pt 0 ps 0, \
-	"imruMemory.data" using 1:6 with linespoints lw 4 pt 0 ps 0, \
-	"imruMemory.data" using 1:7 with linespoints lw 4 pt 0 ps 0, \
-	"imruMemory.data" using 1:8 with linespoints lw 4 pt 0 ps 0, \
-	"imruMemory.data" using 1:9 with linespoints lw 4 pt 0 ps 0
+	"imruMemory.data" using 1:3 with linespoints lw 4 pt 0 ps 0

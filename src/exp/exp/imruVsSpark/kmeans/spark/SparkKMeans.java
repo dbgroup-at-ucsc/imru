@@ -104,7 +104,7 @@ public class SparkKMeans {
 
     public static void main(String[] args) throws Exception {
         String host = "192.168.56.101";
-        run(host, DataGenerator.DEBUG_DATA_POINTS,"/data/b/soft/lib/spark-0.7.0",
+        run(host, DataGenerator.DEBUG_DATA_POINTS,"/data/b/soft/spark-0.7.0",
                 "/data/b/data/imru/productName.txt", 1);
         System.exit(0);
     }
