@@ -92,13 +92,13 @@ public class Ec2Experiments {
             ps.println(aaa + "\t" + dataTime);
         }
         ps.close();
-        cluster.cluster.printLogs(-1, 100);
-        cluster.cluster.stopHyrackCluster();
+//        cluster.cluster.printLogs(-1, 100);
+//        cluster.cluster.stopHyrackCluster();
         for (HyracksNode node : nodes) {
-            SSH ssh = node.ssh();
-            Rt.p(node.getName());
-            ssh.execute("ls -l -h " + EC2Benchmark.dataPath);
-            ssh.close();
+//            SSH ssh = node.ssh();
+//            Rt.p(node.getName());
+//            ssh.execute("ls -l -h " + EC2Benchmark.dataPath);
+//            ssh.close();
         }
     }
 
@@ -145,8 +145,8 @@ public class Ec2Experiments {
         Rt.p(result);
         Rt.write(new File(resultDir, "imru.txt"), result.getBytes());
         ssh.close();
-        cluster.cluster.printLogs(-1, 100);
-        cluster.cluster.stopHyrackCluster();
+//        cluster.cluster.printLogs(-1, 100);
+//        cluster.cluster.stopHyrackCluster();
     }
 
     void runSpark() throws Exception {
@@ -162,66 +162,8 @@ public class Ec2Experiments {
                 + "/test/result/kmeansspark_org.data")));
         Rt.p(result);
         Rt.write(new File(resultDir, "spark.txt"), result.getBytes());
-        cluster.stopSpark();
+//        cluster.stopSpark();
         ssh.close();
-    }
-
-    Thread memThread;
-    GnuPlot plot;
-
-    void startMem(String name) {
-        plot = new GnuPlot(resultDir, name, "time", "free (MB)");
-        String[] ss = new String[nodes.length];
-        //        ss[0] = "CC";
-        for (int i = 0; i < nodes.length; i++)
-            ss[i] = nodes[i].name;
-        plot.scale = false;
-        plot.setPlotNames(ss);
-        memThread = new Thread() {
-            @Override
-            public void run() {
-                try {
-                    int time = 0;
-                    while (true) {
-                        plot.startNewX(time++);
-                        for (int i = 0; i < monitor.nodes; i++)
-                            plot.addY(monitor.memory[i]);
-                        if (time > 0)
-                            plot.finish();
-                        Thread.sleep(1000);
-                    }
-                } catch (InterruptedException e) {
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        };
-        memThread.start();
-    }
-
-    void stopMem() throws IOException {
-        memThread.interrupt();
-    }
-
-    void runExperiments() throws Exception {
-        Rt.p("Spark: http://" + controller.publicIp + ":8080/");
-        Rt.p("IMRU: " + cluster.cluster.getAdminURL());
-        //        cluster.stopAll();
-        //        uploadExperimentCode();
-        //        startMem("generateDataMemory");
-        //        generateData();
-        //        stopMem();
-        //
-        //        cluster.stopAll();
-        //        startMem("imruMemory");
-        //        runImru();
-        //        stopMem();
-
-        cluster.stopAll();
-        Rt.sleep(10000);
-        startMem("sparkMemory");
-        runSpark();
-        stopMem();
     }
 
     static LocalCluster getEc2Cluster(int nodeCount) throws Exception {
@@ -247,35 +189,43 @@ public class Ec2Experiments {
         return new LocalCluster(ec2.cluster, "ubuntu");
     }
 
+    void runExperiments() throws Exception {
+        Rt.p("Spark: http://" + controller.publicIp + ":"
+                + cluster.getSparkPort() + "/");
+        Rt.p("IMRU: " + cluster.cluster.getAdminURL());
+        cluster.stopAll();
+        
+        uploadExperimentCode();
+        monitor.start(resultDir, "generateData", nodes);
+        generateData();
+        monitor.stop();
+
+        cluster.stopAll();
+        monitor.start(resultDir, "imru", nodes);
+        runImru();
+        monitor.stop();
+
+        cluster.stopAll();
+        monitor.start(resultDir, "spark", nodes);
+        runSpark();
+        monitor.stop();
+        
+        cluster.stopAll();
+    }
+
     public static void main(String[] args) throws Exception {
         monitor = new ClusterMonitor();
-        while (true) {
-            Rt.p(monitor.nodes);
-            boolean hasIp = true;
-            for (int i = 0; i < monitor.nodes; i++) {
-                if (monitor.ip[i] == null)
-                    hasIp = false;
-            }
-            if (hasIp && monitor.nodes == 8)
-                break;
-            Thread.sleep(500);
-        }
+        monitor.waitIp(8);
         String[] nodes = new String[monitor.nodes];
         for (int i = 0; i < nodes.length; i++)
             nodes[i] = monitor.ip[i];
-        //        String ip = getIp();
-        //        Rt.p(ip);
-        //        if (!ip.startsWith("192"))
-        //            throw new Error();
+        //        nodes = new String[] { "192.168.56.102" };
 
         File home = new File(System.getProperty("user.home"));
         File hyracksEc2Root = new File(home, "ucscImru/dist");
         LocalCluster cluster;
         String name;
         String userName = "ubuntu";
-
-        //        cluster= getEc2Cluster(5);
-        //name="ec2";
 
         HyracksNode.HYRACKS_PATH = "/home/" + userName + "/hyracks-ec2";
         name = "local2G0.5core";

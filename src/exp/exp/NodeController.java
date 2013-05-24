@@ -1,5 +1,6 @@
 package exp;
 
+import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -37,6 +38,50 @@ public class NodeController {
         return null;
     }
 
+    static float cpu() throws IOException {
+        Process process = Runtime.getRuntime().exec("mpstat");
+        String[] lines = new String(Rt.read(process.getInputStream()))
+                .split("\n");
+        String[] ss = lines[lines.length - 1].trim().split(" +");
+        Float idle = Float.parseFloat(ss[ss.length - 1]);
+        return 100 - idle;
+    }
+
+    static int memory() throws IOException {
+        Process process = Runtime.getRuntime().exec("free -m");
+        String[] lines = new String(Rt.read(process.getInputStream()))
+                .split("\n");
+        if (lines.length < 2)
+            return -1;
+        String[] ss = lines[1].split(" +");
+        return Integer.parseInt(ss[3]);
+    }
+
+    static long lastNetwork = -1;
+
+    static float network() throws IOException {
+        Process process = Runtime.getRuntime().exec("iptables -L -v -n");
+        String[] lines = new String(Rt.read(process.getInputStream()))
+                .split("\n");
+        long bytes = 0;
+        for (String line : lines) {
+            if (line.startsWith("Chain INPUT")
+                    || line.startsWith("Chain OUTPUT")) {
+                //                Rt.p(line);
+                line = line.substring(line.lastIndexOf(',') + 1).trim();
+                line = line.substring(0, line.indexOf(' '));
+                bytes += Long.parseLong(line);
+            }
+        }
+        if (lastNetwork < 0) {
+            lastNetwork = bytes;
+            return 0;
+        }
+        float usage = ((bytes - lastNetwork) / 1024f / 1024f);
+        lastNetwork = bytes;
+        return usage;
+    }
+
     public static void main(String[] args) throws Exception {
         String host = "192.168.56.101";
         if (args.length > 0)
@@ -48,15 +93,13 @@ public class NodeController {
                     DatagramSocket serverSocket = new DatagramSocket();
                     while (true) {
                         try {
-                            Process process = Runtime.getRuntime().exec(
-                                    "free -m");
-                            String[] lines = new String(Rt.read(process
-                                    .getInputStream())).split("\n");
-                            if (lines.length < 2)
+                            int mem = memory();
+                            if (mem < 0)
                                 continue;
-                            String[] ss = lines[1].split(" +");
-                            int mem = Integer.parseInt(ss[3]);
-                            String status = getIp("eth0") + " " + mem;
+                            float network = network();
+                            float cpu = cpu();
+                            String status = getIp("eth0") + " " + mem + " "
+                                    + network + " " + cpu;
                             byte[] bs = status.getBytes();
                             DatagramPacket sendPacket = new DatagramPacket(bs,
                                     bs.length, address, 6666);

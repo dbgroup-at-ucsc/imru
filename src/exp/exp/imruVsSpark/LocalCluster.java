@@ -1,5 +1,6 @@
 package exp.imruVsSpark;
 
+import java.io.File;
 import java.util.Stack;
 import java.util.Vector;
 import java.util.concurrent.Callable;
@@ -23,7 +24,18 @@ public class LocalCluster {
         home = "/home/" + user;
     }
 
+    public int getSparkPort() throws Exception {
+        int webport = 3000; //Spark didn't release the port for a long time
+        File file = new File("/tmp/cache/sparkWebUI.txt");
+        if (file.exists())
+            webport = Integer.parseInt(Rt.readFile(file)) + 2;
+        return webport;
+    }
+
     public void startSpark() throws Exception {
+        int webport = getSparkPort();
+        File file = new File("/tmp/cache/sparkWebUI.txt");
+        Rt.write(file, ("" + webport).getBytes());
         //rsync -vrultzCc  /home/wangrui/ucscImru/bin/exp/test0/ ubuntu@ec2-54-242-134-180.compute-1.amazonaws.com:"+home+"/test/bin/exp/test0/
         Rt.p("Starting spark");
         Rt.p("http://" + cluster.controller.publicIp + ":8080/");
@@ -38,12 +50,13 @@ public class LocalCluster {
             if (!hasMaster) {
                 String cmd = home
                         + "/spark-0.7.0/run spark.deploy.master.Master -i "
-                        + master + " -p 7077 > masterSpark.log 2>&1 &";
+                        + master + " -p 7077 --webui-port " + webport
+                        + " > masterSpark.log 2>&1 &";
                 Rt.np(cmd);
                 Rt.runCommand(sshCmd + node.internalIp + " \"" + cmd + "\"");
             }
         }
-        Rt.sleep(30000); //Must wait until UI start
+        Rt.sleep(3000); //Must wait until UI start
         for (int i = 0; i < cluster.nodes.length; i++) {
             HyracksNode node = cluster.nodes[i];
             Rt.p(node.getName());
@@ -54,12 +67,13 @@ public class LocalCluster {
                 String cmd = home
                         + "/spark-0.7.0/run spark.deploy.worker.Worker -i "
                         + node.internalIp + " spark://" + master
-                        + ":7077 --webui-port 8082  > slaveSpark.log 2>&1 &";
+                        + ":7077 --webui-port " + (webport + 1)
+                        + "  > slaveSpark.log 2>&1 &";
                 Rt.np(cmd);
                 Rt.runCommand(sshCmd + node.internalIp + " \"" + cmd + "\"");
             }
         }
-        Thread.sleep(30000);
+        Thread.sleep(3000);
     }
 
     public void stopSpark() throws Exception {

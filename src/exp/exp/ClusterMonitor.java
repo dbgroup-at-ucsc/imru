@@ -1,13 +1,21 @@
 package exp;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketException;
+
+import edu.uci.ics.hyracks.ec2.HyracksNode;
+import edu.uci.ics.hyracks.imru.util.Rt;
+import exp.test0.GnuPlot;
 
 public class ClusterMonitor {
     public int nodes;
     public String[] ip = new String[32];
     public int[] memory = new int[32];
+    public float[] network = new float[32]; //MB
+    public float[] cpu = new float[32];
 
     public ClusterMonitor() throws Exception {
         new Thread() {
@@ -23,17 +31,21 @@ public class ClusterMonitor {
                             serverSocket.receive(receivePacket);
                             byte[] bs = receivePacket.getData();
                             int len = receivePacket.getLength();
-                            //                            Rt.p("RECEIVED: " + receivePacket.getAddress()
-                            //                                    + " " + new String(bs, 0, len));
+                            Rt.p("RECEIVED: " + receivePacket.getAddress()
+                                    + " " + new String(bs, 0, len));
                             String s = new String(bs, 0, len);
                             String[] ss = s.split(" ");
                             String mac = ss[0];
                             int id = Integer.parseInt(mac.substring(mac
                                     .lastIndexOf(':') + 1));
-                            ip[id] = ss[1];
-                            memory[id] = Integer.parseInt(ss[2]);
-                            if (id >= nodes)
-                                nodes = id + 1;
+                            if (id < 255) {
+                                ip[id] = ss[1];
+                                memory[id] = Integer.parseInt(ss[2]);
+                                network[id] = Float.parseFloat(ss[3]);
+                                cpu[id] = Float.parseFloat(ss[4]);
+                                if (id >= nodes)
+                                    nodes = id + 1;
+                            }
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
@@ -69,7 +81,84 @@ public class ClusterMonitor {
         }
     }
 
+    Thread monitorThread;
+
+    public void start(File resultDir, String name, HyracksNode[] nodes) {
+        final GnuPlot memory = new GnuPlot(resultDir, name + "mem", "time",
+                "free (MB)");
+        final GnuPlot cpu = new GnuPlot(resultDir, name + "cpu", "time",
+                "usage (%)");
+        final GnuPlot network = new GnuPlot(resultDir, name + "net", "time",
+                "usage (MB)");
+        String[] ss = new String[nodes.length];
+        //        ss[0] = "CC";
+        for (int i = 0; i < nodes.length; i++)
+            ss[i] = nodes[i].name;
+        memory.scale = false;
+        memory.setPlotNames(ss);
+        cpu.scale = false;
+        cpu.setPlotNames(ss);
+        network.scale = false;
+        network.setPlotNames(ss);
+        monitorThread = new Thread() {
+            @Override
+            public void run() {
+                try {
+                    int time = 0;
+                    long nextTime = System.currentTimeMillis();
+                    while (true) {
+                        nextTime += 1000;
+                        memory.startNewX(time++);
+                        cpu.startNewX(time++);
+                        network.startNewX(time++);
+                        for (int i = 0; i < ClusterMonitor.this.nodes; i++) {
+                            memory.addY(ClusterMonitor.this.memory[i]);
+                            cpu.addY(ClusterMonitor.this.cpu[i]);
+                            network.addY(ClusterMonitor.this.network[i]);
+                        }
+                        if (time > 0) {
+                            memory.finish();
+                            cpu.finish();
+                            network.finish();
+                        }
+                        if (nextTime > System.currentTimeMillis())
+                            Thread.sleep(nextTime - System.currentTimeMillis());
+                    }
+                } catch (InterruptedException e) {
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+        monitorThread.start();
+    }
+
+    public void stop() throws IOException {
+        monitorThread.interrupt();
+    }
+
+    public void waitIp(int n) throws InterruptedException {
+        while (true) {
+            Rt.p(nodes);
+            boolean hasIp = true;
+            for (int i = 0; i < nodes; i++) {
+                if (ip[i] == null)
+                    hasIp = false;
+            }
+            if (hasIp && nodes == n)
+                return;
+            Thread.sleep(500);
+        }
+    }
+
     public static void main(String[] args) throws Exception {
-        new ClusterMonitor();
+        ClusterMonitor monitor = new ClusterMonitor();
+        //                monitor.waitIp(8);
+        Thread.sleep(2000);
+        for (int i = 0; i < monitor.nodes; i++) {
+            String p = monitor.ip[i] == null ? "" : monitor.ip[i]
+                    .substring(monitor.ip[i].lastIndexOf('.') + 1);
+            System.out.print(p + "\t");
+        }
     }
 }
