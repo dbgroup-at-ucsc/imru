@@ -3,6 +3,7 @@ package exp.imruVsSpark;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.ConnectException;
 import java.net.URL;
 import java.util.Stack;
 import java.util.Vector;
@@ -60,10 +61,12 @@ public class LocalCluster {
                 Rt.runCommand(sshCmd + node.internalIp + " \"" + cmd + "\"");
             }
         }
-        Rt.sleep(3000); //Must wait until UI start
+        Rt.sleep(3000);
+        waitSparkServer();
         cluster.executeOnAllNode(new NodeCallback() {
             @Override
             public void run(HyracksNode node) throws Exception {
+                Thread.sleep(100 * node.nodeId);
                 Rt.p(node.getName());
                 String result = Rt.runCommand(sshCmd + node.internalIp
                         + " \"ps aux | grep spark\"");
@@ -160,6 +163,28 @@ public class LocalCluster {
         throw new Error("Only " + hcc.getNodeControllerInfos().size() + " NC");
     }
 
+    public void waitSparkServer() throws Exception {
+        URL url = new URL("http://" + cluster.controller.publicIp + ":"
+                + getSparkPort() + "/");
+        InputStream in = null;
+        for (int i = 0; i < 100; i++) {
+            try {
+                java.net.URLConnection connection = url.openConnection();
+                in = connection.getInputStream();
+                break;
+            } catch (ConnectException e1) {
+                Thread.sleep(500);
+            } catch (java.io.IOException e1) {
+                e1.printStackTrace();
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
     public int getSparkWorkers() throws Exception {
         URL url = new URL("http://" + cluster.controller.publicIp + ":"
                 + getSparkPort() + "/");
@@ -173,7 +198,7 @@ public class LocalCluster {
                 System.err.println(e1.getClass().getSimpleName() + ": "
                         + e1.getMessage());
                 try {
-                    Thread.sleep(5000);
+                    Thread.sleep(500);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }

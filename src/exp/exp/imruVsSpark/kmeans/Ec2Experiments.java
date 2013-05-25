@@ -147,12 +147,12 @@ public class Ec2Experiments {
         monitor.start(figDir, "imru", nodes);
         ssh.execute("sh st.sh exp.imruVsSpark.kmeans.EC2Benchmark "
                 + controller.internalIp + " " + nodes.length + " true");
-        monitor.stop();
         String result = new String(Rt.read(ssh.get("/home/" + cluster.user
                 + "/test/result/kmeansimru_org.data")));
         Rt.p(result);
         Rt.write(new File(resultDir, "imru.txt"), result.getBytes());
         ssh.close();
+        monitor.stop();
         //        cluster.cluster.printLogs(-1, 100);
         //        cluster.cluster.stopHyrackCluster();
     }

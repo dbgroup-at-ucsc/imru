@@ -159,6 +159,8 @@ public class HyracksCluster {
         executeOnAllNode(new NodeCallback() {
             @Override
             public void run(HyracksNode node) throws Exception {
+                // Connection refused for some nodes
+                Thread.sleep(node.nodeId * 100);
                 node.startNC();
             }
         });
@@ -273,11 +275,26 @@ public class HyracksCluster {
         }
     }
 
-    public void printLogs(int id, int lines) throws Exception {
+    public void printLogs(int id, final int lines) throws Exception {
         if (id < 0) {
             controller.printLogs(lines);
-            for (HyracksNode node : nodes)
-                node.printLogs(lines);
+            final Object sync = new Object();
+            executeOnAllNode(new NodeCallback() {
+                @Override
+                public void run(HyracksNode node) throws Exception {
+                    SSH ssh = node.ssh();
+                    try {
+                        ssh.verbose = false;
+                        String result = ssh.execute("tail -n " + lines
+                                + " /tmp/t2/logs/" + node.name + ".log", true);
+                        synchronized (sync) {
+                            Rt.p(node.name + " log: %s", result);
+                        }
+                    } finally {
+                        ssh.close();
+                    }
+                }
+            });
         } else {
             HyracksNode node = nodeIdHash.get(id);
             if (node != null)

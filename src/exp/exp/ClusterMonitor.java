@@ -85,6 +85,7 @@ public class ClusterMonitor {
     boolean exit = false;
 
     public void start(final File resultDir, String name, HyracksNode[] nodes) {
+        exit = false;
         final GnuPlot memory = new GnuPlot(resultDir, name + "mem", "time",
                 "free (MB)");
         final GnuPlot cpu = new GnuPlot(resultDir, name + "cpu", "time",
@@ -105,21 +106,18 @@ public class ClusterMonitor {
             @Override
             public void run() {
                 try {
-                    int time = 0;
+                    long startTime = System.currentTimeMillis();
                     long nextTime = System.currentTimeMillis();
                     while (!exit) {
                         nextTime += 1000;
-                        memory.startNewX(time++);
-                        cpu.startNewX(time++);
-                        network.startNewX(time++);
+                        double time = (System.currentTimeMillis() - startTime) / 1000.0;
+                        memory.startNewX(time);
+                        cpu.startNewX(time);
+                        network.startNewX(time);
                         for (int i = 0; i < ClusterMonitor.this.nodes; i++) {
                             memory.addY(ClusterMonitor.this.memory[i]);
                             cpu.addY(ClusterMonitor.this.cpu[i]);
                             network.addY(ClusterMonitor.this.network[i]);
-                        }
-                        if (time > 0) {
-                            for (GnuPlot p : ps)
-                                p.finish();
                         }
                         if (nextTime > System.currentTimeMillis())
                             Thread.sleep(nextTime - System.currentTimeMillis());
@@ -130,13 +128,13 @@ public class ClusterMonitor {
                 } finally {
                     for (GnuPlot p : ps) {
                         try {
+                            p.finish();
                             String cmd = "epstopdf --outfile="
                                     + new File(resultDir.getParentFile(),
                                             p.name + ".pdf").getAbsolutePath()
                                     + " "
                                     + new File(resultDir, p.name + ".eps")
                                             .getAbsolutePath();
-                            Rt.p(cmd);
                             Rt.runAndShowCommand(cmd);
                         } catch (IOException e) {
                             e.printStackTrace();

@@ -238,7 +238,7 @@ public class Client<Model extends Serializable, Data extends Serializable> {
         control.modelFileName = options.modelFileNameHDFS;
         control.memCache = options.memCache;
         control.noDiskCache = options.noDiskCache;
-        control.frameSize=options.frameSize;
+        control.frameSize = options.frameSize;
         control.connect(options.host, options.port, options.imruPort,
                 options.hadoopConfPath, options.clusterConfPath);
         hcc = control.hcc;
@@ -474,11 +474,11 @@ public class Client<Model extends Serializable, Data extends Serializable> {
             timer.schedule(new TimerTask() {
                 @Override
                 public void run() {
-                    Rt
-                            .p("Uploading harFile "
-                                    + harFile2.length()
-                                    + ". If there is no response for a while, please check nc logs, there might be ClassNotFoundException.");
-
+                    Rt.p("Uploading harFile %,d. "
+                            + "If there is no response for a while, "
+                            + "please check nc logs, "
+                            + "there might be ClassNotFoundException.",
+                            harFile2.length());
                 }
             }, 2000);
         }
