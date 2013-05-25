@@ -47,7 +47,7 @@ public abstract class HyracksNode {
             //            rsync(new File(imruRoot, "imru/imru-example/data"),
             //                    "/home/ubuntu/fullstack_imru/imru/imru-example/data");
             ssh.execute("chmod -R u+x " + HYRACKS_PATH + "/bin/*");
-            ssh.execute("rm "+HYRACKS_PATH+"/lib/imru*");
+            ssh.execute("rm " + HYRACKS_PATH + "/lib/imru*");
             //            ssh.execute("chmod -R 755 /home/ubuntu/fullstack_imru/hyracks/hyracks-ec2/target/appassembler/bin/*");
             //            ssh.execute("chmod -R 755 /home/ubuntu/fullstack_imru/hyracks/hyracks-ec2/target/appassembler/bin/*");
             //            ec2.rsync(instance, ssh, hadoopRoot, "/home/ubuntu/hadoop-0.20.2");
@@ -56,7 +56,7 @@ public abstract class HyracksNode {
             ssh.close();
         }
     }
-    
+
     public void uploadData(String[] local, String[] remote) throws Exception {
         SSH ssh = ssh();
         try {
@@ -87,9 +87,12 @@ public abstract class HyracksNode {
         }
     }
 
+    public static boolean verbose = true;
+
     public void startNC() throws Exception {
         SSH ssh = ssh();
         try {
+            ssh.verbose = verbose;
             String result1 = ssh.execute("ps -ef|grep hyracksnc", true);
             if (result1.contains("java")) {
                 Rt.p(name + " is already running");
@@ -97,9 +100,10 @@ public abstract class HyracksNode {
             }
             Rt.p("starting " + name);
             ssh.execute("cd " + HYRACKS_PATH);
-            Rt.p("nohup bin/startncWithHostIpAndNodeId.sh "
-                    + cluster.controller.internalIp + " " + internalIp + " "
-                    + name);
+            if (verbose)
+                Rt.p("nohup bin/startncWithHostIpAndNodeId.sh "
+                        + cluster.controller.internalIp + " " + internalIp
+                        + " " + name);
             ssh.execute("nohup bin/startncWithHostIpAndNodeId.sh "
                     + cluster.controller.internalIp + " " + internalIp + " "
                     + name);
@@ -165,7 +169,8 @@ public abstract class HyracksNode {
                     ssh.execute("tail -n " + lines + " /tmp/t1/logs/cc.log");
                 }
                 Rt.np(name + " log:");
-                ssh.execute("tail -n " + lines + " /tmp/t2/logs/" + name + ".log");
+                ssh.execute("tail -n " + lines + " /tmp/t2/logs/" + name
+                        + ".log");
             } finally {
                 ssh.close();
             }

@@ -31,8 +31,8 @@ public class ClusterMonitor {
                             serverSocket.receive(receivePacket);
                             byte[] bs = receivePacket.getData();
                             int len = receivePacket.getLength();
-                            Rt.p("RECEIVED: " + receivePacket.getAddress()
-                                    + " " + new String(bs, 0, len));
+                            //                            Rt.p("RECEIVED: " + receivePacket.getAddress()
+                            //                                    + " " + new String(bs, 0, len));
                             String s = new String(bs, 0, len);
                             String[] ss = s.split(" ");
                             String mac = ss[0];
@@ -82,31 +82,32 @@ public class ClusterMonitor {
     }
 
     Thread monitorThread;
+    boolean exit = false;
 
-    public void start(File resultDir, String name, HyracksNode[] nodes) {
+    public void start(final File resultDir, String name, HyracksNode[] nodes) {
         final GnuPlot memory = new GnuPlot(resultDir, name + "mem", "time",
                 "free (MB)");
         final GnuPlot cpu = new GnuPlot(resultDir, name + "cpu", "time",
                 "usage (%)");
         final GnuPlot network = new GnuPlot(resultDir, name + "net", "time",
                 "usage (MB)");
+        final GnuPlot[] ps = new GnuPlot[] { memory, cpu, network };
         String[] ss = new String[nodes.length];
         //        ss[0] = "CC";
         for (int i = 0; i < nodes.length; i++)
             ss[i] = nodes[i].name;
-        memory.scale = false;
-        memory.setPlotNames(ss);
-        cpu.scale = false;
-        cpu.setPlotNames(ss);
-        network.scale = false;
-        network.setPlotNames(ss);
+        for (GnuPlot p : ps) {
+            p.scale = false;
+            p.colored = true;
+            p.setPlotNames(ss);
+        }
         monitorThread = new Thread() {
             @Override
             public void run() {
                 try {
                     int time = 0;
                     long nextTime = System.currentTimeMillis();
-                    while (true) {
+                    while (!exit) {
                         nextTime += 1000;
                         memory.startNewX(time++);
                         cpu.startNewX(time++);
@@ -117,9 +118,8 @@ public class ClusterMonitor {
                             network.addY(ClusterMonitor.this.network[i]);
                         }
                         if (time > 0) {
-                            memory.finish();
-                            cpu.finish();
-                            network.finish();
+                            for (GnuPlot p : ps)
+                                p.finish();
                         }
                         if (nextTime > System.currentTimeMillis())
                             Thread.sleep(nextTime - System.currentTimeMillis());
@@ -127,14 +127,31 @@ public class ClusterMonitor {
                 } catch (InterruptedException e) {
                 } catch (Exception e) {
                     e.printStackTrace();
+                } finally {
+                    for (GnuPlot p : ps) {
+                        try {
+                            String cmd = "epstopdf --outfile="
+                                    + new File(resultDir.getParentFile(),
+                                            p.name + ".pdf").getAbsolutePath()
+                                    + " "
+                                    + new File(resultDir, p.name + ".eps")
+                                            .getAbsolutePath();
+                            Rt.p(cmd);
+                            Rt.runAndShowCommand(cmd);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
                 }
             }
         };
         monitorThread.start();
     }
 
-    public void stop() throws IOException {
-        monitorThread.interrupt();
+    public void stop() throws Exception {
+        exit = true;
+        monitorThread.join();
+        //        monitorThread.interrupt();
     }
 
     public void waitIp(int n) throws InterruptedException {

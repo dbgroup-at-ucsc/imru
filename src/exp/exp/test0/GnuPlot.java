@@ -139,7 +139,7 @@ public class GnuPlot {
     public int startPointType = 0;
     public int pointSize = 0;
     public static String[] lineColors = { "red", "green", "blue", "black",
-            "#808000", "#FF00FF", "#00FFFF", };
+            "#808000", "#FF00FF", "#00FFFF", "#FFFF00", "#800080", "008080", };
 
     private String getStyle(int i) {
         if (isLineStyle()) {

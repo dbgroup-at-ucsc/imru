@@ -477,7 +477,7 @@ public class Client<Model extends Serializable, Data extends Serializable> {
                     Rt
                             .p("Uploading harFile "
                                     + harFile2.length()
-                                    + ". If there is not respond for a while, please check nc logs, there might be ClassNotFoundException.");
+                                    + ". If there is no response for a while, please check nc logs, there might be ClassNotFoundException.");
 
                 }
             }, 2000);

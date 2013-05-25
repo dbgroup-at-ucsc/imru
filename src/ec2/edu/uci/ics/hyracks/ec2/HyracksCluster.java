@@ -6,8 +6,12 @@ import java.io.IOException;
 import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.Vector;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 import edu.uci.ics.hyracks.api.client.HyracksConnection;
+import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.test0.GnuPlot;
 
 public class HyracksCluster {
@@ -126,16 +130,48 @@ public class HyracksCluster {
         return "http://" + controller.publicIp + ":16001/adminconsole/";
     }
 
+    static ExecutorService pool = java.util.concurrent.Executors
+            .newCachedThreadPool();
+
+    public void executeOnAllNode(final NodeCallback callback) throws Exception {
+        Vector<Future> fs = new Vector<Future>();
+        for (HyracksNode node : nodes) {
+            final HyracksNode node2 = node;
+            Future<Integer> f = pool.submit(new Callable<Integer>() {
+                @Override
+                public Integer call() throws Exception {
+                    try {
+                        callback.run(node2);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                    return 0;
+                }
+            });
+            fs.add(f);
+        }
+        for (Future f : fs)
+            f.get();
+    }
+
     public void startHyrackCluster() throws Exception {
         controller.startCC();
-        for (HyracksNode node : nodes)
-            node.startNC();
+        executeOnAllNode(new NodeCallback() {
+            @Override
+            public void run(HyracksNode node) throws Exception {
+                node.startNC();
+            }
+        });
     }
 
     public void stopHyrackCluster() throws Exception {
         controller.startCC();
-        for (HyracksNode node : nodes)
-            node.stopNC();
+        executeOnAllNode(new NodeCallback() {
+            @Override
+            public void run(HyracksNode node) throws Exception {
+                node.stopNC();
+            }
+        });
     }
 
     public void uploadData(String[] localAndremote) throws Exception {

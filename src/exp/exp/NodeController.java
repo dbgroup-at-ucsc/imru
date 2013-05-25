@@ -70,7 +70,17 @@ public class NodeController {
                 //                Rt.p(line);
                 line = line.substring(line.lastIndexOf(',') + 1).trim();
                 line = line.substring(0, line.indexOf(' '));
-                bytes += Long.parseLong(line);
+                if (line.endsWith("K"))
+                    bytes += 1024 * Long.parseLong(line.substring(0, line
+                            .length() - 1));
+                else if (line.endsWith("M"))
+                    bytes += 1024 * 1024 * Long.parseLong(line.substring(0,
+                            line.length() - 1));
+                else if (line.endsWith("G"))
+                    bytes += 1024 * 1024 * 1024 * Long.parseLong(line
+                            .substring(0, line.length() - 1));
+                else
+                    bytes += Long.parseLong(line);
             }
         }
         if (lastNetwork < 0) {
