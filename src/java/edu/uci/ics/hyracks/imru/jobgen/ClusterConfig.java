@@ -204,7 +204,7 @@ public class ClusterConfig {
                     sb.append(".");
                 sb.append(b & 0xFF);
             }
-            LOG.info(id + " " + sb);
+//            LOG.info(id + " " + sb);
             ncNames.add(id);
             List<String> ncs = ipToNcMapping.get(id);
             if (ncs == null) {

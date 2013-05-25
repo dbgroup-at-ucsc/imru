@@ -13,7 +13,7 @@ import exp.test0.GnuPlot;
 public class EC2Benchmark {
     public static String dataPath = "/home/ubuntu/data";//"/data/b/data/imru";
     public static int STARTC = 1;
-    public static int ENDC = 1;
+    public static int ENDC = 10;
     public static int BATCH = 100000;
     public static int STEPC = 3;
 

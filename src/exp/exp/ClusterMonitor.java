@@ -106,6 +106,7 @@ public class ClusterMonitor {
             @Override
             public void run() {
                 try {
+                    int id = 0;
                     long startTime = System.currentTimeMillis();
                     long nextTime = System.currentTimeMillis();
                     while (!exit) {
@@ -121,6 +122,25 @@ public class ClusterMonitor {
                         }
                         if (nextTime > System.currentTimeMillis())
                             Thread.sleep(nextTime - System.currentTimeMillis());
+                        id++;
+                        if (id > 10) {
+                            try {
+                                for (GnuPlot p : ps) {
+                                    p.finish();
+                                    String cmd = "epstopdf --outfile="
+                                            + new File(resultDir
+                                                    .getParentFile(), p.name
+                                                    + ".pdf").getAbsolutePath()
+                                            + " "
+                                            + new File(resultDir, p.name
+                                                    + ".eps").getAbsolutePath();
+                                    Rt.runAndShowCommand(cmd);
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                            id = 0;
+                        }
                     }
                 } catch (InterruptedException e) {
                 } catch (Exception e) {

@@ -93,8 +93,8 @@ public class Ec2Experiments {
                     EC2Benchmark.dataPath + "/imru" + aaa + ".txt",
                     EC2Benchmark.dataPath + "/spark" + aaa + ".txt");
             long dataTime = System.currentTimeMillis() - start;
-            Rt.p(aaa + "\t" + dataTime);
-            ps.println(aaa + "\t" + dataTime);
+            Rt.p(aaa + "\t" + dataTime/1000.0);
+            ps.println(aaa + "\t" + dataTime/1000.0);
         }
         ps.close();
         monitor.stop();
