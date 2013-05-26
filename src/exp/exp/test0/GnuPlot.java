@@ -12,7 +12,7 @@ import edu.uci.ics.hyracks.imru.util.Rt;
  */
 public class GnuPlot {
     public static boolean uniform = false;
-    File dir;
+    public File dir;
     public String name;
     public String xName;
     String yName;

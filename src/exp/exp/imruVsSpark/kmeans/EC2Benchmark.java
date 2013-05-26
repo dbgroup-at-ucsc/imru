@@ -19,7 +19,6 @@ public class EC2Benchmark {
 
     public static void exp(String master, int nodeCount, String type)
             throws Exception {
-        boolean mem = false;
         String user = "ubuntu";
         //        Client.disableLogging();
         DataGenerator.TEMPLATE = "/home/ubuntu/test/exp_data/product_name";
@@ -65,7 +64,7 @@ public class EC2Benchmark {
             //            start = System.currentTimeMillis();
             //            SparseKMeans.run();
             //            long bareTime = System.currentTimeMillis() - start;
-            if ("imru".equals(type)) {
+            if ("imruDisk".equals(type)) {
                 Rt.p("running IMRU in disk " + aaa);
                 start = System.currentTimeMillis();
                 int processed2 = IMRUKMeans.runEc2(master, nodeCount, dataSize,
@@ -78,9 +77,7 @@ public class EC2Benchmark {
             } else if ("imruMem".equals(type)) {
                 Rt.p("running IMRU in memory " + aaa);
                 start = System.currentTimeMillis();
-                int processed1 = 0;
-                if (mem)
-                    processed1 = IMRUKMeans.runEc2(master, nodeCount, dataSize,
+                int processed1 = IMRUKMeans.runEc2(master, nodeCount, dataSize,
                             dataPath + "/imru" + aaa + ".txt", true, false);
                 long imruMemTime = System.currentTimeMillis() - start;
 

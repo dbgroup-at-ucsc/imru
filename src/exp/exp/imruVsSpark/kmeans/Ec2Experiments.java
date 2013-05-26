@@ -34,10 +34,13 @@ public class Ec2Experiments {
 
     public Ec2Experiments(LocalCluster cluster, String name) {
         this.cluster = cluster;
-        controller = cluster.cluster.controller;
-        nodes = cluster.cluster.nodes;
-        resultDir = new File("result/" + name + "_" + nodes.length + "nodes");
-        resultDir.mkdir();
+        if (cluster != null) {
+            controller = cluster.cluster.controller;
+            nodes = cluster.cluster.nodes;
+            resultDir = new File("result/" + name + "_" + nodes.length
+                    + "nodes");
+            resultDir.mkdir();
+        }
         figDir = new File(resultDir, "rawData");
         figDir.mkdir();
     }
@@ -138,20 +141,21 @@ public class Ec2Experiments {
     }
 
     void runImru(boolean mem) throws Exception {
+        String job = mem ? "imruMem" : "imruDisk";
         Rt.p("testing IMRU");
         cluster.cluster.startHyrackCluster();
         Thread.sleep(5000);
         cluster.checkHyracks();
         SSH ssh = controller.ssh();
         ssh.execute("cd test;");
-        monitor.start(figDir, "imru", nodes);
+        monitor.start(figDir, job, nodes);
+        ssh.execute("rm result/*");
         ssh.execute("sh st.sh exp.imruVsSpark.kmeans.EC2Benchmark "
-                + controller.internalIp + " " + nodes.length + " "
-                + (mem ? "imruMem" : "imru"));
+                + controller.internalIp + " " + nodes.length + " " + job);
         String result = new String(Rt.read(ssh.get("/home/" + cluster.user
-                + "/test/result/kmeansimru_org.data")));
+                + "/test/result/kmeans" + job + "_org.data")));
         Rt.p(result);
-        Rt.write(new File(resultDir, "imru.txt"), result.getBytes());
+        Rt.write(new File(resultDir, job + ".txt"), result.getBytes());
         ssh.close();
         monitor.stop();
         //        cluster.cluster.printLogs(-1, 100);
@@ -165,6 +169,7 @@ public class Ec2Experiments {
         SSH ssh = controller.ssh();
         ssh.execute("cd test;");
         monitor.start(figDir, "spark", nodes);
+        ssh.execute("rm result/*");
         ssh.execute("sh st.sh exp.imruVsSpark.kmeans.EC2Benchmark "
                 + controller.internalIp + " " + nodes.length + " spark");
         monitor.stop();
@@ -201,6 +206,66 @@ public class Ec2Experiments {
         return new LocalCluster(ec2.cluster, "ubuntu");
     }
 
+    void showResult() throws Exception {
+        GnuPlot plot = new GnuPlot(new File("result"), "kmeans",
+                "Data points (10^5)", "Time (seconds)");
+        plot.extra = "set title \"K=" + DataGenerator.DEBUG_K + ",Iteration="
+                + DataGenerator.DEBUG_ITERATIONS + "\"";
+        plot.setPlotNames("Generate Data", "Spark", "IMRU-mem", "IMRU-disk");
+        plot.startPointType = 1;
+        plot.pointSize = 1;
+        plot.scale = false;
+
+        String[] data = Rt.readFile(new File(resultDir, "generateTime.txt"))
+                .split("\n");
+        String[] imruDisk = Rt.readFile(new File(resultDir, "imruDisk.txt"))
+                .split("\n");
+        String[] imruMem = Rt.readFile(new File(resultDir, "imruMem.txt"))
+                .split("\n");
+        String[] spark = Rt.readFile(new File(resultDir, "spark.txt")).split(
+                "\n");
+        String[] dataSizes = new String[data.length];
+        String[] processed = new String[data.length];
+        for (int i = 0; i < data.length; i++) {
+            String[] ss1 = data[i].split("\t");
+            int dataSize = Integer.parseInt(ss1[0]);
+            dataSizes[i] = ss1[0] + ".0";
+            plot.startNewX(dataSize);
+            plot.addY(Double.parseDouble(ss1[1]));
+
+            String[] ss2 = spark[i].split("\t");
+            if (!ss2[0].equals(dataSizes[i]))
+                throw new Error(spark[i] + " " + data[i]);
+            plot.addY(Double.parseDouble(ss2[1]));
+            processed[i] = ss2[2];
+
+            String[] ss3 = imruMem[i].split("\t");
+            if (!ss3[0].equals(dataSizes[i]))
+                throw new Error();
+            plot.addY(Double.parseDouble(ss3[1]));
+            if (!ss3[2].equals(processed[i]))
+                throw new Error();
+
+            String[] ss4 = imruDisk[i].split("\t");
+            if (!ss4[0].equals(dataSizes[i]))
+                throw new Error();
+            plot.addY(Double.parseDouble(ss4[1]));
+            if (!ss4[2].equals(processed[i]))
+                throw new Error();
+        }
+
+        plot.finish();
+
+        String cmd = "epstopdf --outfile="
+                + new File(resultDir, plot.name + ".pdf").getAbsolutePath()
+                + " "
+                + new File(plot.dir, plot.name + ".eps").getAbsolutePath();
+
+        Rt.runAndShowCommand(cmd);
+//        plot.show();
+        System.exit(0);
+    }
+
     void runExperiments() throws Exception {
         Rt.p("Spark: http://" + controller.publicIp + ":"
                 + cluster.getSparkPort() + "/");
@@ -223,6 +288,9 @@ public class Ec2Experiments {
     }
 
     public static void main(String[] args) throws Exception {
+        Ec2Experiments exp2 = new Ec2Experiments(null, null);
+        exp2.resultDir = new File("result/local2G0.5core_" + 8 + "nodes");
+        exp2.showResult();
         try {
             monitor = new ClusterMonitor();
             String[] nodes = new String[8];
@@ -253,6 +321,7 @@ public class Ec2Experiments {
                 exp.uploadExperimentCode();
             else
                 exp.runExperiments();
+            exp.showResult();
         } catch (Throwable e) {
             e.printStackTrace();
         } finally {
