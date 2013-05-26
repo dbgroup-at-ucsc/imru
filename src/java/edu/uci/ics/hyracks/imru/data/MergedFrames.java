@@ -1,13 +1,20 @@
 package edu.uci.ics.hyracks.imru.data;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.nio.ByteBuffer;
 import java.util.Hashtable;
 import java.util.LinkedList;
 
+import edu.uci.ics.hyracks.api.comm.FrameHelper;
 import edu.uci.ics.hyracks.api.comm.IFrameWriter;
 import edu.uci.ics.hyracks.api.context.IHyracksTaskContext;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.dataflow.common.comm.util.FrameUtils;
+import edu.uci.ics.hyracks.imru.api.IMRUContext;
+import edu.uci.ics.hyracks.imru.dataflow.IMRUSerialize;
+import edu.uci.ics.hyracks.imru.util.Rt;
 
 /**
  * Split binary data into many data frames
@@ -20,12 +27,13 @@ import edu.uci.ics.hyracks.dataflow.common.comm.util.FrameUtils;
  * @author Rui Wang
  */
 public class MergedFrames {
-    public static final int HEADER = 20;
-    public static final int SOURCE_OFFSET = 0;
-    public static final int TARGET_OFFSET = 4;
-    public static final int REPLY_OFFSET = 8;
-    public static final int SIZE_OFFSET = 12;
-    public static final int POSITION_OFFSET = 16;
+    public static final int HEADER = 24;
+    public static final int TAIL = 20;
+    public static final int SOURCE_OFFSET = 4;
+    public static final int TARGET_OFFSET = 8;
+    public static final int REPLY_OFFSET = 12;
+    public static final int SIZE_OFFSET = 16;
+    public static final int POSITION_OFFSET = 20;
 
     public int sourceParition;
     public int targetParition;
@@ -50,11 +58,13 @@ public class MergedFrames {
         queue.add(frame);
         int size = buffer.getInt(SIZE_OFFSET);
         int position = buffer.getInt(POSITION_OFFSET);
-        //            Rt.p(position + "/" + size);
+//        if (position == 0)
+//            Rt.p(position + "/" + size);
         if (position + frameSize - HEADER < size)
             return null;
         hash.remove(queue);
         byte[] bs = deserializeFromChunks(ctx.getFrameSize(), queue);
+//        Rt.p("recv " + bs.length + " " + deserialize(bs));
         MergedFrames merge = new MergedFrames();
         merge.data = bs;
         merge.sourceParition = sourcePartition;
@@ -73,10 +83,16 @@ public class MergedFrames {
             if (bs == null)
                 bs = new byte[size];
             else if (size != bs.length)
-                throw new Error();
-            if (position != curPosition)
-                throw new Error(position + " " + curPosition);
-            int len = Math.min(bs.length - curPosition, frameSize - HEADER);
+                throw new HyracksDataException();
+            if (position != curPosition) {
+                Rt.p(size);
+                Rt.p(position);
+                Rt.p(buffer);
+                //                System.exit(0);
+                throw new HyracksDataException(position + " " + curPosition);
+            }
+            int len = Math.min(bs.length - curPosition, frameSize - HEADER
+                    - TAIL);
             System.arraycopy(buffer.array(), HEADER, bs, curPosition, len);
             curPosition += len;
             if (curPosition >= bs.length)
@@ -85,13 +101,52 @@ public class MergedFrames {
         return bs;
     }
 
-    public static void serializeToFrames(ByteBuffer frame, int frameSize,
-            IFrameWriter writer, byte[] objectData, int sourcePartition,
-            int targetPartition, int replyPartition)
+    public static void serializeToFrames(IMRUContext ctx, IFrameWriter writer,
+            byte[] objectData, int partition) throws HyracksDataException {
+        ByteBuffer frame = ctx.allocateFrame();
+        serializeToFrames(ctx, frame, ctx.getFrameSize(), writer, objectData,
+                partition, 0, partition);
+    }
+
+    public static Object deserialize(byte[] bytes) {
+        try {
+            ObjectInputStream ois = new ObjectInputStream(
+                    new ByteArrayInputStream(bytes));
+            return ois.readObject();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private static void setUpFrame(IMRUContext ctx, ByteBuffer encapsulatedChunk) {
+        // Set up the proper tuple structure in the frame:
+        // Tuple count
+        encapsulatedChunk.position(FrameHelper.getTupleCountOffset(ctx
+                .getFrameSize()));
+        encapsulatedChunk.putInt(1);
+        // Tuple end offset
+        encapsulatedChunk.position(FrameHelper.getTupleCountOffset(ctx
+                .getFrameSize()) - 4);
+        encapsulatedChunk.putInt(FrameHelper.getTupleCountOffset(ctx
+                .getFrameSize()) - 4);
+        // Field end offset
+        encapsulatedChunk.position(0);
+        encapsulatedChunk.putInt(FrameHelper.getTupleCountOffset(ctx
+                .getFrameSize()) - 4);
+        encapsulatedChunk.position(0);
+    }
+
+    public static void serializeToFrames(IMRUContext ctx, ByteBuffer frame,
+            int frameSize, IFrameWriter writer, byte[] objectData,
+            int sourcePartition, int targetPartition, int replyPartition)
             throws HyracksDataException {
         int position = 0;
+        //        Rt.p("send " + objectData.length + " " + deserialize(objectData));
         while (position < objectData.length) {
-            frame.position(0);
+            if (ctx != null)
+                setUpFrame(ctx, frame);
+            frame.position(SOURCE_OFFSET);
             frame.putInt(sourcePartition);
             frame.putInt(targetPartition);
             frame.putInt(replyPartition);
@@ -99,10 +154,15 @@ public class MergedFrames {
             frame.putInt(position);
             //            Rt.p(position);
             int length = Math.min(objectData.length - position, frameSize
-                    - HEADER);
+                    - HEADER - TAIL);
             frame.put(objectData, position, length);
+            frame.position(frameSize - TAIL);
+            frame.putInt(0); //tuple count
             frame.position(frameSize);
             frame.flip();
+            //            if (position == 0)
+            //                Rt.p("send 0");
+            //                Rt.p(frame);
             FrameUtils.flushFrame(frame, writer);
             position += length;
         }

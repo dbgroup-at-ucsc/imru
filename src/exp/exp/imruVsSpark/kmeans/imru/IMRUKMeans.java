@@ -46,7 +46,7 @@ public class IMRUKMeans {
             System.out.println("Connecting to " + Client.getLocalIp());
         } else {
             // debugging mode, everything run in one process
-            cmdline += "-host localhost -port 3099 -debug -disable-logging";
+            cmdline += "-host localhost -port 3099 -debugNodes 5 -debug -disable-logging";
             if (memCache)
                 cmdline += " -mem-cache";
             if (noDiskCache)
@@ -54,7 +54,14 @@ public class IMRUKMeans {
             System.out.println("Starting hyracks cluster");
         }
 
-        cmdline += " -example-paths /data/b/data/imru/productName.txt";
+        cmdline += " -agg-tree-type nary -fan-in 2";
+//        cmdline += " -frame-size " + (16 * 1024 * 1024);
+        cmdline += " -example-paths"
+                + " NC0:/data/b/data/imru/productName.txt,"
+                + "NC1:/data/b/data/imru/productName.txt,"
+                + "NC2:/data/b/data/imru/productName.txt,"
+                + "NC3:/data/b/data/imru/productName.txt,"
+                + "NC4:/data/b/data/imru/productName.txt";
         System.out.println("Using command line: " + cmdline);
         String[] args = cmdline.split(" ");
 
@@ -79,7 +86,7 @@ public class IMRUKMeans {
 
         String cmdline = "";
         cmdline += "-host " + cc + " -port 3099";
-        cmdline += " -frame-size " + (16 * 1024 * 1024);
+        //        cmdline += " -frame-size " + (16 * 1024 * 1024);
         cmdline += " -agg-tree-type nary -fan-in 2";
         System.out.println("Connecting to " + Client.getLocalIp());
         //            cmdline += "-host localhost -port 3099 -debug -disable-logging";
@@ -164,7 +171,11 @@ public class IMRUKMeans {
 
     public static void main(String[] args) throws Exception {
         //        generateData(1000, 2);
-        run(true, false);
+        try {
+            run(true, false);
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
         System.exit(0);
     }
 }

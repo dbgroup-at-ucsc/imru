@@ -3,6 +3,7 @@ package edu.uci.ics.hyracks.ec2;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.net.Socket;
 import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.Vector;
@@ -156,6 +157,21 @@ public class HyracksCluster {
 
     public void startHyrackCluster() throws Exception {
         controller.startCC();
+        for (int i = 0; i < 100; i++) {
+            try {
+                Socket hcc = new Socket(controller.publicIp, 3099);
+                hcc.close();
+                break;
+            } catch (java.net.ConnectException e1) {
+                if (!"Connection refused".equals(e1.getMessage()))
+                    Rt
+                            .p(e1.getClass().getSimpleName() + ": "
+                                    + e1.getMessage());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            Thread.sleep(100);
+        }
         executeOnAllNode(new NodeCallback() {
             @Override
             public void run(HyracksNode node) throws Exception {

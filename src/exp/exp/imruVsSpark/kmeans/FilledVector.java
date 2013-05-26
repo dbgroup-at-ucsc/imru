@@ -17,6 +17,7 @@ package exp.imruVsSpark.kmeans;
 
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.UUID;
 
 import edu.uci.ics.hyracks.imru.util.Rt;
 

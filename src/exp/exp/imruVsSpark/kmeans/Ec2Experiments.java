@@ -93,8 +93,8 @@ public class Ec2Experiments {
                     EC2Benchmark.dataPath + "/imru" + aaa + ".txt",
                     EC2Benchmark.dataPath + "/spark" + aaa + ".txt");
             long dataTime = System.currentTimeMillis() - start;
-            Rt.p(aaa + "\t" + dataTime/1000.0);
-            ps.println(aaa + "\t" + dataTime/1000.0);
+            Rt.p(aaa + "\t" + dataTime / 1000.0);
+            ps.println(aaa + "\t" + dataTime / 1000.0);
         }
         ps.close();
         monitor.stop();
@@ -137,7 +137,7 @@ public class Ec2Experiments {
         ssh.close();
     }
 
-    void runImru() throws Exception {
+    void runImru(boolean mem) throws Exception {
         Rt.p("testing IMRU");
         cluster.cluster.startHyrackCluster();
         Thread.sleep(5000);
@@ -146,7 +146,8 @@ public class Ec2Experiments {
         ssh.execute("cd test;");
         monitor.start(figDir, "imru", nodes);
         ssh.execute("sh st.sh exp.imruVsSpark.kmeans.EC2Benchmark "
-                + controller.internalIp + " " + nodes.length + " true");
+                + controller.internalIp + " " + nodes.length + " "
+                + (mem ? "imruMem" : "imru"));
         String result = new String(Rt.read(ssh.get("/home/" + cluster.user
                 + "/test/result/kmeansimru_org.data")));
         Rt.p(result);
@@ -165,7 +166,7 @@ public class Ec2Experiments {
         ssh.execute("cd test;");
         monitor.start(figDir, "spark", nodes);
         ssh.execute("sh st.sh exp.imruVsSpark.kmeans.EC2Benchmark "
-                + controller.internalIp + " " + nodes.length + " false");
+                + controller.internalIp + " " + nodes.length + " spark");
         monitor.stop();
         ssh.execute("cat " + "/home/" + cluster.user + "/masterSpark.log");
         ssh.execute("cat " + "/home/" + cluster.user + "/slaveSpark.log");
@@ -207,10 +208,13 @@ public class Ec2Experiments {
         cluster.stopAll();
 
         uploadExperimentCode();
-        generateData();
+        //        generateData();
 
         cluster.stopAll();
-        runImru();
+        runImru(true);
+
+        cluster.stopAll();
+        runImru(false);
 
         cluster.stopAll();
         runSpark();
@@ -241,6 +245,8 @@ public class Ec2Experiments {
             String cc = nodes[0];
             cluster = new LocalCluster(new HyracksCluster(cc, nodes, userName,
                     new File(home, ".ssh/id_rsa")), userName);
+            //            cluster.cluster.printLogs(-1, 500);
+            //            System.exit(0);
             //        cluster.cluster.install(hyracksEc2Root);
             Ec2Experiments exp = new Ec2Experiments(cluster, name);
             if (nodes.length == 1)

@@ -157,9 +157,9 @@ public class SpreadOD extends AbstractSingleActivityOperatorDescriptor {
                 //                        node.print(0);
                 //                        Rt.p(to.nodes.get(partition).name + " " + new IMRUContext(ctx).getNodeId() + " to " + node.name);
                 //                buffer.putInt(0, n.partitionInThisLevel);
-                MergedFrames.serializeToFrames(frame, frameSize, writer, bs,
-                        node.partitionInThisLevel, n.partitionInThisLevel,
-                        node.partitionInThisLevel);
+                MergedFrames.serializeToFrames(imruContext, frame, frameSize,
+                        writer, bs, node.partitionInThisLevel,
+                        n.partitionInThisLevel, node.partitionInThisLevel);
                 if (last)
                     throw new Error();
                 //                writer.nextFrame(buffer);

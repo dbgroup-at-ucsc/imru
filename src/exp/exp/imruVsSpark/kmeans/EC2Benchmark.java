@@ -17,7 +17,7 @@ public class EC2Benchmark {
     public static int BATCH = 100000;
     public static int STEPC = 3;
 
-    public static void exp(String master, int nodeCount, boolean imru)
+    public static void exp(String master, int nodeCount, String type)
             throws Exception {
         boolean mem = false;
         String user = "ubuntu";
@@ -28,15 +28,11 @@ public class EC2Benchmark {
             DataGenerator.TEMPLATE = "/home/wangrui/test/exp_data/product_name";
         }
         new File("result").mkdir();
-        GnuPlot plot = new GnuPlot(new File("result"), "kmeans"
-                + (imru ? "imru" : "spark"), "Data points (10^5)",
-                "Time (seconds)");
+        GnuPlot plot = new GnuPlot(new File("result"), "kmeans" + type,
+                "Data points (10^5)", "Time (seconds)");
         plot.extra = "set title \"K=" + DataGenerator.DEBUG_K + ",Iteration="
                 + DataGenerator.DEBUG_ITERATIONS + "\"";
-        if (imru) {
-            plot.setPlotNames("IMRU-mem", "IMRU-disk", "data1", "data2");
-        } else
-            plot.setPlotNames("Spark", "data");
+        plot.setPlotNames(type, "data");
         plot.startPointType = 1;
         plot.pointSize = 1;
         //        plot.reloadData();
@@ -69,7 +65,17 @@ public class EC2Benchmark {
             //            start = System.currentTimeMillis();
             //            SparseKMeans.run();
             //            long bareTime = System.currentTimeMillis() - start;
-            if (imru) {
+            if ("imru".equals(type)) {
+                Rt.p("running IMRU in disk " + aaa);
+                start = System.currentTimeMillis();
+                int processed2 = IMRUKMeans.runEc2(master, nodeCount, dataSize,
+                        dataPath + "/imru" + aaa + ".txt", false, false);
+                long imruDiskTime = System.currentTimeMillis() - start;
+                plot.startNewX(DataGenerator.DEBUG_DATA_POINTS / 100000);
+                //                plot.addY(dataTime / 1000.0);
+                plot.addY(imruDiskTime / 1000.0);
+                plot.addY(processed2);
+            } else if ("imruMem".equals(type)) {
                 Rt.p("running IMRU in memory " + aaa);
                 start = System.currentTimeMillis();
                 int processed1 = 0;
@@ -81,19 +87,11 @@ public class EC2Benchmark {
                 //            start = System.currentTimeMillis();
                 //            IMRUKMeans.runEc2(master, false, true);
                 //            long imruParseTime = System.currentTimeMillis() - start;
-
-                Rt.p("running IMRU in disk " + aaa);
-                start = System.currentTimeMillis();
-                int processed2 = IMRUKMeans.runEc2(master, nodeCount, dataSize,
-                        dataPath + "/imru" + aaa + ".txt", false, false);
-                long imruDiskTime = System.currentTimeMillis() - start;
                 plot.startNewX(DataGenerator.DEBUG_DATA_POINTS / 100000);
                 //                plot.addY(dataTime / 1000.0);
                 plot.addY(imruMemTime / 1000.0);
-                plot.addY(imruDiskTime / 1000.0);
                 plot.addY(processed1);
-                plot.addY(processed2);
-            } else {
+            } else if ("spark".equals(type)) {
                 Rt.p("running spark " + aaa);
                 start = System.currentTimeMillis();
                 int processed = SparkKMeans.run(master, dataSize, "/home/"
@@ -104,6 +102,8 @@ public class EC2Benchmark {
                 //                plot.addY(dataTime / 1000.0);
                 plot.addY(sparkTime / 1000.0);
                 plot.addY(processed);
+            } else {
+                throw new Error();
             }
             plot.finish();
         }
@@ -111,6 +111,6 @@ public class EC2Benchmark {
     }
 
     public static void main(String[] args) throws Exception {
-        exp(args[0], Integer.parseInt(args[1]), Boolean.parseBoolean(args[2]));
+        exp(args[0], Integer.parseInt(args[1]), args[2]);
     }
 }

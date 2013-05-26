@@ -90,6 +90,7 @@ public class SKMeansJob implements
             result.centroids[rs.belong].add(dataPoint);
             result.distanceSum += rs.dis;
         }
+//        Rt.p(result.count());
         return result;
     }
 
@@ -100,8 +101,11 @@ public class SKMeansJob implements
     public FilledVectors reduce(IMRUContext ctx, Iterator<FilledVectors> input)
             throws IMRUDataException {
         FilledVectors combined = new FilledVectors(k, dimensions);
-        while (input.hasNext())
-            combined.add(input.next());
+        while (input.hasNext()) {
+            FilledVectors result=input.next();
+//            Rt.p(result.count());
+            combined.add(result);
+        }
         return combined;
     }
 
@@ -113,6 +117,7 @@ public class SKMeansJob implements
             SKMeansModel model) throws IMRUDataException {
         FilledVectors combined = reduce(ctx, input);
         boolean changed = model.set(combined);
+//        Rt.p(model.totalExamples);
         model.roundsRemaining--;
         if (!changed)
             model.roundsRemaining = 0;
@@ -126,6 +131,7 @@ public class SKMeansJob implements
      */
     @Override
     public boolean shouldTerminate(SKMeansModel model) {
+//        Rt.p(model.totalExamples);
         return model.roundsRemaining <= 0;
     }
 }

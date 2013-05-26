@@ -18,6 +18,7 @@ package edu.uci.ics.hyracks.imru.dataflow;
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -35,6 +36,8 @@ import edu.uci.ics.hyracks.imru.api.ASyncIO;
 import edu.uci.ics.hyracks.imru.api.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
 import edu.uci.ics.hyracks.imru.data.ChunkFrameHelper;
+import edu.uci.ics.hyracks.imru.data.MergedFrames;
+import edu.uci.ics.hyracks.imru.util.Rt;
 
 /**
  * Evaluates the reduce function in an iterative map reduce update job.
@@ -73,8 +76,9 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
             int nPartitions) throws HyracksDataException {
         return new AbstractUnaryInputUnaryOutputOperatorNodePushable() {
             IMRUReduceContext imruContext;
-            private final ChunkFrameHelper chunkFrameHelper;
-            private final List<List<ByteBuffer>> bufferedChunks;
+            //            private final ChunkFrameHelper chunkFrameHelper;
+            //            private final List<List<ByteBuffer>> bufferedChunks;
+            Hashtable<Integer, LinkedList<ByteBuffer>> hash = new Hashtable<Integer, LinkedList<ByteBuffer>>();
             public String name;
             private ASyncIO<byte[]> io;
             Future future;
@@ -82,17 +86,18 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
             {
                 this.name = ReduceOperatorDescriptor.this.getDisplayName()
                         + partition;
-                this.chunkFrameHelper = new ChunkFrameHelper(ctx);
-                this.bufferedChunks = new ArrayList<List<ByteBuffer>>();
+                //                this.chunkFrameHelper = new ChunkFrameHelper(ctx);
+                //                this.bufferedChunks = new ArrayList<List<ByteBuffer>>();
             }
 
             @Override
             public void open() throws HyracksDataException {
                 writer.open();
-                imruContext = new IMRUReduceContext(chunkFrameHelper
-                        .getContext(), name, isLocal, level);
+                imruContext = new IMRUReduceContext(ctx, name, isLocal, level);
+                //                imruContext = new IMRUReduceContext(chunkFrameHelper
+                //                        .getContext(), name, isLocal, level);
+                //                writer = chunkFrameHelper.wrapWriter(writer, partition);
 
-                writer = chunkFrameHelper.wrapWriter(writer, partition);
                 io = new ASyncIO<byte[]>(1);
                 future = IMRUSerialize.threadPool.submit(new Runnable() {
                     @Override
@@ -102,8 +107,12 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
                         try {
                             imruSpec.reduce(imruContext, input, out);
                             byte[] objectData = out.toByteArray();
-                            IMRUSerialize.serializeToFrames(imruContext,
-                                    writer, objectData);
+//                            Rt.p("reduce send "
+//                                    + MergedFrames.deserialize(objectData));
+                            MergedFrames.serializeToFrames(imruContext, writer,
+                                    objectData, partition);
+                            //                            IMRUSerialize.serializeToFrames(imruContext,
+                            //                                    writer, objectData);
                         } catch (HyracksDataException e) {
                             e.printStackTrace();
                             try {
@@ -120,19 +129,27 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
             public void nextFrame(ByteBuffer encapsulatedChunk)
                     throws HyracksDataException {
                 try {
-                    ByteBuffer chunk = chunkFrameHelper
-                            .extractChunk(encapsulatedChunk);
-                    int senderPartition = chunkFrameHelper
-                            .getPartition(encapsulatedChunk);
-                    boolean isLastChunk = chunkFrameHelper
-                            .isLastChunk(encapsulatedChunk);
-                    enqueueChunk(chunk, senderPartition);
-                    if (isLastChunk) {
-                        byte[] data = IMRUSerialize.deserializeFromChunks(
-                                imruContext, bufferedChunks
-                                        .remove(senderPartition));
-                        io.add(data);
+//                    Rt.p("reduce frame");
+                    MergedFrames frames = MergedFrames.nextFrame(ctx,
+                            encapsulatedChunk, hash);
+                    if (frames != null) {
+//                        Rt.p("reduce recv "
+//                                + MergedFrames.deserialize(frames.data));
+                        io.add(frames.data);
                     }
+                    //                    ByteBuffer chunk = chunkFrameHelper
+                    //                            .extractChunk(encapsulatedChunk);
+                    //                    int senderPartition = chunkFrameHelper
+                    //                            .getPartition(encapsulatedChunk);
+                    //                    boolean isLastChunk = chunkFrameHelper
+                    //                            .isLastChunk(encapsulatedChunk);
+                    //                    enqueueChunk(chunk, senderPartition);
+                    //                    if (isLastChunk) {
+                    //                        byte[] data = IMRUSerialize.deserializeFromChunks(
+                    //                                imruContext, bufferedChunks
+                    //                                        .remove(senderPartition));
+                    //                        io.add(data);
+                    //                    }
                 } catch (HyracksDataException e) {
                     fail();
                     throw e;
@@ -144,7 +161,7 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
 
             @Override
             public void fail() throws HyracksDataException {
-                writer.fail();
+                //                writer.fail();
             }
 
             @Override
@@ -158,14 +175,14 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
                 writer.close();
             }
 
-            private void enqueueChunk(ByteBuffer chunk, int senderPartition) {
-                if (bufferedChunks.size() <= senderPartition) {
-                    for (int i = bufferedChunks.size(); i <= senderPartition; i++) {
-                        bufferedChunks.add(new LinkedList<ByteBuffer>());
-                    }
-                }
-                bufferedChunks.get(senderPartition).add(chunk);
-            }
+            //            private void enqueueChunk(ByteBuffer chunk, int senderPartition) {
+            //                if (bufferedChunks.size() <= senderPartition) {
+            //                    for (int i = bufferedChunks.size(); i <= senderPartition; i++) {
+            //                        bufferedChunks.add(new LinkedList<ByteBuffer>());
+            //                    }
+            //                }
+            //                bufferedChunks.get(senderPartition).add(chunk);
+            //            }
 
         };
     }

@@ -67,4 +67,9 @@ public class SKMeansModel implements Serializable {
         result.dis = min;
         return result;
     }
+
+    @Override
+    public String toString() {
+        return ""+totalExamples;
+    }
 }

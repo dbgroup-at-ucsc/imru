@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -38,6 +39,7 @@ import edu.uci.ics.hyracks.imru.api.ASyncIO;
 import edu.uci.ics.hyracks.imru.api.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.data.ChunkFrameHelper;
+import edu.uci.ics.hyracks.imru.data.MergedFrames;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRURuntimeContext;
 import edu.uci.ics.hyracks.imru.util.MemoryStatsLogger;
@@ -80,7 +82,7 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
      *            to.
      */
     public UpdateOperatorDescriptor(JobSpecification spec,
-            IIMRUJob2<Model,Data> imruSpec, String modelName,
+            IIMRUJob2<Model, Data> imruSpec, String modelName,
             IMRUConnection imruConnection) {
         super(spec, 1, 0, "update", imruSpec);
         this.modelName = modelName;
@@ -94,8 +96,9 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
             IRecordDescriptorProvider recordDescProvider, final int partition,
             int nPartitions) throws HyracksDataException {
         return new AbstractUnaryInputSinkOperatorNodePushable() {
-            private final ChunkFrameHelper chunkFrameHelper;
-            private final List<List<ByteBuffer>> bufferedChunks;
+            //            private final ChunkFrameHelper chunkFrameHelper;
+            //            private final List<List<ByteBuffer>> bufferedChunks;
+            Hashtable<Integer, LinkedList<ByteBuffer>> hash = new Hashtable<Integer, LinkedList<ByteBuffer>>();
             private Model model;
             private final String name;
             IMRUContext imruContext;
@@ -107,10 +110,11 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
             {
                 this.name = UpdateOperatorDescriptor.this.getDisplayName()
                         + partition;
-                this.chunkFrameHelper = new ChunkFrameHelper(ctx);
-                this.bufferedChunks = new ArrayList<List<ByteBuffer>>();
-                imruContext = new IMRUContext(chunkFrameHelper.getContext(),
-                        name);
+                //                this.chunkFrameHelper = new ChunkFrameHelper(ctx);
+                //                this.bufferedChunks = new ArrayList<List<ByteBuffer>>();
+                //                imruContext = new IMRUContext(chunkFrameHelper.getContext(),
+                //                        name);
+                imruContext = new IMRUContext(ctx, name);
             }
 
             @SuppressWarnings("unchecked")
@@ -139,21 +143,31 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
             @Override
             public void nextFrame(ByteBuffer encapsulatedChunk)
                     throws HyracksDataException {
-                ByteBuffer chunk = chunkFrameHelper
-                        .extractChunk(encapsulatedChunk);
-                int senderPartition = chunkFrameHelper
-                        .getPartition(encapsulatedChunk);
-                boolean isLastChunk = chunkFrameHelper
-                        .isLastChunk(encapsulatedChunk);
-                enqueueChunk(chunk, senderPartition);
-                if (isLastChunk) {
-                    byte[] data = IMRUSerialize
-                            .deserializeFromChunks(imruContext, bufferedChunks
-                                    .remove(senderPartition));
-                    if (data.length==0)
-                        throw new HyracksDataException("update received empty data");
-                    io.add(data);
+//                Rt.p("update frame");
+                MergedFrames frames = MergedFrames.nextFrame(ctx,
+                        encapsulatedChunk, hash);
+                if (frames != null) {
+//                    Rt.p("update recv "
+//                            + MergedFrames.deserialize(frames.data));
+                    io.add(frames.data);
                 }
+
+//                ByteBuffer chunk = chunkFrameHelper
+//                        .extractChunk(encapsulatedChunk);
+//                int senderPartition = chunkFrameHelper
+//                        .getPartition(encapsulatedChunk);
+//                boolean isLastChunk = chunkFrameHelper
+//                        .isLastChunk(encapsulatedChunk);
+//                enqueueChunk(chunk, senderPartition);
+//                if (isLastChunk) {
+//                    byte[] data = IMRUSerialize
+//                            .deserializeFromChunks(imruContext, bufferedChunks
+//                                    .remove(senderPartition));
+//                    if (data.length == 0)
+//                        throw new HyracksDataException(
+//                                "update received empty data");
+//                    io.add(data);
+//                }
             }
 
             @Override
@@ -185,14 +199,14 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
                 }
             }
 
-            private void enqueueChunk(ByteBuffer chunk, int senderPartition) {
-                if (bufferedChunks.size() <= senderPartition) {
-                    for (int i = bufferedChunks.size(); i <= senderPartition; i++) {
-                        bufferedChunks.add(new LinkedList<ByteBuffer>());
-                    }
-                }
-                bufferedChunks.get(senderPartition).add(chunk);
-            }
+            //            private void enqueueChunk(ByteBuffer chunk, int senderPartition) {
+            //                if (bufferedChunks.size() <= senderPartition) {
+            //                    for (int i = bufferedChunks.size(); i <= senderPartition; i++) {
+            //                        bufferedChunks.add(new LinkedList<ByteBuffer>());
+            //                    }
+            //                }
+            //                bufferedChunks.get(senderPartition).add(chunk);
+            //            }
         };
     }
 

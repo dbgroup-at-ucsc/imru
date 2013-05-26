@@ -62,7 +62,7 @@ public class TrainMergeContext extends IMRUContext {
         byte[] bs = JavaSerializationUtils.serialize(model);
         ByteBuffer frame = ctx.allocateFrame();
         int frameSize = ctx.getFrameSize();
-        MergedFrames.serializeToFrames(frame, frameSize, writer, bs,
+        MergedFrames.serializeToFrames(null, frame, frameSize, writer, bs,
                 curTrainPartition, partition, curNodeId);
         return true;
     }

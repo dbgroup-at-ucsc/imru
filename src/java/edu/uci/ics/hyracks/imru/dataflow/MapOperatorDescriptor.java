@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2010 by The Regents of the University of California
+* Copyright 2009-2010 by The Regents of the University of California
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * you may obtain a copy of the License from
@@ -45,6 +45,7 @@ import edu.uci.ics.hyracks.imru.api.FrameWriter;
 import edu.uci.ics.hyracks.imru.api.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.data.ChunkFrameHelper;
+import edu.uci.ics.hyracks.imru.data.MergedFrames;
 import edu.uci.ics.hyracks.imru.data.RunFileContext;
 import edu.uci.ics.hyracks.imru.file.IMRUFileSplit;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRURuntimeContext;
@@ -182,10 +183,12 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                             reader.open();
                             final ByteBuffer inputFrame = fileCtx
                                     .allocateFrame();
-                            ChunkFrameHelper chunkFrameHelper = new ChunkFrameHelper(
-                                    ctx);
+//                            ChunkFrameHelper chunkFrameHelper = new ChunkFrameHelper(
+//                                    ctx);
+//                            IMRUContext imruContext = new IMRUContext(
+//                                    chunkFrameHelper.getContext(), name);
                             IMRUContext imruContext = new IMRUContext(
-                                    chunkFrameHelper.getContext(), name);
+                                    ctx, name);
                             {
                                 Iterator<ByteBuffer> input = new Iterator<ByteBuffer>() {
                                     boolean read = false;
@@ -217,27 +220,32 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                                         return hasData;
                                     }
                                 };
-                                writer = chunkFrameHelper.wrapWriter(writer,
-                                        partition);
+                                //                                writer = chunkFrameHelper.wrapWriter(writer,
+                                //                                        partition);
 
                                 ByteArrayOutputStream out = new ByteArrayOutputStream();
                                 imruSpec.map(imruContext, input, model, out,
                                         imruSpec.getCachedDataFrameSize());
                                 byte[] objectData = out.toByteArray();
-                                IMRUSerialize.serializeToFrames(imruContext,
-                                        writer, objectData);
+
+                                MergedFrames.serializeToFrames(imruContext,
+                                        writer, objectData, partition);
+//                                IMRUSerialize.serializeToFrames(imruContext,
+//                                        writer, objectData);
                             }
                         } else {
                             Vector vector = state.getMemCache();
                             Log.info("Cached in memory examples "
                                     + vector.size());
 
-                            ChunkFrameHelper chunkFrameHelper = new ChunkFrameHelper(
-                                    ctx);
+//                            ChunkFrameHelper chunkFrameHelper = new ChunkFrameHelper(
+//                                    ctx);
+//                            IMRUContext imruContext = new IMRUContext(
+//                                    chunkFrameHelper.getContext(), name);
                             IMRUContext imruContext = new IMRUContext(
-                                    chunkFrameHelper.getContext(), name);
-                            writer = chunkFrameHelper.wrapWriter(writer,
-                                    partition);
+                                    ctx, name);
+//                            writer = chunkFrameHelper.wrapWriter(writer,
+//                                    partition);
 
                             ByteArrayOutputStream out = new ByteArrayOutputStream();
                             imruSpec.mapMem(imruContext,
@@ -245,8 +253,13 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                                     out, imruSpec.getCachedDataFrameSize());
                             byte[] objectData = out.toByteArray();
                             //                    Rt.p(objectData.length);
-                            IMRUSerialize.serializeToFrames(imruContext,
-                                    writer, objectData);
+//                            Rt.p("map send "
+//                                    + MergedFrames.deserialize(objectData));
+
+                            MergedFrames.serializeToFrames(imruContext,
+                                    writer, objectData, partition);
+//                            IMRUSerialize.serializeToFrames(imruContext,
+//                                    writer, objectData);
                         }
                     } else {
                         final IMRUFileSplit split = inputSplits[partition];
@@ -291,8 +304,10 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                                 imruSpec.getCachedDataFrameSize());
                         byte[] objectData = out.toByteArray();
                         //                    Rt.p(objectData.length);
-                        IMRUSerialize.serializeToFrames(imruContext, writer,
-                                objectData);
+                        MergedFrames.serializeToFrames(imruContext,
+                                writer, objectData, partition);
+//                        IMRUSerialize.serializeToFrames(imruContext, writer,
+//                                objectData);
                     }
                     writer.close();
                 } catch (HyracksDataException e) {

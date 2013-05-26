@@ -24,13 +24,13 @@
 	<classpathentry kind="lib" path="dist/lib/hadoop-core-0.20.2.jar"/>
 	<classpathentry kind="lib" path="dist/lib/hadoop-test-0.20.2.jar"/>
 	<classpathentry kind="lib" path="dist/lib/hsqldb-1.8.0.10.jar"/>
-	<classpathentry kind="lib" path="dist/lib/hyracks-api-0.2.3-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="dist/lib/hyracks-api-0.2.3-SNAPSHOT.jar" sourcepath="/home/wangrui/a/imru/hyracks/hyracks/hyracks-api/src/main/java"/>
 	<classpathentry kind="lib" path="dist/lib/hyracks-control-cc-0.2.3-SNAPSHOT.jar"/>
-	<classpathentry kind="lib" path="dist/lib/hyracks-control-common-0.2.3-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="dist/lib/hyracks-control-common-0.2.3-SNAPSHOT.jar" sourcepath="/home/wangrui/a/imru/hyracks/hyracks/hyracks-control/hyracks-control-common/src/main/java"/>
 	<classpathentry kind="lib" path="dist/lib/hyracks-control-nc-0.2.3-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="dist/lib/hyracks-data-std-0.2.3-SNAPSHOT.jar"/>
-	<classpathentry kind="lib" path="dist/lib/hyracks-dataflow-common-0.2.3-SNAPSHOT.jar"/>
-	<classpathentry kind="lib" path="dist/lib/hyracks-dataflow-std-0.2.3-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="dist/lib/hyracks-dataflow-common-0.2.3-SNAPSHOT.jar" sourcepath="/home/wangrui/a/imru/hyracks/hyracks/hyracks-dataflow-common/src/main/java"/>
+	<classpathentry kind="lib" path="dist/lib/hyracks-dataflow-std-0.2.3-SNAPSHOT.jar" sourcepath="/home/wangrui/a/imru/hyracks/hyracks/hyracks-dataflow-std/src/main/java"/>
 	<classpathentry kind="lib" path="dist/lib/hyracks-ec2-0.2.3-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="dist/lib/hyracks-hdfs-0.20.2-0.2.3-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="dist/lib/hyracks-hdfs-core-0.2.3-SNAPSHOT.jar"/>
