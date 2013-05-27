@@ -55,7 +55,7 @@ public class IMRUKMeans {
         }
 
         cmdline += " -agg-tree-type nary -fan-in 2";
-//        cmdline += " -frame-size " + (16 * 1024 * 1024);
+        //        cmdline += " -frame-size " + (16 * 1024 * 1024);
         cmdline += " -example-paths"
                 + " NC0:/data/b/data/imru/productName.txt,"
                 + "NC1:/data/b/data/imru/productName.txt,"
@@ -99,7 +99,7 @@ public class IMRUKMeans {
         for (int i = 0; i < nodes; i++) {
             if (i > 0)
                 cmdline += ",";
-            cmdline += "NC" + i + ":" + path;
+            cmdline += String.format("NC" + i + ":" + path, i);
         }
         System.out.println("Using command line: " + cmdline);
         String[] args = cmdline.split(" ");
@@ -133,7 +133,7 @@ public class IMRUKMeans {
         for (int i = 0; i < splits; i++) {
             if (i > 0)
                 cmdline += ",";
-            cmdline += "NC" + i + ":" + imruPath;
+            cmdline += String.format("NC" + i + ":" + imruPath, i);
         }
         System.out.println("Using command line: " + cmdline);
         String[] args = cmdline.split(" ");

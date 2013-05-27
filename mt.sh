@@ -8,5 +8,6 @@ sudo mount --bind /data/a/imru/hyracks/imru/imru-core/src/main/resources /data/a
 sudo mount --bind /data/a/imru/hyracks/imru/imru-example/src/main/java/edu/uci/ics/hyracks/imru/example /data/a/imru/ucscImru/src/java/edu/uci/ics/hyracks/imru/example
 sudo mount --bind /data/a/imru/hyracks/imru/imru-example/data /data/a/imru/ucscImru/data
 sudo mount --bind /data/a/imru/hyracks/imru/imru-dist/target/appassembler /data/a/imru/ucscImru/dist
+sudo mount -t vboxsf data /data/data -o uid=1000,gid=1000
 
 

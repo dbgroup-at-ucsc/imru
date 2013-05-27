@@ -58,13 +58,13 @@ public class MergedFrames {
         queue.add(frame);
         int size = buffer.getInt(SIZE_OFFSET);
         int position = buffer.getInt(POSITION_OFFSET);
-//        if (position == 0)
-//            Rt.p(position + "/" + size);
-        if (position + frameSize - HEADER < size)
+        //        if (position == 0)
+        //            Rt.p(position + "/" + size);
+        if (position + frameSize - HEADER - TAIL < size)
             return null;
         hash.remove(queue);
         byte[] bs = deserializeFromChunks(ctx.getFrameSize(), queue);
-//        Rt.p("recv " + bs.length + " " + deserialize(bs));
+        //        Rt.p("recv " + bs.length + " " + deserialize(bs));
         MergedFrames merge = new MergedFrames();
         merge.data = bs;
         merge.sourceParition = sourcePartition;
@@ -156,8 +156,8 @@ public class MergedFrames {
             int length = Math.min(objectData.length - position, frameSize
                     - HEADER - TAIL);
             frame.put(objectData, position, length);
-            frame.position(frameSize - TAIL);
-            frame.putInt(0); //tuple count
+//            frame.position(frameSize - TAIL);
+//            frame.putInt(0); //tuple count
             frame.position(frameSize);
             frame.flip();
             //            if (position == 0)

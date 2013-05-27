@@ -11,11 +11,21 @@ import exp.imruVsSpark.kmeans.spark.SparkKMeans;
 import exp.test0.GnuPlot;
 
 public class EC2Benchmark {
-    public static String dataPath = "/home/ubuntu/data";//"/data/b/data/imru";
     public static int STARTC = 1;
     public static int ENDC = 10;
     public static int BATCH = 100000;
     public static int STEPC = 3;
+
+    public static String getImruDataPath(int sizePerNode, int nodeCount,
+            String nodeId) {
+        return "/data/size" + sizePerNode + "/nodes" + nodeCount
+                + "/imru" + nodeId + ".txt";
+    }
+
+    public static String getSparkDataPath(int sizePerNode, int nodeCount) {
+        return  "/data/size" + sizePerNode + "/nodes" + nodeCount
+                + "/spark.txt";
+    }
 
     public static void exp(String master, int nodeCount, String type)
             throws Exception {
@@ -50,8 +60,8 @@ public class EC2Benchmark {
             byte[] bs = JavaSerializationUtils.serialize(model);
             Rt.p("Max model size: %,d", bs.length);
         }
-        for (int aaa = EC2Benchmark.STARTC; aaa <= EC2Benchmark.ENDC; aaa += EC2Benchmark.STEPC) {
-            DataGenerator.DEBUG_DATA_POINTS = aaa * EC2Benchmark.BATCH;
+        for (int sizePerNode = EC2Benchmark.STARTC; sizePerNode <= EC2Benchmark.ENDC; sizePerNode += EC2Benchmark.STEPC) {
+            DataGenerator.DEBUG_DATA_POINTS = sizePerNode * EC2Benchmark.BATCH;
             int dataSize = DataGenerator.DEBUG_DATA_POINTS * nodeCount;
 
             long start = System.currentTimeMillis();
@@ -65,20 +75,22 @@ public class EC2Benchmark {
             //            SparseKMeans.run();
             //            long bareTime = System.currentTimeMillis() - start;
             if ("imruDisk".equals(type)) {
-                Rt.p("running IMRU in disk " + aaa);
+                Rt.p("running IMRU in disk " + sizePerNode);
                 start = System.currentTimeMillis();
+                String path = getImruDataPath(sizePerNode, nodeCount, "%d");
                 int processed2 = IMRUKMeans.runEc2(master, nodeCount, dataSize,
-                        dataPath + "/imru" + aaa + ".txt", false, false);
+                        path, false, false);
                 long imruDiskTime = System.currentTimeMillis() - start;
                 plot.startNewX(DataGenerator.DEBUG_DATA_POINTS / 100000);
                 //                plot.addY(dataTime / 1000.0);
                 plot.addY(imruDiskTime / 1000.0);
                 plot.addY(processed2);
             } else if ("imruMem".equals(type)) {
-                Rt.p("running IMRU in memory " + aaa);
+                Rt.p("running IMRU in memory " + sizePerNode);
                 start = System.currentTimeMillis();
+                String path = getImruDataPath(sizePerNode, nodeCount, "%d");
                 int processed1 = IMRUKMeans.runEc2(master, nodeCount, dataSize,
-                            dataPath + "/imru" + aaa + ".txt", true, false);
+                        path, true, false);
                 long imruMemTime = System.currentTimeMillis() - start;
 
                 //            start = System.currentTimeMillis();
@@ -89,11 +101,11 @@ public class EC2Benchmark {
                 plot.addY(imruMemTime / 1000.0);
                 plot.addY(processed1);
             } else if ("spark".equals(type)) {
-                Rt.p("running spark " + aaa);
+                Rt.p("running spark " + sizePerNode);
                 start = System.currentTimeMillis();
+                String path = getSparkDataPath(sizePerNode, nodeCount);
                 int processed = SparkKMeans.run(master, dataSize, "/home/"
-                        + user + "/spark-0.7.0", dataPath + "/spark" + aaa
-                        + ".txt", nodeCount);
+                        + user + "/spark-0.7.0", path, nodeCount);
                 long sparkTime = System.currentTimeMillis() - start;
                 plot.startNewX(DataGenerator.DEBUG_DATA_POINTS / 100000);
                 //                plot.addY(dataTime / 1000.0);

@@ -216,7 +216,8 @@ public class LocalCluster {
     }
 
     public void checkSpark() throws Exception {
-        for (int i = 0; i < 20; i++) {
+        //18 seconds for 20 nodes
+        for (int i = 0; i < 50; i++) {
             if (getSparkWorkers() == cluster.nodes.length)
                 return;
             Rt.p("Only " + getSparkWorkers() + " Workers");
