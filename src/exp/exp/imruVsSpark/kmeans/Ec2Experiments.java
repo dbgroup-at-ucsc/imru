@@ -39,9 +39,12 @@ public class Ec2Experiments {
         if (cluster != null) {
             controller = cluster.cluster.controller;
             nodes = cluster.cluster.nodes;
-            resultDir = new File("result/" + name + "_" + nodes.length
-                    + "nodes");
-            resultDir.mkdir();
+            resultDir = new File("result/k" + DataGenerator.DEBUG_K + "i"
+                    + DataGenerator.DEBUG_ITERATIONS + "b"
+                    + EC2Benchmark.STARTC + "s" + EC2Benchmark.STEPC + "e"
+                    + EC2Benchmark.ENDC + "b" + EC2Benchmark.BATCH + "/" + name
+                    + "_" + nodes.length + "nodes");
+            resultDir.mkdirs();
         }
         figDir = new File(resultDir, "rawData");
         figDir.mkdir();
@@ -241,7 +244,7 @@ public class Ec2Experiments {
     }
 
     static void regenerateResults() throws Exception {
-        for (File dir : new File("result").listFiles()) {
+        for (File dir : new File("result/k3i5b1s3e10b100000").listFiles()) {
             if (dir.isDirectory() && dir.getName().startsWith("local")) {
                 if (!new File(dir, "spark.txt").exists())
                     continue;
@@ -331,9 +334,10 @@ public class Ec2Experiments {
 
         String prefix = "../finished/"
                 + name.replaceAll("_", "").replaceAll("\\.", "");
-        String cmd = "epstopdf --outfile="
-                + new File(resultDir, prefix + plot.name + ".pdf")
-                        .getAbsolutePath() + " "
+        File pdf = new File(resultDir, prefix + plot.name + ".pdf");
+        if (!pdf.getParentFile().exists())
+            pdf.getParentFile().mkdirs();
+        String cmd = "epstopdf --outfile=" + pdf.getAbsolutePath() + " "
                 + new File(plot.dir, plot.name + ".eps").getAbsolutePath();
         Rt.runAndShowCommand(cmd);
         cmd = "epstopdf --outfile="
@@ -354,11 +358,11 @@ public class Ec2Experiments {
         uploadExperimentCode();
         generateSharedData();
 
-        cluster.stopAll();
-        runImru(true);
-
-        cluster.stopAll();
-        runImru(false);
+//        cluster.stopAll();
+//        runImru(true);
+//
+//        cluster.stopAll();
+//        runImru(false);
 
         cluster.stopAll();
         runSpark();
@@ -367,21 +371,18 @@ public class Ec2Experiments {
     }
 
     public static void main(String[] args) throws Exception {
-        //        Ec2Experiments exp2 = new Ec2Experiments(null, null);
-        //        exp2.resultDir = new File("result/local2G0.5core_" + 8 + "nodes");
-        //        exp2.showResult();
-        //        regenerateResults();
+//        regenerateResults();
         try {
             monitor = new ClusterMonitor();
             String name;
             int nodeCount;
-            
+
             name = "local1500M0.25core";
-            nodeCount=16;
-            
+            nodeCount = 16;
+
             name = "local1500M0.5core";
-            nodeCount=8;
-            
+            nodeCount = 8;
+
             String[] nodes = new String[nodeCount];
             if (nodes.length == 1) {
                 nodes = new String[] { "192.168.56.110" };

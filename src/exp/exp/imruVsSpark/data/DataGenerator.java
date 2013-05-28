@@ -11,15 +11,13 @@ import javax.script.CompiledScript;
 import javax.script.ScriptEngineManager;
 
 import edu.uci.ics.hyracks.imru.util.Rt;
-import exp.imruVsSpark.kmeans.SKMeansModel;
-import exp.imruVsSpark.kmeans.SparseVector;
 
 public class DataGenerator {
     public static  String TEMPLATE = "exp_data/product_name";
 
     public static int DEBUG_DATA_POINTS = 1000000;
     public static int DEBUG_K = 3;
-    public static int DEBUG_ITERATIONS = 1;
+    public static int DEBUG_ITERATIONS = 5;
     public File templateDir;
     public double numOfDataPoints;
     public int dims;
