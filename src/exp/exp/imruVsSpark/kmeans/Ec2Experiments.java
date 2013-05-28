@@ -20,6 +20,7 @@ import edu.uci.ics.hyracks.imru.example.utils.ImruEC2;
 import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.ClusterMonitor;
 import exp.imruVsSpark.LocalCluster;
+import exp.imruVsSpark.VirtualBox;
 import exp.imruVsSpark.data.DataGenerator;
 import exp.imruVsSpark.kmeans.imru.IMRUKMeans;
 import exp.imruVsSpark.kmeans.spark.SparkKMeans;
@@ -358,11 +359,11 @@ public class Ec2Experiments {
         uploadExperimentCode();
         generateSharedData();
 
-//        cluster.stopAll();
-//        runImru(true);
-//
-//        cluster.stopAll();
-//        runImru(false);
+        cluster.stopAll();
+        runImru(true);
+
+        cluster.stopAll();
+        runImru(false);
 
         cluster.stopAll();
         runSpark();
@@ -371,45 +372,53 @@ public class Ec2Experiments {
     }
 
     public static void main(String[] args) throws Exception {
-//        regenerateResults();
+        //        regenerateResults();
         try {
-            monitor = new ClusterMonitor();
             String name;
             int nodeCount;
 
             name = "local1500M0.25core";
             nodeCount = 16;
 
-            name = "local1500M0.5core";
             nodeCount = 8;
+            String cpu = "0.5";
+            name = "local1500M0.5core";
+            for (int memory = 2000; memory <= 2500; memory += 500) {
+                name = "local" + memory + "M" + cpu + "core";
 
-            String[] nodes = new String[nodeCount];
-            if (nodes.length == 1) {
-                nodes = new String[] { "192.168.56.110" };
-            } else {
-                monitor.waitIp(nodes.length);
-                for (int i = 0; i < nodes.length; i++)
-                    nodes[i] = monitor.ip[i];
+                VirtualBox.remove();
+                VirtualBox.setup(nodeCount, memory, (int) (Double
+                        .parseDouble(cpu) * 100));
+                Thread.sleep(30000);
+                monitor = new ClusterMonitor();
+                String[] nodes = new String[nodeCount];
+                if (nodes.length == 1) {
+                    nodes = new String[] { "192.168.56.110" };
+                } else {
+                    monitor.waitIp(nodes.length);
+                    for (int i = 0; i < nodes.length; i++)
+                        nodes[i] = monitor.ip[i];
+                }
+
+                File home = new File(System.getProperty("user.home"));
+                File hyracksEc2Root = new File(home, "ucscImru/dist");
+                LocalCluster cluster;
+                String userName = "ubuntu";
+
+                HyracksNode.HYRACKS_PATH = "/home/" + userName + "/hyracks-ec2";
+                String cc = nodes[0];
+                cluster = new LocalCluster(new HyracksCluster(cc, nodes,
+                        userName, new File(home, ".ssh/id_rsa")), userName);
+                //            cluster.cluster.printLogs(-1, 500);
+                //            System.exit(0);
+                //        cluster.cluster.install(hyracksEc2Root);
+                Ec2Experiments exp = new Ec2Experiments(cluster, name);
+                if (nodes.length == 1)
+                    exp.uploadExperimentCode();
+                else
+                    exp.runExperiments();
+                generateResult(exp.resultDir);
             }
-
-            File home = new File(System.getProperty("user.home"));
-            File hyracksEc2Root = new File(home, "ucscImru/dist");
-            LocalCluster cluster;
-            String userName = "ubuntu";
-
-            HyracksNode.HYRACKS_PATH = "/home/" + userName + "/hyracks-ec2";
-            String cc = nodes[0];
-            cluster = new LocalCluster(new HyracksCluster(cc, nodes, userName,
-                    new File(home, ".ssh/id_rsa")), userName);
-            //            cluster.cluster.printLogs(-1, 500);
-            //            System.exit(0);
-            //        cluster.cluster.install(hyracksEc2Root);
-            Ec2Experiments exp = new Ec2Experiments(cluster, name);
-            if (nodes.length == 1)
-                exp.uploadExperimentCode();
-            else
-                exp.runExperiments();
-            generateResult(exp.resultDir);
         } catch (Throwable e) {
             e.printStackTrace();
         } finally {
