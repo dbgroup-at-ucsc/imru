@@ -25,8 +25,8 @@ public class EC2Result {
         String[] spark = Rt.readFile(new File(resultDir, "spark.txt")).split(
                 "\n");
         int i = 0;
-        for (int aaa = EC2Benchmark.STARTC; aaa <= EC2Benchmark.ENDC; aaa += EC2Benchmark.STEPC, i++) {
-            DataGenerator.DEBUG_DATA_POINTS = aaa * EC2Benchmark.BATCH;
+        for (int aaa = KmeansExperiment.STARTC; aaa <= KmeansExperiment.ENDC; aaa += KmeansExperiment.STEPC, i++) {
+            DataGenerator.DEBUG_DATA_POINTS = aaa * KmeansExperiment.BATCH;
             String[] d = data[i].split("\t");
             String[] m = imru[i].split("\t");
             String[] s = spark[i].split("\t");

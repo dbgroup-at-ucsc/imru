@@ -11,6 +11,8 @@ import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.test0.GnuPlot;
 
 public class ClusterMonitor {
+    DatagramSocket serverSocket;
+    boolean exitFlag = false;
     public int nodes;
     public String[] ip = new String[32];
     public int[] memory = new int[32];
@@ -18,13 +20,13 @@ public class ClusterMonitor {
     public float[] cpu = new float[32];
 
     public ClusterMonitor() throws Exception {
+        serverSocket = new DatagramSocket(6666);
         new Thread() {
             @Override
             public void run() {
                 try {
-                    DatagramSocket serverSocket = new DatagramSocket(6666);
                     byte[] receiveData = new byte[1024];
-                    while (true) {
+                    while (!exitFlag) {
                         try {
                             DatagramPacket receivePacket = new DatagramPacket(
                                     receiveData, receiveData.length);
@@ -50,7 +52,7 @@ public class ClusterMonitor {
                             e.printStackTrace();
                         }
                     }
-                } catch (SocketException e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
@@ -79,6 +81,11 @@ public class ClusterMonitor {
                 }
             }.start();
         }
+    }
+
+    public void close() {
+        exitFlag = true;
+        serverSocket.close();
     }
 
     Thread monitorThread;
@@ -173,8 +180,10 @@ public class ClusterMonitor {
     }
 
     public void waitIp(int n) throws InterruptedException {
+        int id = 0;
         while (true) {
-            Rt.p(nodes);
+            if (id % 10 == 0)
+                Rt.p(nodes);
             boolean hasIp = true;
             for (int i = 0; i < nodes; i++) {
                 if (ip[i] == null)
@@ -183,6 +192,7 @@ public class ClusterMonitor {
             if (hasIp && nodes == n)
                 return;
             Thread.sleep(500);
+            id++;
         }
     }
 

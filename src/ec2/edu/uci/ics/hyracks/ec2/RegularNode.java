@@ -15,7 +15,7 @@ public class RegularNode extends HyracksNode {
 
     @Override
     public SSH ssh() throws Exception {
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 20; i++) {
             try {
                 return new SSH(user, publicIp, 22, permFile);
             } catch (com.jcraft.jsch.JSchException e) {

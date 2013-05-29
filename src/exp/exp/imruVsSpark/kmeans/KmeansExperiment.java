@@ -10,9 +10,9 @@ import exp.imruVsSpark.kmeans.imru.IMRUKMeans;
 import exp.imruVsSpark.kmeans.spark.SparkKMeans;
 import exp.test0.GnuPlot;
 
-public class EC2Benchmark {
+public class KmeansExperiment {
     public static int STARTC = 1;
-    public static int ENDC = 10;
+    public static int ENDC = 1;
     public static int BATCH = 100000;
     public static int STEPC = 3;
 
@@ -60,8 +60,8 @@ public class EC2Benchmark {
             byte[] bs = JavaSerializationUtils.serialize(model);
             Rt.p("Max model size: %,d", bs.length);
         }
-        for (int sizePerNode = EC2Benchmark.STARTC; sizePerNode <= EC2Benchmark.ENDC; sizePerNode += EC2Benchmark.STEPC) {
-            DataGenerator.DEBUG_DATA_POINTS = sizePerNode * EC2Benchmark.BATCH;
+        for (int sizePerNode = KmeansExperiment.STARTC; sizePerNode <= KmeansExperiment.ENDC; sizePerNode += KmeansExperiment.STEPC) {
+            DataGenerator.DEBUG_DATA_POINTS = sizePerNode * KmeansExperiment.BATCH;
             int dataSize = DataGenerator.DEBUG_DATA_POINTS * nodeCount;
 
             long start = System.currentTimeMillis();

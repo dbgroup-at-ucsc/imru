@@ -26,7 +26,7 @@ import exp.imruVsSpark.kmeans.imru.IMRUKMeans;
 import exp.imruVsSpark.kmeans.spark.SparkKMeans;
 import exp.test0.GnuPlot;
 
-public class Ec2Experiments {
+public class VirtualBoxExperiments {
     String rsync = "rsync -e \"ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no\" -vrultzCc";
     LocalCluster cluster;
     HyracksNode controller;
@@ -35,16 +35,17 @@ public class Ec2Experiments {
     File figDir;
     static ClusterMonitor monitor;
 
-    public Ec2Experiments(LocalCluster cluster, String name) {
+    public VirtualBoxExperiments(LocalCluster cluster, String name) {
         this.cluster = cluster;
         if (cluster != null) {
             controller = cluster.cluster.controller;
             nodes = cluster.cluster.nodes;
             resultDir = new File("result/k" + DataGenerator.DEBUG_K + "i"
                     + DataGenerator.DEBUG_ITERATIONS + "b"
-                    + EC2Benchmark.STARTC + "s" + EC2Benchmark.STEPC + "e"
-                    + EC2Benchmark.ENDC + "b" + EC2Benchmark.BATCH + "/" + name
-                    + "_" + nodes.length + "nodes");
+                    + KmeansExperiment.STARTC + "s" + KmeansExperiment.STEPC
+                    + "e" + KmeansExperiment.ENDC + "b"
+                    + KmeansExperiment.BATCH + "/" + name + "_" + nodes.length
+                    + "nodes");
             resultDir.mkdirs();
         }
         figDir = new File(resultDir, "rawData");
@@ -87,8 +88,9 @@ public class Ec2Experiments {
         monitor.start(figDir, "generateData", nodes);
         PrintStream ps = new PrintStream(
                 new File(resultDir, "generateTime.txt"));
-        for (int sizePerNode = EC2Benchmark.STARTC; sizePerNode <= EC2Benchmark.ENDC; sizePerNode += EC2Benchmark.STEPC) {
-            DataGenerator.DEBUG_DATA_POINTS = sizePerNode * EC2Benchmark.BATCH;
+        for (int sizePerNode = KmeansExperiment.STARTC; sizePerNode <= KmeansExperiment.ENDC; sizePerNode += KmeansExperiment.STEPC) {
+            DataGenerator.DEBUG_DATA_POINTS = sizePerNode
+                    * KmeansExperiment.BATCH;
             int dataSize = DataGenerator.DEBUG_DATA_POINTS * nodes.length;
 
             long start = System.currentTimeMillis();
@@ -99,9 +101,9 @@ public class Ec2Experiments {
                     DataGenerator.DEBUG_DATA_POINTS, nodes.length, new File(
                             "/home/" + cluster.user
                                     + "/test/exp_data/product_name"),
-                    EC2Benchmark.getImruDataPath(sizePerNode, nodes.length,
-                            "%d"), EC2Benchmark.getSparkDataPath(sizePerNode,
-                            nodes.length));
+                    KmeansExperiment.getImruDataPath(sizePerNode, nodes.length,
+                            "%d"), KmeansExperiment.getSparkDataPath(
+                            sizePerNode, nodes.length));
             long dataTime = System.currentTimeMillis() - start;
             Rt.p(sizePerNode + "\t" + dataTime / 1000.0);
             ps.println(sizePerNode + "\t" + dataTime / 1000.0);
@@ -113,20 +115,22 @@ public class Ec2Experiments {
         for (HyracksNode node : nodes) {
             //            SSH ssh = node.ssh();
             //            Rt.p(node.getName());
-            //            ssh.execute("ls -l -h " + EC2Benchmark.dataPath);
+            //            ssh.execute("ls -l -h " + KmeansExperiment.dataPath);
             //            ssh.close();
         }
     }
 
     void generateSharedData() throws Exception {
-        for (int sizePerNode = EC2Benchmark.STARTC; sizePerNode <= EC2Benchmark.ENDC; sizePerNode += EC2Benchmark.STEPC) {
-            DataGenerator.DEBUG_DATA_POINTS = sizePerNode * EC2Benchmark.BATCH;
+        for (int sizePerNode = KmeansExperiment.STARTC; sizePerNode <= KmeansExperiment.ENDC; sizePerNode += KmeansExperiment.STEPC) {
+            DataGenerator.DEBUG_DATA_POINTS = sizePerNode
+                    * KmeansExperiment.BATCH;
             int dataSize = DataGenerator.DEBUG_DATA_POINTS * nodes.length;
             String imruPath = "/data"
-                    + EC2Benchmark.getImruDataPath(sizePerNode, nodes.length,
-                            "%d");
+                    + KmeansExperiment.getImruDataPath(sizePerNode,
+                            nodes.length, "%d");
             String sparkPath = "/data"
-                    + EC2Benchmark.getSparkDataPath(sizePerNode, nodes.length);
+                    + KmeansExperiment.getSparkDataPath(sizePerNode,
+                            nodes.length);
             int count = DataGenerator.DEBUG_DATA_POINTS;
             int splits = nodes.length;
             File templateDir = new File("exp_data/product_name");
@@ -188,7 +192,7 @@ public class Ec2Experiments {
         ssh.execute("cd test;");
         monitor.start(figDir, job, nodes);
         ssh.execute("rm result/*");
-        ssh.execute("sh st.sh exp.imruVsSpark.kmeans.EC2Benchmark "
+        ssh.execute("sh st.sh exp.imruVsSpark.kmeans.KmeansExperiment "
                 + controller.internalIp + " " + nodes.length + " " + job);
         String result = new String(Rt.read(ssh.get("/home/" + cluster.user
                 + "/test/result/kmeans" + job + "_org.data")));
@@ -208,7 +212,7 @@ public class Ec2Experiments {
         ssh.execute("cd test;");
         monitor.start(figDir, "spark", nodes);
         ssh.execute("rm result/*");
-        ssh.execute("sh st.sh exp.imruVsSpark.kmeans.EC2Benchmark "
+        ssh.execute("sh st.sh exp.imruVsSpark.kmeans.KmeansExperiment "
                 + controller.internalIp + " " + nodes.length + " spark");
         monitor.stop();
         ssh.execute("cat " + "/home/" + cluster.user + "/masterSpark.log");
@@ -245,11 +249,17 @@ public class Ec2Experiments {
     }
 
     static void regenerateResults() throws Exception {
-        for (File dir : new File("result/k3i5b1s3e10b100000").listFiles()) {
-            if (dir.isDirectory() && dir.getName().startsWith("local")) {
-                if (!new File(dir, "spark.txt").exists())
-                    continue;
-                generateResult(dir);
+        for (File group : new File("result").listFiles()) {
+            if (!group.isDirectory())
+                continue;
+            if (!group.getName().startsWith("k"))
+                continue;
+            for (File dir : group.listFiles()) {
+                if (dir.isDirectory() && dir.getName().startsWith("local")) {
+                    if (!new File(dir, "spark.txt").exists())
+                        continue;
+                    generateResult(dir);
+                }
             }
         }
         System.exit(0);
@@ -276,7 +286,7 @@ public class Ec2Experiments {
                 + "core*" + nodeCount + "\"";
         plot.setPlotNames(
         //                "Generate Data", 
-                "Spark", "IMRU-mem", "IMRU-disk");
+                "Spark", "IMRU-disk", "IMRU-mem");
         speedup.setPlotNames("IMRU-mem vs Spark", "IMRU-disk vs Spark");
         plot.startPointType = 1;
         plot.pointSize = 1;
@@ -310,20 +320,20 @@ public class Ec2Experiments {
             plot.addY(sparkTime);
             processed[i] = ss2[2];
 
-            String[] ss3 = imruMem[i].split("\t");
-            if (!ss3[0].equals(dataSizes[i]))
-                throw new Error();
-            double imruMemTime = Double.parseDouble(ss3[1]);
-            plot.addY(imruMemTime);
-            if (!ss3[2].equals(processed[i]))
-                throw new Error();
-
             String[] ss4 = imruDisk[i].split("\t");
             if (!ss4[0].equals(dataSizes[i]))
                 throw new Error();
             double imruDiskTime = Double.parseDouble(ss4[1]);
             plot.addY(imruDiskTime);
             if (!ss4[2].equals(processed[i]))
+                throw new Error();
+
+            String[] ss3 = imruMem[i].split("\t");
+            if (!ss3[0].equals(dataSizes[i]))
+                throw new Error();
+            double imruMemTime = Double.parseDouble(ss3[1]);
+            plot.addY(imruMemTime);
+            if (!ss3[2].equals(processed[i]))
                 throw new Error();
 
             speedup.addY(sparkTime / imruMemTime * 100 - 100);
@@ -371,37 +381,30 @@ public class Ec2Experiments {
         cluster.stopAll();
     }
 
+    static void prepareTemplate() {
+        //                    nodes = new String[] { "192.168.56.110" };
+        //                exp.uploadExperimentCode();
+    }
+
     public static void main(String[] args) throws Exception {
         //        regenerateResults();
         try {
-            String name;
-            int nodeCount;
-
-            name = "local1500M0.25core";
-            nodeCount = 16;
-
-            nodeCount = 8;
-            String cpu = "0.5";
-            name = "local1500M0.5core";
-            for (int memory = 2000; memory <= 2500; memory += 500) {
-                name = "local" + memory + "M" + cpu + "core";
-
-                VirtualBox.remove();
+            VirtualBox.remove();
+            int nodeCount = 16;
+            int memory = 1500;
+            String cpu = "0.25";
+            for (nodeCount = 1; nodeCount <= 16; nodeCount *= 2) {
+                String name = "local" + memory + "M" + cpu + "core";
                 VirtualBox.setup(nodeCount, memory, (int) (Double
                         .parseDouble(cpu) * 100));
-                Thread.sleep(30000);
+                Thread.sleep(2000 * nodeCount);
                 monitor = new ClusterMonitor();
                 String[] nodes = new String[nodeCount];
-                if (nodes.length == 1) {
-                    nodes = new String[] { "192.168.56.110" };
-                } else {
-                    monitor.waitIp(nodes.length);
-                    for (int i = 0; i < nodes.length; i++)
-                        nodes[i] = monitor.ip[i];
-                }
+                monitor.waitIp(nodes.length);
+                for (int i = 0; i < nodes.length; i++)
+                    nodes[i] = monitor.ip[i];
 
                 File home = new File(System.getProperty("user.home"));
-                File hyracksEc2Root = new File(home, "ucscImru/dist");
                 LocalCluster cluster;
                 String userName = "ubuntu";
 
@@ -409,15 +412,15 @@ public class Ec2Experiments {
                 String cc = nodes[0];
                 cluster = new LocalCluster(new HyracksCluster(cc, nodes,
                         userName, new File(home, ".ssh/id_rsa")), userName);
-                //            cluster.cluster.printLogs(-1, 500);
-                //            System.exit(0);
+                //                File hyracksEc2Root = new File(home, "ucscImru/dist");
                 //        cluster.cluster.install(hyracksEc2Root);
-                Ec2Experiments exp = new Ec2Experiments(cluster, name);
-                if (nodes.length == 1)
-                    exp.uploadExperimentCode();
-                else
-                    exp.runExperiments();
+                VirtualBoxExperiments exp = new VirtualBoxExperiments(cluster,
+                        name);
+                exp.runExperiments();
                 generateResult(exp.resultDir);
+
+                VirtualBox.remove();
+                monitor.close();
             }
         } catch (Throwable e) {
             e.printStackTrace();

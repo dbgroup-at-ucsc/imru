@@ -14,10 +14,12 @@ public class VirtualBox {
     // sudo ./VBoxLinuxAdditions.run --nox11
     static String VBoxManage(boolean show, String cmd) throws IOException {
         if (show) {
-            return Rt.runAndShowCommand("ssh 192.168.56.1 -p 6666 \"VBoxManage " + cmd
-                    + "\"");
+            return Rt
+                    .runAndShowCommand("ssh 192.168.56.1 -p 6666 \"VBoxManage "
+                            + cmd + "\"");
         } else {
-            return Rt.runCommand("ssh 192.168.56.1 -p 6666 \"VBoxManage " + cmd + "\"");
+            return Rt.runCommand("ssh 192.168.56.1 -p 6666 \"VBoxManage " + cmd
+                    + "\"");
         }
     }
 
@@ -49,12 +51,19 @@ public class VirtualBox {
                 VBoxManage(true, cmd);
             }
         }
-        System.exit(0);
     }
 
-    public static void setup(int nodes, int memory, int cpuCap) throws Exception {
+    public static void setup(int nodes, int memory, int cpuCap)
+            throws Exception {
         Rt.p("Remove snapshot");
-        VBoxManage(true, "snapshot imru_template delete exp");
+        for (int i = 0; i < 3; i++) {
+            if (i == 2)
+                throw new Error();
+            String result = VBoxManage(true, "snapshot imru_template list");
+            if (!result.contains("exp"))
+                break;
+            VBoxManage(true, "snapshot imru_template delete exp");
+        }
         Rt.p("Take snapshot");
         VBoxManage(true, "snapshot imru_template take exp");
         for (int id = 0; id < nodes; id++) {
