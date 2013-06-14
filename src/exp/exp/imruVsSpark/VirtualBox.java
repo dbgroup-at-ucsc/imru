@@ -53,7 +53,7 @@ public class VirtualBox {
         }
     }
 
-    public static void setup(int nodes, int memory, int cpuCap)
+    public static void setup(int nodes, int memory, int cpuCap, int networkMB)
             throws Exception {
         Rt.p("Remove snapshot");
         for (int i = 0; i < 3; i++) {
@@ -77,6 +77,11 @@ public class VirtualBox {
                 VBoxManage(true, "modifyvm " + machine + " --memory " + memory
                         + " --cpus " + 1 + " --cpuexecutioncap " + cpuCap
                         + " --macaddress1 " + mac);
+                if (networkMB > 0)
+                    VBoxManage(true, "bandwidthctl " + machine
+                            + " --name net --add network --limit " + networkMB);
+                //VBoxManage bandwidthctl creo --name net --add network --limit 100 
+                //VBoxManage bandwidthctl creo --name net --delete
             }
         }
         for (int id = 0; id < nodes; id++) {
@@ -91,7 +96,7 @@ public class VirtualBox {
 
     public static void main(String[] args) throws Exception {
         // remove();
-        setup(8, 3000, 50);
+        setup(8, 3000, 50, 0);
         // setup(16, 1500, 25);
     }
 }

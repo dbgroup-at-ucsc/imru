@@ -13,25 +13,26 @@ import exp.imruVsSpark.data.DataGenerator;
 
 public class SparseKMeans {
     public static void run(String path) throws Exception {
+        int points = 1000000;
+        final int k = 3;
+        int iteration = 5;
         System.setProperty("spark.akka.frameSize", "16");
-                File templateDir = new File(DataGenerator.TEMPLATE);
-        final DataGenerator dataGenerator = new DataGenerator(
-                DataGenerator.DEBUG_DATA_POINTS, templateDir);
+        File templateDir = new File(DataGenerator.TEMPLATE);
+        final DataGenerator dataGenerator = new DataGenerator(points,
+                templateDir);
 
-        final int k = DataGenerator.DEBUG_K;
         final int dimensions = dataGenerator.dims;
         final SKMeansModel model = new SKMeansModel(k, dataGenerator, 20);
-        Vector<SparseVector> data = new Vector<SparseVector>(
-                DataGenerator.DEBUG_DATA_POINTS);
+        Vector<SparseVector> data = new Vector<SparseVector>(points);
 
-        BufferedReader br = new BufferedReader(new InputStreamReader(
-                new BufferedInputStream(new FileInputStream(
-                        path), 1024 * 1024)));
+        BufferedReader br = new BufferedReader(
+                new InputStreamReader(new BufferedInputStream(
+                        new FileInputStream(path), 1024 * 1024)));
         for (String line = br.readLine(); line != null; line = br.readLine())
             data.add(new SparseVector(line));
         br.close();
 
-        for (int i = 1; i <= DataGenerator.DEBUG_ITERATIONS; i++) {
+        for (int i = 1; i <= iteration; i++) {
             System.out.println("On iteration " + i);
             FilledVectors result = new FilledVectors(k, dimensions);
 

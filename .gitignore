@@ -2,3 +2,7 @@
 /ClusterControllerService
 /edu.uci.ics.hyracks.control.nc.NodeControllerService
 /tmp
+imruMem*.pdf
+imruDisk*.pdf
+spark*.pdf
+*Speedup.pdf

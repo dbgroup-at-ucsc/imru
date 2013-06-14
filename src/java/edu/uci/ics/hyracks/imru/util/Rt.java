@@ -31,7 +31,7 @@ import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
 public class Rt {
-    public static boolean showTime = false;
+    public static boolean showTime = true;
 
     public static void p(Object object) {
         p((String) ("" + object), new Object[0]);

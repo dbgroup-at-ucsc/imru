@@ -130,7 +130,7 @@ public class ClusterMonitor {
                         if (nextTime > System.currentTimeMillis())
                             Thread.sleep(nextTime - System.currentTimeMillis());
                         id++;
-                        if (id > 10) {
+                        if (id > 30) {
                             try {
                                 for (GnuPlot p : ps) {
                                     p.finish();

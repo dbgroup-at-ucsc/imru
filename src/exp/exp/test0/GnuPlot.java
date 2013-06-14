@@ -138,17 +138,16 @@ public class GnuPlot {
     public boolean colored = false;
     public int startPointType = 0;
     public int pointSize = 0;
-    public static String[] lineColors = { 
-        "red", "green", "blue", //
-        "black",//
-            "#808000",  "#800080", "#008080",//
+    public static String[] lineColors = { "red", "green", "blue", //
+            "black",//
+            "#808000", "#800080", "#008080",//
             "#FF00FF", "#00FFFF", "#FFFF00",//
-            "#404000",  "#400040", "#004040",//
-            "#C0C000",  "#C000C0", "#00C0C0",//
-            "#400000",  "#004000", "#000040",//
-            "#C00000",  "#00C000", "#0000C0",//
-            "#800000",  "#008000", "#000080",//
-            };
+            "#404000", "#400040", "#004040",//
+            "#C0C000", "#C000C0", "#00C0C0",//
+            "#400000", "#004000", "#000040",//
+            "#C00000", "#00C000", "#0000C0",//
+            "#800000", "#008000", "#000080",//
+    };
 
     private String getStyle(int i) {
         if (isLineStyle()) {
@@ -372,12 +371,16 @@ public class GnuPlot {
             }
         }
         ps.close();
-        if (new File("/usr/bin/gnuplot").exists())
+        if (new File("/usr/bin/gnuplot").exists()) {
             Rt.runAndShowCommand("gnuplot " + name + ".plt", dir);
+            Rt.runAndShowCommand("epstopdf --outfile="
+                    + new File(dir, name + ".pdf").getAbsolutePath() + " "
+                    + new File(dir, name + ".eps").getAbsolutePath());
+        }
     }
 
     public void show() throws IOException {
         Rt.runAndShowCommand("evince "
-                + new File(dir, name + ".eps").getAbsolutePath());
+                + new File(dir, name + ".pdf").getAbsolutePath());
     }
 }

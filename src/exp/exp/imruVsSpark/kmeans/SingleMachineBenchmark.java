@@ -15,10 +15,11 @@ import exp.test0.lr.SparkLR;
 public class SingleMachineBenchmark {
     public static void main(String[] args) throws Exception {
         Client.disableLogging();
+        int k = 3;
+        int iterations = 5;
         GnuPlot plot = new GnuPlot(new File("result"), "kmeans",
                 "Data points (10^5)", "Time (seconds)");
-        plot.extra = "set title \"K=" + DataGenerator.DEBUG_K + ",Iteration="
-                + DataGenerator.DEBUG_ITERATIONS + "\"";
+        plot.extra = "set title \"K=" + k + ",Iteration=" + iterations + "\"";
         plot.setPlotNames("Generate Data", "Bare", "Spark", "IMRU-mem",
                 "IMRU-disk", "IMRU-parse");
         plot.startPointType = 1;
@@ -28,7 +29,7 @@ public class SingleMachineBenchmark {
         //            plot.vs.get(i).set(0, plot.vs.get(i).get(0) / 100000);
         plot.finish();
         System.exit(0);
-        for (DataGenerator.DEBUG_DATA_POINTS = 100000; DataGenerator.DEBUG_DATA_POINTS <= 1000000; DataGenerator.DEBUG_DATA_POINTS += 100000) {
+        for (int points = 100000; points <= 1000000; points += 100000) {
             long start = System.currentTimeMillis();
             DataGenerator.main(args);
             long dataTime = System.currentTimeMillis() - start;
@@ -38,22 +39,22 @@ public class SingleMachineBenchmark {
             long bareTime = System.currentTimeMillis() - start;
 
             start = System.currentTimeMillis();
-            IMRUKMeans.run(true, false);
+            IMRUKMeans.run(true, false, k, iterations, points);
             long imruMemTime = System.currentTimeMillis() - start;
 
             start = System.currentTimeMillis();
-            IMRUKMeans.run(false, true);
+            IMRUKMeans.run(false, true, k, iterations, points);
             long imruParseTime = System.currentTimeMillis() - start;
 
             start = System.currentTimeMillis();
-            IMRUKMeans.run(false, false);
+            IMRUKMeans.run(false, false, k, iterations, points);
             long imruDiskTime = System.currentTimeMillis() - start;
 
             start = System.currentTimeMillis();
             String host = "192.168.56.101";
             host = "10.243.74.41";
-            SparkKMeans.run(host, DataGenerator.DEBUG_DATA_POINTS,
-                    "/data/b/soft/spark-0.7.0", "/data/b/data/imru/productName.txt", 1);
+            SparkKMeans.run(host, points, "/data/b/soft/spark-0.7.0",
+                    "/data/b/data/imru/productName.txt", 1, k, iterations);
             long sparkTime = System.currentTimeMillis() - start;
 
             Rt.p("Data: %,d", dataTime);
@@ -63,7 +64,7 @@ public class SingleMachineBenchmark {
             Rt.p("IMRU-disk: %,d", imruDiskTime);
             Rt.p("IMRU-parse: %,d", imruParseTime);
 
-            plot.startNewX(DataGenerator.DEBUG_DATA_POINTS / 100000);
+            plot.startNewX(points / 100000);
             plot.addY(dataTime / 1000.0);
             plot.addY(bareTime / 1000.0);
             plot.addY(sparkTime / 1000.0);

@@ -31,7 +31,7 @@ public class HelloWorld {
             // if no argument is given, the following code
             // creates default arguments to run the example
             String cmdline = "";
-            int totalNodes = 5;
+            int totalNodes = 8;
             boolean useExistingCluster = Client.isServerAvailable(
                     Client.getLocalIp(), 3099);
             if (useExistingCluster) {
@@ -42,6 +42,8 @@ public class HelloWorld {
                 // debugging mode, everything run in one process
                 cmdline += "-host localhost -port 3099 -debug -disable-logging";
                 cmdline += " -debugNodes " + totalNodes;
+                cmdline += " -agg-tree-type nary -fan-in 4";
+                
                 System.out.println("Starting hyracks cluster");
             }
 

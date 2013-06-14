@@ -17,6 +17,7 @@ import spark.api.java.function.FlatMapFunction;
 import spark.api.java.function.Function;
 import spark.api.java.function.Function2;
 import spark.api.java.function.PairFunction;
+import edu.uci.ics.hyracks.api.util.JavaSerializationUtils;
 import edu.uci.ics.hyracks.imru.example.utils.CreateHar;
 import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.imruVsSpark.data.DataGenerator;
@@ -26,8 +27,19 @@ import exp.imruVsSpark.kmeans.SparseVector;
 
 public class SparkKMeans {
     public static int run(String host, int dataSize, String sparkPath,
-            String dataPath, int nodeCount) throws Exception {
-        System.setProperty("spark.akka.frameSize", "16");
+            String dataPath, int nodeCount, final int k, int iterations)
+            throws Exception {
+        {
+            File templateDir = new File(DataGenerator.TEMPLATE);
+            final DataGenerator dataGenerator = new DataGenerator(dataSize
+                    * nodeCount, templateDir);
+            final SKMeansModel model = new SKMeansModel(k, dataGenerator, 20);
+            byte[] bs = JavaSerializationUtils.serialize(model);
+            Rt.p("Model size: %,d", bs.length);
+            int frameSize =(int)((bs.length / 1024 / 1024)*1.1 + 2);
+            System.setProperty("spark.akka.frameSize", Integer
+                    .toString(frameSize));
+        }
         System.setProperty("spark.broadcast.serverSocketTimeout", "30000");
         //cd /data/b/soft/lib/spark-0.7.0;sbt/sbt package;cp core/target/scala-2.9.2/spark-core_2.9.2-0.7.0.jar /data/a/imru/ucscImru/lib/spark-0.7.0/
         //cd /data/b/soft;lib/spark-0.7.0/run spark.deploy.master.Master -i 192.168.56.101 -p 7077
@@ -37,7 +49,6 @@ public class SparkKMeans {
         File templateDir = new File(DataGenerator.TEMPLATE);
         final DataGenerator dataGenerator = new DataGenerator(dataSize,
                 templateDir);
-        final int k = DataGenerator.DEBUG_K;
         final int dimensions = dataGenerator.dims;
         final SKMeansModel model = new SKMeansModel(k, dataGenerator, 20);
 
@@ -79,7 +90,7 @@ public class SparkKMeans {
                 return new AggregatedResult<FilledVectors>(result);
             }
         };
-        for (int i = 1; i <= DataGenerator.DEBUG_ITERATIONS; i++) {
+        for (int i = 1; i <= iterations; i++) {
             System.out.println("On iteration " + i);
             JavaRDD<FilledVectors> kmeansModels = points.mapPartitions(f);
             FilledVectors revisedCentroids = kmeansModels
@@ -96,8 +107,8 @@ public class SparkKMeans {
             Rt.p(revisedCentroids.distanceSum);
             boolean changed = model.set(revisedCentroids);
             Rt.p("Total examples: " + model.totalExamples);
-            if (!changed)
-                break;
+//            if (!changed)
+//                break;
         }
         sc.stop();
         return model.totalExamples;
@@ -105,8 +116,8 @@ public class SparkKMeans {
 
     public static void main(String[] args) throws Exception {
         String host = "192.168.56.101";
-        run(host, DataGenerator.DEBUG_DATA_POINTS,"/data/b/soft/spark-0.7.0",
-                "/data/b/data/imru/productName.txt", 1);
+        run(host, 1000000, "/data/b/soft/spark-0.7.0",
+                "/data/b/data/imru/productName.txt", 1, 3, 5);
         System.exit(0);
     }
 }

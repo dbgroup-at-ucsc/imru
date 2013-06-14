@@ -6,4 +6,4 @@ java -Xmx512m -cp bin\
 :/home/ubuntu/scala-2.9.2/lib/*\
 :/home/ubuntu/spark-0.7.0/lib_managed/bundles/*\
 :/home/ubuntu/spark-0.7.0/lib_managed/jars/*\
- $1 $2 $3 $4 $5
+ $@

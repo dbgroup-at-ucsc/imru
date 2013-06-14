@@ -37,8 +37,8 @@ import exp.imruVsSpark.kmeans.spark.SparkKMeans;
  * Sparse K-means
  */
 public class IMRUKMeans {
-    public static void run(boolean memCache, boolean noDiskCache)
-            throws Exception {
+    public static void run(boolean memCache, boolean noDiskCache, int k,
+            int iterations, int dataPoints) throws Exception {
         String cmdline = "";
         if (Client.isServerAvailable(Client.getLocalIp(), 3099)) {
             // hostname of cluster controller
@@ -65,20 +65,17 @@ public class IMRUKMeans {
         System.out.println("Using command line: " + cmdline);
         String[] args = cmdline.split(" ");
 
-        int k = DataGenerator.DEBUG_K;
-
         File templateDir = new File(DataGenerator.TEMPLATE);
-        DataGenerator dataGenerator = new DataGenerator(
-                DataGenerator.DEBUG_DATA_POINTS, templateDir);
-        SKMeansModel initModel = new SKMeansModel(k, dataGenerator,
-                DataGenerator.DEBUG_ITERATIONS);
+        DataGenerator dataGenerator = new DataGenerator(dataPoints, templateDir);
+        SKMeansModel initModel = new SKMeansModel(k, dataGenerator, iterations);
         SKMeansModel finalModel = Client.run(new SKMeansJob(k,
                 dataGenerator.dims), initModel, args);
         Rt.p("Total examples: " + finalModel.totalExamples);
     }
 
     public static int runEc2(String cc, int nodes, int size, String path,
-            boolean memCache, boolean noDiskCache) throws Exception {
+            boolean memCache, boolean noDiskCache, int k, int iterations,
+            String aggType, int aggArg) throws Exception {
         CreateHar.uploadJarFiles = false;
         DataGenerator.TEMPLATE = "/home/ubuntu/test/exp_data/product_name";
         if (!new File(DataGenerator.TEMPLATE).exists())
@@ -87,7 +84,11 @@ public class IMRUKMeans {
         String cmdline = "";
         cmdline += "-host " + cc + " -port 3099";
         //        cmdline += " -frame-size " + (16 * 1024 * 1024);
-        cmdline += " -agg-tree-type nary -fan-in 2";
+        if (aggType == null)
+            cmdline += " -agg-tree-type nary -fan-in 2";
+        else
+            cmdline += " -agg-tree-type " + aggType + " -agg-count " + aggArg
+                    + " -fan-in " + aggArg;
         System.out.println("Connecting to " + Client.getLocalIp());
         //            cmdline += "-host localhost -port 3099 -debug -disable-logging";
         if (memCache)
@@ -104,12 +105,9 @@ public class IMRUKMeans {
         System.out.println("Using command line: " + cmdline);
         String[] args = cmdline.split(" ");
 
-        int k = DataGenerator.DEBUG_K;
-
         File templateDir = new File(DataGenerator.TEMPLATE);
         DataGenerator dataGenerator = new DataGenerator(size, templateDir);
-        SKMeansModel initModel = new SKMeansModel(k, dataGenerator,
-                DataGenerator.DEBUG_ITERATIONS);
+        SKMeansModel initModel = new SKMeansModel(k, dataGenerator, iterations);
         SKMeansModel finalModel = Client.run(new SKMeansJob(k,
                 dataGenerator.dims), initModel, args);
         Rt.p("Total examples: " + finalModel.totalExamples);
@@ -172,7 +170,7 @@ public class IMRUKMeans {
     public static void main(String[] args) throws Exception {
         //        generateData(1000, 2);
         try {
-            run(true, false);
+            run(true, false, 3, 5, 1000000);
         } catch (Throwable e) {
             e.printStackTrace();
         }

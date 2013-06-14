@@ -119,8 +119,8 @@ public class SKMeansJob implements
         boolean changed = model.set(combined);
 //        Rt.p(model.totalExamples);
         model.roundsRemaining--;
-        if (!changed)
-            model.roundsRemaining = 0;
+//        if (!changed)
+//            model.roundsRemaining = 0;
         System.out.println("Total distances: " + combined.distanceSum
                 + " remaining=" + model.roundsRemaining);
         return model;

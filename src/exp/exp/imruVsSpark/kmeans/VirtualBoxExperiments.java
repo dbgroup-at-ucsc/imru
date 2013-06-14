@@ -31,21 +31,37 @@ public class VirtualBoxExperiments {
     LocalCluster cluster;
     HyracksNode controller;
     HyracksNode[] nodes;
+    int k;
+    int iterations;
+    int batchStart;
+    int batchStep;
+    int batchEnd;
+    int batchSize;
+    String aggType;
+    int aggArg;
     File resultDir;
     File figDir;
     static ClusterMonitor monitor;
 
-    public VirtualBoxExperiments(LocalCluster cluster, String name) {
+    public VirtualBoxExperiments(LocalCluster cluster, String name, int k,
+            int iterations, int batchStart, int batchStep, int batchEnd,
+            int batchSize, String aggType, int aggArg) {
+        this.k = k;
+        this.iterations = iterations;
+        this.batchStart = batchStart;
+        this.batchStep = batchStep;
+        this.batchEnd = batchEnd;
+        this.batchSize = batchSize;
+        this.aggType = aggType;
+        this.aggArg = aggArg;
         this.cluster = cluster;
         if (cluster != null) {
             controller = cluster.cluster.controller;
             nodes = cluster.cluster.nodes;
-            resultDir = new File("result/k" + DataGenerator.DEBUG_K + "i"
-                    + DataGenerator.DEBUG_ITERATIONS + "b"
-                    + KmeansExperiment.STARTC + "s" + KmeansExperiment.STEPC
-                    + "e" + KmeansExperiment.ENDC + "b"
-                    + KmeansExperiment.BATCH + "/" + name + "_" + nodes.length
-                    + "nodes");
+            resultDir = new File("result/k" + k + "i" + iterations + "b"
+                    + batchStart + "s" + batchStep + "e" + batchEnd + "b"
+                    + batchSize + "/" + name + "_" + nodes.length + "nodes_"
+                    + aggType + "_" + aggArg);
             resultDir.mkdirs();
         }
         figDir = new File(resultDir, "rawData");
@@ -88,22 +104,19 @@ public class VirtualBoxExperiments {
         monitor.start(figDir, "generateData", nodes);
         PrintStream ps = new PrintStream(
                 new File(resultDir, "generateTime.txt"));
-        for (int sizePerNode = KmeansExperiment.STARTC; sizePerNode <= KmeansExperiment.ENDC; sizePerNode += KmeansExperiment.STEPC) {
-            DataGenerator.DEBUG_DATA_POINTS = sizePerNode
-                    * KmeansExperiment.BATCH;
-            int dataSize = DataGenerator.DEBUG_DATA_POINTS * nodes.length;
+        for (int sizePerNode = batchStart; sizePerNode <= batchEnd; sizePerNode += batchStep) {
+            int pointPerNode = sizePerNode * batchSize;
+            int dataSize = pointPerNode * nodes.length;
 
             long start = System.currentTimeMillis();
-            Rt.p("generating data " + DataGenerator.DEBUG_DATA_POINTS + " "
-                    + nodes.length);
+            Rt.p("generating data " + pointPerNode + " " + nodes.length);
             //            DataGenerator.main(new String[] { "/home/ubuntu/test/data.txt" });
-            IMRUKMeans.generateData(controller.publicIp,
-                    DataGenerator.DEBUG_DATA_POINTS, nodes.length, new File(
-                            "/home/" + cluster.user
-                                    + "/test/exp_data/product_name"),
-                    KmeansExperiment.getImruDataPath(sizePerNode, nodes.length,
-                            "%d"), KmeansExperiment.getSparkDataPath(
-                            sizePerNode, nodes.length));
+            IMRUKMeans.generateData(controller.publicIp, pointPerNode,
+                    nodes.length, new File("/home/" + cluster.user
+                            + "/test/exp_data/product_name"), KmeansExperiment
+                            .getImruDataPath(sizePerNode, nodes.length, "%d"),
+                    KmeansExperiment
+                            .getSparkDataPath(sizePerNode, nodes.length));
             long dataTime = System.currentTimeMillis() - start;
             Rt.p(sizePerNode + "\t" + dataTime / 1000.0);
             ps.println(sizePerNode + "\t" + dataTime / 1000.0);
@@ -121,17 +134,16 @@ public class VirtualBoxExperiments {
     }
 
     void generateSharedData() throws Exception {
-        for (int sizePerNode = KmeansExperiment.STARTC; sizePerNode <= KmeansExperiment.ENDC; sizePerNode += KmeansExperiment.STEPC) {
-            DataGenerator.DEBUG_DATA_POINTS = sizePerNode
-                    * KmeansExperiment.BATCH;
-            int dataSize = DataGenerator.DEBUG_DATA_POINTS * nodes.length;
+        for (int sizePerNode = batchStart; sizePerNode <= batchEnd; sizePerNode += batchStep) {
+            int pointPerNode = sizePerNode * batchSize;
+            int dataSize = pointPerNode * nodes.length;
             String imruPath = "/data"
                     + KmeansExperiment.getImruDataPath(sizePerNode,
                             nodes.length, "%d");
             String sparkPath = "/data"
                     + KmeansExperiment.getSparkDataPath(sizePerNode,
                             nodes.length);
-            int count = DataGenerator.DEBUG_DATA_POINTS;
+            int count = pointPerNode;
             int splits = nodes.length;
             File templateDir = new File("exp_data/product_name");
             File sparkFile = new File(sparkPath);
@@ -182,8 +194,34 @@ public class VirtualBoxExperiments {
         ssh.close();
     }
 
+    void runExperiment(SSH ssh, String job) {
+        String arg = "-master " + controller.internalIp;
+        arg += " -nodeCount " + nodes.length;
+        arg += " -type " + job;
+        arg += " -k " + k;
+        arg += " -iterations " + iterations;
+        arg += " -batchStart " + batchStart;
+        arg += " -batchStep " + batchStep;
+        arg += " -batchEnd " + batchEnd;
+        arg += " -batchSize " + batchSize;
+        arg += " -agg-tree-type " + aggType;
+        arg += " -agg-count " + aggArg;
+        arg += " -fan-in " + aggArg;
+        ssh.execute("sh st.sh exp.imruVsSpark.kmeans.KmeansExperiment " + arg);
+    }
+
+    boolean hasResult(boolean mem) throws Exception {
+        String job = mem ? "imruMem" : "imruDisk";
+        File resultFile = new File(resultDir, job + ".txt");
+        return (resultFile.exists() && resultFile.length() > 0);
+    }
+
     void runImru(boolean mem) throws Exception {
         String job = mem ? "imruMem" : "imruDisk";
+        File resultFile = new File(resultDir, job + ".txt");
+        if (resultFile.exists() && resultFile.length() > 0)
+            return;
+        cluster.stopAll();
         Rt.p("testing IMRU");
         cluster.cluster.startHyrackCluster();
         Thread.sleep(5000);
@@ -192,12 +230,11 @@ public class VirtualBoxExperiments {
         ssh.execute("cd test;");
         monitor.start(figDir, job, nodes);
         ssh.execute("rm result/*");
-        ssh.execute("sh st.sh exp.imruVsSpark.kmeans.KmeansExperiment "
-                + controller.internalIp + " " + nodes.length + " " + job);
+        runExperiment(ssh, job);
         String result = new String(Rt.read(ssh.get("/home/" + cluster.user
                 + "/test/result/kmeans" + job + "_org.data")));
         Rt.p(result);
-        Rt.write(new File(resultDir, job + ".txt"), result.getBytes());
+        Rt.write(resultFile, result.getBytes());
         ssh.close();
         monitor.stop();
         //        cluster.cluster.printLogs(-1, 100);
@@ -212,8 +249,7 @@ public class VirtualBoxExperiments {
         ssh.execute("cd test;");
         monitor.start(figDir, "spark", nodes);
         ssh.execute("rm result/*");
-        ssh.execute("sh st.sh exp.imruVsSpark.kmeans.KmeansExperiment "
-                + controller.internalIp + " " + nodes.length + " spark");
+        runExperiment(ssh, "spark");
         monitor.stop();
         ssh.execute("cat " + "/home/" + cluster.user + "/masterSpark.log");
         ssh.execute("cat " + "/home/" + cluster.user + "/slaveSpark.log");
@@ -266,24 +302,19 @@ public class VirtualBoxExperiments {
     }
 
     static void generateResult(File resultDir) throws Exception {
-        String name = resultDir.getName();
-        int memory = Integer.parseInt(name.substring(5, name.indexOf("M")));
-        String core = name.substring(name.indexOf("M") + 1, name
-                .indexOf("core"));
-        int nodeCount = Integer.parseInt(name.substring(
-                name.lastIndexOf("_") + 1, name.length() - 5));
+        KmeansFigs figs = new KmeansFigs(resultDir);
         GnuPlot plot = new GnuPlot(new File("/tmp/cache"), "kmeans",
                 "Data points per node (10^5)", "Time (seconds)");
         GnuPlot speedup = new GnuPlot(new File("/tmp/cache"), "kmeansSpeedup",
                 "Data points per node (10^5)", "Speed up (%)");
-        plot.extra = "set title \"K-means K=" + DataGenerator.DEBUG_K
-                + " Iteration=" + DataGenerator.DEBUG_ITERATIONS + "\\n"
-                + " mem=" + memory + "M*" + nodeCount + " cpu=" + core
-                + "core*" + nodeCount + "\"";
-        speedup.extra = "set title \"K-means K=" + DataGenerator.DEBUG_K
-                + " Iteration=" + DataGenerator.DEBUG_ITERATIONS + "\\n"
-                + " mem=" + memory + "M*" + nodeCount + " cpu=" + core
-                + "core*" + nodeCount + "\"";
+        plot.extra = "set title \"K-means K=" + figs.k + " Iteration="
+                + figs.iterations + "\\n" + " mem=" + figs.memory + "M*"
+                + figs.nodeCount + " cpu=" + figs.core + "core*"
+                + figs.nodeCount + "\"";
+        speedup.extra = "set title \"K-means K=" + figs.k + " Iteration="
+                + figs.iterations + "\\n" + " mem=" + figs.memory + "M*"
+                + figs.nodeCount + " cpu=" + figs.core + "core*"
+                + figs.nodeCount + "\"";
         plot.setPlotNames(
         //                "Generate Data", 
                 "Spark", "IMRU-disk", "IMRU-mem");
@@ -344,7 +375,7 @@ public class VirtualBoxExperiments {
         speedup.finish();
 
         String prefix = "../finished/"
-                + name.replaceAll("_", "").replaceAll("\\.", "");
+                + figs.name.replaceAll("_", "").replaceAll("\\.", "");
         File pdf = new File(resultDir, prefix + plot.name + ".pdf");
         if (!pdf.getParentFile().exists())
             pdf.getParentFile().mkdirs();
@@ -362,6 +393,8 @@ public class VirtualBoxExperiments {
     }
 
     void runExperiments() throws Exception {
+        if (hasResult(true)&& hasResult(false))
+            return;
         Rt.p("Spark: http://" + controller.publicIp + ":"
                 + cluster.getSparkPort() + "/");
         Rt.p("IMRU: " + cluster.cluster.getAdminURL());
@@ -369,14 +402,12 @@ public class VirtualBoxExperiments {
         uploadExperimentCode();
         generateSharedData();
 
-        cluster.stopAll();
         runImru(true);
 
-        cluster.stopAll();
         runImru(false);
 
-        cluster.stopAll();
-        runSpark();
+        //        cluster.stopAll();
+        //        runSpark();
 
         cluster.stopAll();
     }
@@ -392,36 +423,59 @@ public class VirtualBoxExperiments {
             VirtualBox.remove();
             int nodeCount = 16;
             int memory = 1500;
+            int k = 3;
+            int iterations = 5;
+            int batchStart = 1;
+            int batchStep = 3;
+            int batchEnd = 1;
+            int batchSize = 100000;
+            int network = 0;
             String cpu = "0.25";
-            for (nodeCount = 1; nodeCount <= 16; nodeCount *= 2) {
-                String name = "local" + memory + "M" + cpu + "core";
-                VirtualBox.setup(nodeCount, memory, (int) (Double
-                        .parseDouble(cpu) * 100));
-                Thread.sleep(2000 * nodeCount);
-                monitor = new ClusterMonitor();
-                String[] nodes = new String[nodeCount];
-                monitor.waitIp(nodes.length);
-                for (int i = 0; i < nodes.length; i++)
-                    nodes[i] = monitor.ip[i];
 
-                File home = new File(System.getProperty("user.home"));
-                LocalCluster cluster;
-                String userName = "ubuntu";
+            nodeCount = 12;
+            memory = 1500;
+            cpu = "0.25";
+            int fanIn = 2;
 
-                HyracksNode.HYRACKS_PATH = "/home/" + userName + "/hyracks-ec2";
-                String cc = nodes[0];
-                cluster = new LocalCluster(new HyracksCluster(cc, nodes,
-                        userName, new File(home, ".ssh/id_rsa")), userName);
-                //                File hyracksEc2Root = new File(home, "ucscImru/dist");
-                //        cluster.cluster.install(hyracksEc2Root);
-                VirtualBoxExperiments exp = new VirtualBoxExperiments(cluster,
-                        name);
-                exp.runExperiments();
-                generateResult(exp.resultDir);
+            //                        for (k = 16; k <= 64; k *= 2) {
+            VirtualBox.setup(nodeCount, memory,
+                    (int) (Double.parseDouble(cpu) * 100), network);
+            Thread.sleep(2000 * nodeCount);
+            monitor = new ClusterMonitor();
+            String[] nodes = new String[nodeCount];
+            monitor.waitIp(nodes.length);
+            for (int i = 0; i < nodes.length; i++)
+                nodes[i] = monitor.ip[i];
+            //            for (network = 1; network <= 5; network *= 10) {
+            for (k = 1; k < 10; k++) {
+                for (fanIn = 1; fanIn <= 5; fanIn++) {
 
-                VirtualBox.remove();
-                monitor.close();
+                    String name = "local" + memory + "M" + cpu + "coreN"
+                            + network;
+
+                    File home = new File(System.getProperty("user.home"));
+                    LocalCluster cluster;
+                    String userName = "ubuntu";
+
+                    HyracksNode.HYRACKS_PATH = "/home/" + userName
+                            + "/hyracks-ec2";
+                    String cc = nodes[0];
+                    cluster = new LocalCluster(new HyracksCluster(cc, nodes,
+                            userName, new File(home, ".ssh/id_rsa")), userName);
+                    //                File hyracksEc2Root = new File(home, "ucscImru/dist");
+                    //        cluster.cluster.install(hyracksEc2Root);
+                    VirtualBoxExperiments exp = new VirtualBoxExperiments(
+                            cluster, name, k, iterations, batchStart,
+                            batchStep, batchEnd, batchSize, fanIn > 1 ? "nary"
+                                    : "none", fanIn);
+                    exp.runExperiments();
+                    //                    generateResult(exp.resultDir);
+
+                }
             }
+                        VirtualBox.remove();
+            monitor.close();
+
         } catch (Throwable e) {
             e.printStackTrace();
         } finally {
