@@ -322,9 +322,13 @@ public class VirtualBoxExperiments {
         plot.startPointType = 1;
         plot.pointSize = 1;
         plot.scale = false;
+        plot.colored=true;
+        plot.keyPosition="left top";
         speedup.startPointType = 1;
         speedup.pointSize = 1;
         speedup.scale = false;
+        speedup.colored=true;
+        speedup.keyPosition="left top";
 
         //        String[] data = Rt.readFile(new File(resultDir, "generateTime.txt"))
         //                .split("\n");
@@ -393,7 +397,7 @@ public class VirtualBoxExperiments {
     }
 
     void runExperiments() throws Exception {
-        if (hasResult(true)&& hasResult(false))
+        if (hasResult(true) && hasResult(false))
             return;
         Rt.p("Spark: http://" + controller.publicIp + ":"
                 + cluster.getSparkPort() + "/");
@@ -418,6 +422,9 @@ public class VirtualBoxExperiments {
     }
 
     public static void main(String[] args) throws Exception {
+        generateResult(new File("result/k3i1b1s3e10b100000/local1500M0.25core_16nodes"));
+        generateResult(new File("result/k3i1b1s3e10b100000/local1500M0.5core_8nodes"));
+        System.exit(0);
         //        regenerateResults();
         try {
             VirtualBox.remove();
@@ -435,6 +442,11 @@ public class VirtualBoxExperiments {
             nodeCount = 12;
             memory = 1500;
             cpu = "0.25";
+
+            nodeCount = 8;
+            memory = 2000;
+            cpu = "0.5";
+            network = 1; 
             int fanIn = 2;
 
             //                        for (k = 16; k <= 64; k *= 2) {
@@ -447,7 +459,7 @@ public class VirtualBoxExperiments {
             for (int i = 0; i < nodes.length; i++)
                 nodes[i] = monitor.ip[i];
             //            for (network = 1; network <= 5; network *= 10) {
-            for (k = 1; k < 10; k++) {
+            for (k = 3; k < 10; k++) {
                 for (fanIn = 1; fanIn <= 5; fanIn++) {
 
                     String name = "local" + memory + "M" + cpu + "coreN"
@@ -473,7 +485,7 @@ public class VirtualBoxExperiments {
 
                 }
             }
-                        VirtualBox.remove();
+            VirtualBox.remove();
             monitor.close();
 
         } catch (Throwable e) {

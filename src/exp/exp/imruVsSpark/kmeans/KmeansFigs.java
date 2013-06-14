@@ -131,12 +131,12 @@ public class KmeansFigs extends Hashtable<String, Double> {
 
     public static void k() throws Exception {
         GnuPlot plot = new GnuPlot(new File("/tmp/cache"), "kmeans100kK",
-                "Nodes", "Time (seconds)");
+                "k", "Time (seconds)");
         KmeansFigs f = new KmeansFigs(new File(
                 "result/k2i5b1s3e1b100000/local1500M0.25core_16nodes"));
-        plot.extra = "set title \"K-means" + " 10^5 points/node"
+        plot.extra = "set title \"K-means" + " 10^5 points/node*"+f.nodeCount
                 + " Iteration=" + f.iterations + "\\n cpu=" + f.core
-                + "core/node" + " memory=" + f.memory + "MB/node \"";
+                + "core/node*"+f.nodeCount + " memory=" + f.memory + "MB/node*"+f.nodeCount+" \"";
         plot.setPlotNames("Spark", "IMRU-disk", "IMRU-mem");
         plot.startPointType = 1;
         plot.pointSize = 1;
@@ -239,9 +239,9 @@ public class KmeansFigs extends Hashtable<String, Double> {
         //TODO fanout vs framesize
         //        mem();
         //        nodes();
-        //        k();
+                k();
         //        network();
-        kAndFanOut();
+//        kAndFanOut();
         //1,210,439 -> 1,280,400
         //       14,525,646-> 15,365,178
         //                File templateDir = new File(DataGenerator.TEMPLATE);
