@@ -64,7 +64,7 @@ public class KmeansFigs extends Hashtable<String, Double> {
                 double sparkTime = Double.parseDouble(ss2[1]);
                 this.put("spark" + dataSizeInt, sparkTime);
                 if (!ss2[2].equals(processed[i]))
-                    throw new Error();
+                    throw new Error(k+" "+name+" "+ss2[2]+" "+ processed[i]);
             }
 
             String[] ss3 = imruMem[i].split("\t");
@@ -130,21 +130,22 @@ public class KmeansFigs extends Hashtable<String, Double> {
     }
 
     public static void k() throws Exception {
-        GnuPlot plot = new GnuPlot(new File("/tmp/cache"), "kmeans100kK",
-                "k", "Time (seconds)");
+        GnuPlot plot = new GnuPlot(new File("/tmp/cache"), "kmeans100kK", "k",
+                "Time (seconds)");
         KmeansFigs f = new KmeansFigs(new File(
-                "result/k2i5b1s3e1b100000/local1500M0.25core_16nodes"));
-        plot.extra = "set title \"K-means" + " 10^5 points/node*"+f.nodeCount
+                "result/k8i5b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2"));
+        plot.extra = "set title \"K-means" + " 10^5 points/node*" + f.nodeCount
                 + " Iteration=" + f.iterations + "\\n cpu=" + f.core
-                + "core/node*"+f.nodeCount + " memory=" + f.memory + "MB/node*"+f.nodeCount+" \"";
+                + "core/node*" + f.nodeCount + " memory=" + f.memory
+                + "MB/node*" + f.nodeCount + " \"";
         plot.setPlotNames("Spark", "IMRU-disk", "IMRU-mem");
         plot.startPointType = 1;
         plot.pointSize = 1;
         plot.scale = false;
         plot.colored = true;
-        for (int k = 1; k <= 4; k *= 2) {
+        for (int k = 2; k <= 10; k++) {
             f = new KmeansFigs(new File("result/k" + k
-                    + "i5b1s3e1b100000/local1500M0.25core_16nodes"));
+                    + "i5b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2"));
             plot.startNewX(k);
             plot.addY(f.get("spark1"));
             plot.addY(f.get("imruDisk1"));
@@ -183,13 +184,14 @@ public class KmeansFigs extends Hashtable<String, Double> {
     }
 
     public static void kAndFanOut() throws Exception {
-        GnuPlot plotDisk = new GnuPlot(new File("/tmp/cache"), "kFanDisk", "k",
+        GnuPlot plotDisk = new GnuPlot(new File("/tmp/cache"), "kFanDisk8n1", "k",
                 "Time (seconds)");
-        GnuPlot plotMem = new GnuPlot(new File("/tmp/cache"), "kFanMem", "k",
+        GnuPlot plotMem = new GnuPlot(new File("/tmp/cache"), "kFanMem8n1", "k",
                 "Time (seconds)");
         String name = "local2000M0.5coreN0_8nodes_";
-        name="local1500M0.25coreN0_12nodes_";
-        KmeansFigs f = new KmeansFigs(new File("result/k1i5b1s3e1b100000/"
+        name = "local1500M0.25coreN0_12nodes_";
+        name = "local2000M0.5coreN1_8nodes_";
+        KmeansFigs f = new KmeansFigs(new File("result/k2i5b1s3e1b100000/"
                 + name + "nary_2"));
         plotMem.extra = "set title \"K-means" + " 10^6 points/node"
                 + " Iteration=" + f.iterations + "\\n cpu=" + f.core
@@ -205,20 +207,17 @@ public class KmeansFigs extends Hashtable<String, Double> {
             p.colored = true;
             p.keyPosition = "bottom right";
         }
-        for (int k = 1; k < 5; k++) {
+        for (int k = 2; k < 10; k++) {
             plotMem.startNewX(k);
+            plotDisk.startNewX(k);
             f = new KmeansFigs(new File("result/k" + k + "i5b1s3e1b100000/"
                     + name + "none_1"));
             plotDisk.addY(f.get("imruDisk1"));
             plotMem.addY(f.get("imruMem1"));
             for (int nary = 2; nary <= 5; nary++) {
                 try {
-                    f = new KmeansFigs(
-                            new File(
-                                    "result/k"
-                                            + k
-                                            + "i5b1s3e1b100000/"+name+"nary_"
-                                            + nary));
+                    f = new KmeansFigs(new File("result/k" + k
+                            + "i5b1s3e1b100000/" + name + "nary_" + nary));
                 } catch (Throwable e) {
                     e.printStackTrace();
                     plotDisk.addY(0);
@@ -230,6 +229,7 @@ public class KmeansFigs extends Hashtable<String, Double> {
             }
         }
         plotMem.finish();
+        plotDisk.finish();
         plotMem.show();
     }
 
@@ -238,10 +238,10 @@ public class KmeansFigs extends Hashtable<String, Double> {
         //TODO spark storage level
         //TODO fanout vs framesize
         //        mem();
-        //        nodes();
-                k();
+                nodes();
+//        k();
         //        network();
-//        kAndFanOut();
+//                kAndFanOut();
         //1,210,439 -> 1,280,400
         //       14,525,646-> 15,365,178
         //                File templateDir = new File(DataGenerator.TEMPLATE);
