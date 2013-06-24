@@ -78,8 +78,11 @@ public class VirtualBox {
                         + " --cpus " + 1 + " --cpuexecutioncap " + cpuCap
                         + " --macaddress1 " + mac);
                 if (networkMB > 0)
-                    VBoxManage(true, "bandwidthctl " + machine
-                            + " --name net --add network --limit " + networkMB);
+                    throw new Error(
+                            "bandwidth control doesn't work in Virtualbox");
+                //                    VBoxManage(true, "bandwidthctl " + machine
+                //                            + " add net --type network --limit " + networkMB
+                //                            + "M");
                 //VBoxManage bandwidthctl creo --name net --add network --limit 100 
                 //VBoxManage bandwidthctl creo --name net --delete
             }

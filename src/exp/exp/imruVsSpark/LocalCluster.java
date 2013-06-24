@@ -104,6 +104,19 @@ public class LocalCluster {
         ssh.close();
     }
 
+    public void setNetworkSpeed(final int kbit) throws Exception {
+        cluster.executeOnAllNode(new NodeCallback() {
+            @Override
+            public void run(HyracksNode node) throws Exception {
+                SSH ssh = node.ssh();
+                ssh.execute("sudo wondershaper eth0 clear");
+                if (kbit > 0)
+                    ssh.execute("sudo wondershaper eth0 " + kbit + " " + kbit);
+                ssh.close();
+            }
+        });
+    }
+
     static ExecutorService pool = java.util.concurrent.Executors
             .newCachedThreadPool();
 
