@@ -2,6 +2,7 @@ package edu.uci.ics.hyracks.imru.example.trainmerge.ann;
 
 import java.io.File;
 
+import edu.uci.ics.hyracks.api.deployment.DeploymentId;
 import edu.uci.ics.hyracks.imru.example.utils.ClientTrainMerge;
 import edu.uci.ics.hyracks.imru.example.utils.ImruEC2;
 import edu.uci.ics.hyracks.imru.example.utils.ImruEC2TrainMerge;
@@ -19,16 +20,18 @@ public class NNEC2 {
         uploadData = false;
         String[] localPaths = { "/home/wangrui/b/data/train-labels.idx1-ubyte",
                 "/home/wangrui/b/data/train-images.idx3-ubyte", };
-        ImruEC2TrainMerge ec2 = new ImruEC2TrainMerge(credentialsFile, privateKey);
+        ImruEC2TrainMerge ec2 = new ImruEC2TrainMerge(credentialsFile,
+                privateKey);
         if (setupClusterFirst)
             ec2.setup(hyracksEc2Root, 2, "t1.micro");
         else {
             ec2.cluster.stopHyrackCluster();
             ec2.cluster.startHyrackCluster();
         }
-            
+
+        DeploymentId deploymentId = null;
         if (uploadData)
-            ec2.spreadData(localPaths, "/home/ubuntu/data/ann");
+            ec2.spreadData(deploymentId, localPaths, "/home/ubuntu/data/ann");
         String path = "";
         String[] nodes = ec2.cluster.getNodeNames();
         int totalExample = 100;

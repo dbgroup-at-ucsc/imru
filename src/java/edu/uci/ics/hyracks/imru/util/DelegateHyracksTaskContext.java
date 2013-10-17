@@ -22,6 +22,8 @@ import edu.uci.ics.hyracks.api.context.IHyracksTaskContext;
 import edu.uci.ics.hyracks.api.dataflow.TaskAttemptId;
 import edu.uci.ics.hyracks.api.dataflow.TaskId;
 import edu.uci.ics.hyracks.api.dataflow.state.IStateObject;
+import edu.uci.ics.hyracks.api.dataset.IDatasetPartitionManager;
+import edu.uci.ics.hyracks.api.deployment.DeploymentId;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.api.io.FileReference;
 import edu.uci.ics.hyracks.api.io.IIOManager;
@@ -39,7 +41,7 @@ public class DelegateHyracksTaskContext implements IHyracksTaskContext {
 
     /**
      * Construct a new DelegateHyracksTaskContext.
-     *
+     * 
      * @param delegate
      *            The task context to delegate calls to.
      */
@@ -48,8 +50,13 @@ public class DelegateHyracksTaskContext implements IHyracksTaskContext {
     }
 
     @Override
-    public ByteBuffer allocateFrame() {
+    public ByteBuffer allocateFrame() throws HyracksDataException {
         return delegate.allocateFrame();
+    }
+
+    @Override
+    public void deallocateFrames(int arg0) {
+        delegate.deallocateFrames(arg0);
     }
 
     @Override
@@ -63,12 +70,14 @@ public class DelegateHyracksTaskContext implements IHyracksTaskContext {
     }
 
     @Override
-    public FileReference createUnmanagedWorkspaceFile(String prefix) throws HyracksDataException {
+    public FileReference createUnmanagedWorkspaceFile(String prefix)
+            throws HyracksDataException {
         return delegate.createUnmanagedWorkspaceFile(prefix);
     }
 
     @Override
-    public FileReference createManagedWorkspaceFile(String prefix) throws HyracksDataException {
+    public FileReference createManagedWorkspaceFile(String prefix)
+            throws HyracksDataException {
         return delegate.createManagedWorkspaceFile(prefix);
     }
 
@@ -102,9 +111,14 @@ public class DelegateHyracksTaskContext implements IHyracksTaskContext {
         return delegate.getCounterContext();
     }
 
-     @Override
-    public void sendApplicationMessageToCC(byte[] message, String nodeId)
-            throws Exception {
-        delegate.sendApplicationMessageToCC(message, nodeId);
+    @Override
+    public IDatasetPartitionManager getDatasetPartitionManager() {
+        return delegate.getDatasetPartitionManager();
+    }
+
+    @Override
+    public void sendApplicationMessageToCC(byte[] arg0, DeploymentId arg1,
+            String arg2) throws Exception {
+        delegate.sendApplicationMessageToCC(arg0, arg1, arg2);
     }
 }

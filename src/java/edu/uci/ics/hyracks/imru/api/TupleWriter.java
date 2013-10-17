@@ -44,7 +44,7 @@ public class TupleWriter implements DataOutput {
         tb.reset();
     }
 
-    public TupleWriter(IMRUContext ctx, FrameWriter writer, int nFields) {
+    public TupleWriter(IMRUContext ctx, FrameWriter writer, int nFields) throws HyracksDataException {
         this.writer = writer;
         frame = ctx.allocateFrame();
         appender = new FrameTupleAppender(ctx.getFrameSize());
@@ -56,7 +56,7 @@ public class TupleWriter implements DataOutput {
         tb.reset();
     }
 
-    public TupleWriter(IHyracksTaskContext ctx, IFrameWriter writer, int nFields) {
+    public TupleWriter(IHyracksTaskContext ctx, IFrameWriter writer, int nFields) throws HyracksDataException {
         this.writer = new FrameWriter(writer);
         frame = ctx.allocateFrame();
         appender = new FrameTupleAppender(ctx.getFrameSize());

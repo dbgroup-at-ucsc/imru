@@ -118,9 +118,8 @@ public class ClientTrainMerge<Model extends Serializable> extends Client {
         client.init();
 
         TrainMergeDriver<Model> driver = new TrainMergeDriver<Model>(
-                client.hcc, client.control.imruConnection, job, initialModel,
-                client.options.examplePaths, client.control.confFactory,
-                client.options.app);
+                client.hcc, client.deploymentId,client.control.imruConnection, job, initialModel,
+                client.options.examplePaths, client.control.confFactory);
         driver.modelFileName = client.options.modelFilename;
         JobStatus status = driver.run();
 

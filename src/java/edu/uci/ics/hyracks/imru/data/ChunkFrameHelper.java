@@ -102,8 +102,9 @@ public class ChunkFrameHelper {
      *            The partition number of the operator sending the
      *            chunks.
      * @return A wrapped IFrameWriter that performs the encapsulation.
+     * @throws HyracksDataException 
      */
-    public IFrameWriter wrapWriter(final IFrameWriter writer, final int partition) {
+    public IFrameWriter wrapWriter(final IFrameWriter writer, final int partition) throws HyracksDataException {
         return new IFrameWriter() {
 
             private ByteBuffer encapsulatedChunk = ctx.allocateFrame();

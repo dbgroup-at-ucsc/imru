@@ -36,6 +36,7 @@ import java.util.logging.Logger;
 
 import edu.uci.ics.hyracks.api.client.IHyracksClientConnection;
 import edu.uci.ics.hyracks.api.constraints.PartitionConstraintHelper;
+import edu.uci.ics.hyracks.api.deployment.DeploymentId;
 import edu.uci.ics.hyracks.api.job.JobFlag;
 import edu.uci.ics.hyracks.api.job.JobId;
 import edu.uci.ics.hyracks.api.job.JobSpecification;
@@ -57,27 +58,27 @@ public class TrainMergeDriver<Model extends Serializable> {
     private final static Logger LOGGER = Logger
             .getLogger(TrainMergeDriver.class.getName());
     private final TrainMergeJob<Model> trainMergejob;
+    DeploymentId deploymentId;
     private Model model;
     private String inputPaths;
     private final IHyracksClientConnection hcc;
     private final IMRUConnection imruConnection;
     private final ConfigurationFactory confFactory;
-    private final String app;
     private final UUID id = UUID.randomUUID();
 
     public String modelFileName;
 
     public TrainMergeDriver(IHyracksClientConnection hcc,
-            IMRUConnection imruConnection, TrainMergeJob<Model> trainMergejob,
-            Model initialModel, String inputPaths,
-            ConfigurationFactory confFactory, String app) {
+            DeploymentId deploymentId, IMRUConnection imruConnection,
+            TrainMergeJob<Model> trainMergejob, Model initialModel,
+            String inputPaths, ConfigurationFactory confFactory) {
         this.trainMergejob = trainMergejob;
         this.model = initialModel;
         this.hcc = hcc;
+        this.deploymentId = deploymentId;
         this.imruConnection = imruConnection;
         this.inputPaths = inputPaths;
         this.confFactory = confFactory;
-        this.app = app;
     }
 
     public <Model extends Serializable> JobSpecification buildTrainMergeJob(
@@ -125,11 +126,12 @@ public class TrainMergeDriver<Model extends Serializable> {
 
         LOGGER.info("Distributing initial models");
         JobSpecification spreadjob = IMRUJobFactory.generateModelSpreadJob(
-                mergeOperatorLocations, mergeOperatorLocations[0],
-                imruConnection, modelFileName, 0, null);
+                deploymentId, mergeOperatorLocations,
+                mergeOperatorLocations[0], imruConnection, modelFileName, 0,
+                null);
         //        byte[] bs=JavaSerializationUtils.serialize(job);
         //      Rt.p("IMRU job size: "+bs.length);
-        JobId spreadjobId = hcc.startJob(app, spreadjob, EnumSet
+        JobId spreadjobId = hcc.startJob(deploymentId, spreadjob, EnumSet
                 .of(JobFlag.PROFILE_RUNTIME));
         //        JobId jobId = hcc.createJob(app, job);
         //        hcc.start(jobId);
@@ -140,7 +142,7 @@ public class TrainMergeDriver<Model extends Serializable> {
         long loadStart = System.currentTimeMillis();
         JobSpecification job = buildTrainMergeJob(modelFileName, inputSplits,
                 trainOperatorLocations, mergeOperatorLocations);
-        JobId jobId = hcc.startJob(app, job, EnumSet
+        JobId jobId = hcc.startJob(deploymentId, job, EnumSet
                 .of(JobFlag.PROFILE_RUNTIME));
         Timer timer = new Timer();
         timer.scheduleAtFixedRate(new TimerTask() {

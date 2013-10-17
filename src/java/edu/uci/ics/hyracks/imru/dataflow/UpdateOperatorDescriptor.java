@@ -143,31 +143,33 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
             @Override
             public void nextFrame(ByteBuffer encapsulatedChunk)
                     throws HyracksDataException {
-//                Rt.p("update frame");
+                //                Rt.p("update frame");
                 MergedFrames frames = MergedFrames.nextFrame(ctx,
-                        encapsulatedChunk, hash);
+                        encapsulatedChunk, hash, imruContext.getNodeId()
+                                + " recv " + partition + " "
+                                + imruContext.getOperatorName());
                 if (frames != null) {
-//                    Rt.p("update recv "
-//                            + MergedFrames.deserialize(frames.data));
+                    //                    Rt.p("update recv "
+                    //                            + MergedFrames.deserialize(frames.data));
                     io.add(frames.data);
                 }
 
-//                ByteBuffer chunk = chunkFrameHelper
-//                        .extractChunk(encapsulatedChunk);
-//                int senderPartition = chunkFrameHelper
-//                        .getPartition(encapsulatedChunk);
-//                boolean isLastChunk = chunkFrameHelper
-//                        .isLastChunk(encapsulatedChunk);
-//                enqueueChunk(chunk, senderPartition);
-//                if (isLastChunk) {
-//                    byte[] data = IMRUSerialize
-//                            .deserializeFromChunks(imruContext, bufferedChunks
-//                                    .remove(senderPartition));
-//                    if (data.length == 0)
-//                        throw new HyracksDataException(
-//                                "update received empty data");
-//                    io.add(data);
-//                }
+                //                ByteBuffer chunk = chunkFrameHelper
+                //                        .extractChunk(encapsulatedChunk);
+                //                int senderPartition = chunkFrameHelper
+                //                        .getPartition(encapsulatedChunk);
+                //                boolean isLastChunk = chunkFrameHelper
+                //                        .isLastChunk(encapsulatedChunk);
+                //                enqueueChunk(chunk, senderPartition);
+                //                if (isLastChunk) {
+                //                    byte[] data = IMRUSerialize
+                //                            .deserializeFromChunks(imruContext, bufferedChunks
+                //                                    .remove(senderPartition));
+                //                    if (data.length == 0)
+                //                        throw new HyracksDataException(
+                //                                "update received empty data");
+                //                    io.add(data);
+                //                }
             }
 
             @Override

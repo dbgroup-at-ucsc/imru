@@ -7,7 +7,6 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="dist/lib/ant-1.6.5.jar"/>
 	<classpathentry kind="lib" path="dist/lib/args4j-2.0.12.jar"/>
-	<classpathentry kind="lib" path="dist/lib/aws-java-sdk-1.3.27.jar"/>
 	<classpathentry kind="lib" path="dist/lib/commons-cli-1.2.jar"/>
 	<classpathentry kind="lib" path="dist/lib/commons-codec-1.4.jar"/>
 	<classpathentry kind="lib" path="dist/lib/commons-el-1.0.jar"/>
@@ -18,30 +17,22 @@
 	<classpathentry kind="lib" path="dist/lib/commons-net-1.4.1.jar"/>
 	<classpathentry kind="lib" path="dist/lib/core-3.1.1.jar"/>
 	<classpathentry kind="lib" path="dist/lib/dcache-client-0.0.1.jar"/>
-	<classpathentry kind="lib" path="dist/lib/ftplet-api-1.0.0.jar"/>
-	<classpathentry kind="lib" path="dist/lib/ftpserver-core-1.0.0.jar"/>
-	<classpathentry kind="lib" path="dist/lib/ftpserver-deprecated-1.0.0-M2.jar"/>
 	<classpathentry kind="lib" path="dist/lib/hadoop-core-0.20.2.jar"/>
-	<classpathentry kind="lib" path="dist/lib/hadoop-test-0.20.2.jar"/>
 	<classpathentry kind="lib" path="dist/lib/hsqldb-1.8.0.10.jar"/>
-	<classpathentry kind="lib" path="dist/lib/hyracks-api-0.2.3-SNAPSHOT.jar" sourcepath="/home/wangrui/a/imru/hyracks/hyracks/hyracks-api/src/main/java"/>
-	<classpathentry kind="lib" path="dist/lib/hyracks-control-cc-0.2.3-SNAPSHOT.jar"/>
-	<classpathentry kind="lib" path="dist/lib/hyracks-control-common-0.2.3-SNAPSHOT.jar" sourcepath="/home/wangrui/a/imru/hyracks/hyracks/hyracks-control/hyracks-control-common/src/main/java"/>
-	<classpathentry kind="lib" path="dist/lib/hyracks-control-nc-0.2.3-SNAPSHOT.jar"/>
-	<classpathentry kind="lib" path="dist/lib/hyracks-data-std-0.2.3-SNAPSHOT.jar"/>
-	<classpathentry kind="lib" path="dist/lib/hyracks-dataflow-common-0.2.3-SNAPSHOT.jar" sourcepath="/home/wangrui/a/imru/hyracks/hyracks/hyracks-dataflow-common/src/main/java"/>
-	<classpathentry kind="lib" path="dist/lib/hyracks-dataflow-std-0.2.3-SNAPSHOT.jar" sourcepath="/home/wangrui/a/imru/hyracks/hyracks/hyracks-dataflow-std/src/main/java"/>
-	<classpathentry kind="lib" path="dist/lib/hyracks-ec2-0.2.3-SNAPSHOT.jar"/>
-	<classpathentry kind="lib" path="dist/lib/hyracks-hdfs-0.20.2-0.2.3-SNAPSHOT.jar"/>
-	<classpathentry kind="lib" path="dist/lib/hyracks-hdfs-core-0.2.3-SNAPSHOT.jar"/>
-	<classpathentry kind="lib" path="dist/lib/hyracks-ipc-0.2.3-SNAPSHOT.jar"/>
-	<classpathentry kind="lib" path="dist/lib/hyracks-net-0.2.3-SNAPSHOT.jar"/>
-	<classpathentry kind="lib" path="dist/lib/hyracks-server-0.2.3-SNAPSHOT.jar"/>
-	<classpathentry kind="lib" path="dist/lib/hyracks-storage-am-btree-0.2.3-SNAPSHOT.jar"/>
-	<classpathentry kind="lib" path="dist/lib/hyracks-storage-am-common-0.2.3-SNAPSHOT.jar"/>
-	<classpathentry kind="lib" path="dist/lib/hyracks-storage-common-0.2.3-SNAPSHOT.jar"/>
-	<classpathentry kind="lib" path="dist/lib/jackson-core-asl-1.8.9.jar"/>
-	<classpathentry kind="lib" path="dist/lib/jackson-mapper-asl-1.8.9.jar"/>
+	<classpathentry kind="lib" path="dist/lib/hyracks-api-0.2.10-SNAPSHOT.jar" sourcepath="/data/a/imru/hyracks10/hyracks/hyracks/hyracks-api/src/main/java"/>
+	<classpathentry kind="lib" path="dist/lib/hyracks-control-cc-0.2.10-SNAPSHOT.jar" sourcepath="/data/a/imru/hyracks10/hyracks/hyracks/hyracks-control/hyracks-control-cc/src/main/java"/>
+	<classpathentry kind="lib" path="dist/lib/hyracks-control-common-0.2.10-SNAPSHOT.jar" sourcepath="/home/wangrui/a/imru/hyracks10/hyracks/hyracks/hyracks-control/hyracks-control-common/src/main/java"/>
+	<classpathentry kind="lib" path="dist/lib/hyracks-control-nc-0.2.10-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="dist/lib/hyracks-data-std-0.2.10-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="dist/lib/hyracks-dataflow-common-0.2.10-SNAPSHOT.jar" sourcepath="/home/wangrui/a/imru/hyracks10/hyracks/hyracks/hyracks-dataflow-common/src/main/java"/>
+	<classpathentry kind="lib" path="dist/lib/hyracks-dataflow-std-0.2.10-SNAPSHOT.jar" sourcepath="/home/wangrui/a/imru/hyracks10/hyracks/hyracks/hyracks-dataflow-std/src/main/java"/>
+	<classpathentry kind="lib" path="dist/lib/hyracks-ec2-0.2.10-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="dist/lib/hyracks-hdfs-core-0.2.10-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="dist/lib/hyracks-ipc-0.2.10-SNAPSHOT.jar" sourcepath="/home/wangrui/a/imru/hyracks10/hyracks/hyracks/hyracks-ipc/src/main/java"/>
+	<classpathentry kind="lib" path="dist/lib/hyracks-net-0.2.10-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="dist/lib/hyracks-server-0.2.10-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="dist/lib/hyracks-storage-am-btree-0.2.10-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="dist/lib/hyracks-storage-am-common-0.2.10-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="dist/lib/jasper-compiler-5.5.12.jar"/>
 	<classpathentry kind="lib" path="dist/lib/jasper-runtime-5.5.12.jar"/>
 	<classpathentry kind="lib" path="dist/lib/javax.servlet-api-3.0.1.jar"/>
@@ -56,13 +47,11 @@
 	<classpathentry kind="lib" path="dist/lib/jetty-util-8.0.0.RC0.jar"/>
 	<classpathentry kind="lib" path="dist/lib/jetty-webapp-8.0.0.RC0.jar"/>
 	<classpathentry kind="lib" path="dist/lib/jetty-xml-8.0.0.RC0.jar"/>
-	<classpathentry kind="lib" path="dist/lib/jsch-0.1.49.jar"/>
 	<classpathentry kind="lib" path="dist/lib/json-20090211.jar"/>
 	<classpathentry kind="lib" path="dist/lib/jsp-2.1-6.1.14.jar"/>
 	<classpathentry kind="lib" path="dist/lib/jsp-api-2.1-6.1.14.jar"/>
 	<classpathentry kind="lib" path="dist/lib/junit-4.8.1.jar"/>
 	<classpathentry kind="lib" path="dist/lib/kfs-0.3.jar"/>
-	<classpathentry kind="lib" path="dist/lib/mina-core-2.0.0-M5.jar"/>
 	<classpathentry kind="lib" path="dist/lib/oro-2.0.8.jar"/>
 	<classpathentry kind="lib" path="dist/lib/servlet-api-2.5-6.1.14.jar"/>
 	<classpathentry kind="lib" path="dist/lib/servlet-api-3.0.20100224.jar"/>
@@ -178,5 +167,9 @@
 	<classpathentry kind="lib" path="lib/spark-0.7.0/lib_managed/jars/zookeeper-3.3.3.jar"/>
 	<classpathentry kind="lib" path="lib/spark-0.7.0/lib_managed/jars/httpclient-4.1.jar"/>
 	<classpathentry kind="lib" path="lib/spark-0.7.0/lib_managed/jars/httpcore-4.1.jar"/>
+	<classpathentry kind="lib" path="lib/jsch-0.1.49.jar"/>
+	<classpathentry kind="lib" path="dist/lib/aws-java-sdk-1.3.27.jar"/>
+	<classpathentry kind="lib" path="dist/lib/jsch-0.1.49.jar"/>
+	<classpathentry kind="lib" path="dist/lib/hyracks-comm-0.2.10-SNAPSHOT.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

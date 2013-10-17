@@ -110,19 +110,21 @@ public class ExternalGroupClient {
         CmdLineParser parser = new CmdLineParser(options);
         parser.parseArgument(args);
 
-        IHyracksClientConnection hcc = new HyracksConnection(options.host, options.port);
+        IHyracksClientConnection hcc = new HyracksConnection(options.host,
+                options.port);
 
         JobSpecification job;
 
         for (int i = 0; i < 6; i++) {
             long start = System.currentTimeMillis();
-            job = createJob(parseFileSplits(options.inFileSplits), parseFileSplits(options.outFileSplits, i),
-                    options.htSize, options.sbSize, options.framesLimit, options.sortOutput, options.algo,
-                    options.outPlain);
+            job = createJob(parseFileSplits(options.inFileSplits),
+                    parseFileSplits(options.outFileSplits, i), options.htSize,
+                    options.sbSize, options.framesLimit, options.sortOutput,
+                    options.algo, options.outPlain);
 
             System.out.print(i + "\t" + (System.currentTimeMillis() - start));
             start = System.currentTimeMillis();
-            JobId jobId = hcc.startJob(options.app, job);
+            JobId jobId = hcc.startJob(job);
             hcc.waitForCompletion(jobId);
             System.out.println("\t" + (System.currentTimeMillis() - start));
         }
@@ -135,9 +137,11 @@ public class ExternalGroupClient {
             String s = splits[i].trim();
             int idx = s.indexOf(':');
             if (idx < 0) {
-                throw new IllegalArgumentException("File split " + s + " not well formed");
+                throw new IllegalArgumentException("File split " + s
+                        + " not well formed");
             }
-            fSplits[i] = new FileSplit(s.substring(0, idx), new FileReference(new File(s.substring(idx + 1))));
+            fSplits[i] = new FileSplit(s.substring(0, idx), new FileReference(
+                    new File(s.substring(idx + 1))));
         }
         return fSplits;
     }
@@ -149,46 +153,70 @@ public class ExternalGroupClient {
             String s = splits[i].trim();
             int idx = s.indexOf(':');
             if (idx < 0) {
-                throw new IllegalArgumentException("File split " + s + " not well formed");
+                throw new IllegalArgumentException("File split " + s
+                        + " not well formed");
             }
-            fSplits[i] = new FileSplit(s.substring(0, idx), new FileReference(new File(s.substring(idx + 1) + "_"
-                    + count)));
+            fSplits[i] = new FileSplit(s.substring(0, idx), new FileReference(
+                    new File(s.substring(idx + 1) + "_" + count)));
         }
         return fSplits;
     }
 
-    private static JobSpecification createJob(FileSplit[] inSplits, FileSplit[] outSplits, int htSize, int sbSize,
-            int framesLimit, boolean sortOutput, int alg, boolean outPlain) {
+    private static JobSpecification createJob(FileSplit[] inSplits,
+            FileSplit[] outSplits, int htSize, int sbSize, int framesLimit,
+            boolean sortOutput, int alg, boolean outPlain) {
         JobSpecification spec = new JobSpecification();
-        IFileSplitProvider splitsProvider = new ConstantFileSplitProvider(inSplits);
+        IFileSplitProvider splitsProvider = new ConstantFileSplitProvider(
+                inSplits);
 
-        RecordDescriptor inDesc = new RecordDescriptor(new ISerializerDeserializer[] {
-                IntegerSerializerDeserializer.INSTANCE, IntegerSerializerDeserializer.INSTANCE,
-                IntegerSerializerDeserializer.INSTANCE, IntegerSerializerDeserializer.INSTANCE,
-                IntegerSerializerDeserializer.INSTANCE, FloatSerializerDeserializer.INSTANCE,
-                FloatSerializerDeserializer.INSTANCE, FloatSerializerDeserializer.INSTANCE,
-                UTF8StringSerializerDeserializer.INSTANCE, UTF8StringSerializerDeserializer.INSTANCE,
-                UTF8StringSerializerDeserializer.INSTANCE, UTF8StringSerializerDeserializer.INSTANCE,
-                UTF8StringSerializerDeserializer.INSTANCE, UTF8StringSerializerDeserializer.INSTANCE,
-                UTF8StringSerializerDeserializer.INSTANCE, UTF8StringSerializerDeserializer.INSTANCE });
+        RecordDescriptor inDesc = new RecordDescriptor(
+                new ISerializerDeserializer[] {
+                        IntegerSerializerDeserializer.INSTANCE,
+                        IntegerSerializerDeserializer.INSTANCE,
+                        IntegerSerializerDeserializer.INSTANCE,
+                        IntegerSerializerDeserializer.INSTANCE,
+                        IntegerSerializerDeserializer.INSTANCE,
+                        FloatSerializerDeserializer.INSTANCE,
+                        FloatSerializerDeserializer.INSTANCE,
+                        FloatSerializerDeserializer.INSTANCE,
+                        UTF8StringSerializerDeserializer.INSTANCE,
+                        UTF8StringSerializerDeserializer.INSTANCE,
+                        UTF8StringSerializerDeserializer.INSTANCE,
+                        UTF8StringSerializerDeserializer.INSTANCE,
+                        UTF8StringSerializerDeserializer.INSTANCE,
+                        UTF8StringSerializerDeserializer.INSTANCE,
+                        UTF8StringSerializerDeserializer.INSTANCE,
+                        UTF8StringSerializerDeserializer.INSTANCE });
 
-        FileScanOperatorDescriptor fileScanner = new FileScanOperatorDescriptor(spec, splitsProvider,
-                new DelimitedDataTupleParserFactory(new IValueParserFactory[] { IntegerParserFactory.INSTANCE,
-                        IntegerParserFactory.INSTANCE, IntegerParserFactory.INSTANCE, IntegerParserFactory.INSTANCE,
-                        IntegerParserFactory.INSTANCE, FloatParserFactory.INSTANCE, FloatParserFactory.INSTANCE,
-                        FloatParserFactory.INSTANCE, UTF8StringParserFactory.INSTANCE,
-                        UTF8StringParserFactory.INSTANCE, UTF8StringParserFactory.INSTANCE,
-                        UTF8StringParserFactory.INSTANCE, UTF8StringParserFactory.INSTANCE,
-                        UTF8StringParserFactory.INSTANCE, UTF8StringParserFactory.INSTANCE,
-                        UTF8StringParserFactory.INSTANCE, }, '|'), inDesc);
+        FileScanOperatorDescriptor fileScanner = new FileScanOperatorDescriptor(
+                spec, splitsProvider, new DelimitedDataTupleParserFactory(
+                        new IValueParserFactory[] {
+                                IntegerParserFactory.INSTANCE,
+                                IntegerParserFactory.INSTANCE,
+                                IntegerParserFactory.INSTANCE,
+                                IntegerParserFactory.INSTANCE,
+                                IntegerParserFactory.INSTANCE,
+                                FloatParserFactory.INSTANCE,
+                                FloatParserFactory.INSTANCE,
+                                FloatParserFactory.INSTANCE,
+                                UTF8StringParserFactory.INSTANCE,
+                                UTF8StringParserFactory.INSTANCE,
+                                UTF8StringParserFactory.INSTANCE,
+                                UTF8StringParserFactory.INSTANCE,
+                                UTF8StringParserFactory.INSTANCE,
+                                UTF8StringParserFactory.INSTANCE,
+                                UTF8StringParserFactory.INSTANCE,
+                                UTF8StringParserFactory.INSTANCE, }, '|'),
+                inDesc);
 
         createPartitionConstraint(spec, fileScanner, inSplits);
 
         // Output: each unique string with an integer count
-        RecordDescriptor outDesc = new RecordDescriptor(new ISerializerDeserializer[] {
-                IntegerSerializerDeserializer.INSTANCE,
-                // IntegerSerializerDeserializer.INSTANCE,
-                IntegerSerializerDeserializer.INSTANCE });
+        RecordDescriptor outDesc = new RecordDescriptor(
+                new ISerializerDeserializer[] {
+                        IntegerSerializerDeserializer.INSTANCE,
+                        // IntegerSerializerDeserializer.INSTANCE,
+                        IntegerSerializerDeserializer.INSTANCE });
 
         // Specify the grouping key, which will be the string extracted during
         // the scan.
@@ -200,125 +228,170 @@ public class ExternalGroupClient {
 
         switch (alg) {
             case 0: // new external hash graph
-                grouper = new edu.uci.ics.hyracks.dataflow.std.group.external.ExternalGroupOperatorDescriptor(spec,
-                        keys, framesLimit, new IBinaryComparatorFactory[] {
+                grouper = new edu.uci.ics.hyracks.dataflow.std.group.external.ExternalGroupOperatorDescriptor(
+                        spec,
+                        keys,
+                        framesLimit,
+                        new IBinaryComparatorFactory[] {
                         // PointableBinaryComparatorFactory.of(IntegerPointable.FACTORY),
-                        PointableBinaryComparatorFactory.of(IntegerPointable.FACTORY) },
-                        new IntegerNormalizedKeyComputerFactory(), new MultiFieldsAggregatorFactory(
-                                new IFieldAggregateDescriptorFactory[] { new CountFieldAggregatorFactory(false) }),
+                        PointableBinaryComparatorFactory
+                                .of(IntegerPointable.FACTORY) },
+                        new IntegerNormalizedKeyComputerFactory(),
                         new MultiFieldsAggregatorFactory(
-                                new IFieldAggregateDescriptorFactory[] { new IntSumFieldAggregatorFactory(keys.length,
-                                        false) }), outDesc, new HashSpillableTableFactory(
-                                new FieldHashPartitionComputerFactory(keys, new IBinaryHashFunctionFactory[] {
-                                // PointableBinaryHashFunctionFactory.of(IntegerPointable.FACTORY),
-                                PointableBinaryHashFunctionFactory.of(IntegerPointable.FACTORY) }), htSize), false);
+                                new IFieldAggregateDescriptorFactory[] { new CountFieldAggregatorFactory(
+                                        false) }),
+                        new MultiFieldsAggregatorFactory(
+                                new IFieldAggregateDescriptorFactory[] { new IntSumFieldAggregatorFactory(
+                                        keys.length, false) }),
+                        outDesc,
+                        new HashSpillableTableFactory(
+                                new FieldHashPartitionComputerFactory(keys,
+                                        new IBinaryHashFunctionFactory[] {
+                                        // PointableBinaryHashFunctionFactory.of(IntegerPointable.FACTORY),
+                                        PointableBinaryHashFunctionFactory
+                                                .of(IntegerPointable.FACTORY) }),
+                                htSize), false);
 
                 createPartitionConstraint(spec, grouper, outSplits);
 
                 // Connect scanner with the grouper
-                IConnectorDescriptor scanGroupConnDef2 = new MToNPartitioningConnectorDescriptor(spec,
-                        new FieldHashPartitionComputerFactory(keys, new IBinaryHashFunctionFactory[] {
-                        // PointableBinaryHashFunctionFactory.of(IntegerPointable.FACTORY),
-                        PointableBinaryHashFunctionFactory.of(IntegerPointable.FACTORY) }));
+                IConnectorDescriptor scanGroupConnDef2 = new MToNPartitioningConnectorDescriptor(
+                        spec, new FieldHashPartitionComputerFactory(keys,
+                                new IBinaryHashFunctionFactory[] {
+                                // PointableBinaryHashFunctionFactory.of(IntegerPointable.FACTORY),
+                                PointableBinaryHashFunctionFactory
+                                        .of(IntegerPointable.FACTORY) }));
                 spec.connect(scanGroupConnDef2, fileScanner, 0, grouper, 0);
 
                 break;
             case 1: // External-sort + new-precluster
-                ExternalSortOperatorDescriptor sorter2 = new ExternalSortOperatorDescriptor(spec, framesLimit, keys,
+                ExternalSortOperatorDescriptor sorter2 = new ExternalSortOperatorDescriptor(
+                        spec, framesLimit, keys,
                         new IBinaryComparatorFactory[] {
                         // PointableBinaryComparatorFactory.of(IntegerPointable.FACTORY),
-                        PointableBinaryComparatorFactory.of(IntegerPointable.FACTORY) }, inDesc);
+                        PointableBinaryComparatorFactory
+                                .of(IntegerPointable.FACTORY) }, inDesc);
                 createPartitionConstraint(spec, sorter2, inSplits);
 
                 // Connect scan operator with the sorter
-                IConnectorDescriptor scanSortConn2 = new MToNPartitioningConnectorDescriptor(spec,
-                        new FieldHashPartitionComputerFactory(keys, new IBinaryHashFunctionFactory[] {
-                        // PointableBinaryHashFunctionFactory.of(IntegerPointable.FACTORY),
-                        PointableBinaryHashFunctionFactory.of(IntegerPointable.FACTORY) }));
+                IConnectorDescriptor scanSortConn2 = new MToNPartitioningConnectorDescriptor(
+                        spec, new FieldHashPartitionComputerFactory(keys,
+                                new IBinaryHashFunctionFactory[] {
+                                // PointableBinaryHashFunctionFactory.of(IntegerPointable.FACTORY),
+                                PointableBinaryHashFunctionFactory
+                                        .of(IntegerPointable.FACTORY) }));
                 spec.connect(scanSortConn2, fileScanner, 0, sorter2, 0);
 
                 grouper = new edu.uci.ics.hyracks.dataflow.std.group.preclustered.PreclusteredGroupOperatorDescriptor(
-                        spec, keys, new IBinaryComparatorFactory[] {
+                        spec, keys,
+                        new IBinaryComparatorFactory[] {
                         // PointableBinaryComparatorFactory.of(IntegerPointable.FACTORY),
-                        PointableBinaryComparatorFactory.of(IntegerPointable.FACTORY) },
+                        PointableBinaryComparatorFactory
+                                .of(IntegerPointable.FACTORY) },
                         new MultiFieldsAggregatorFactory(
-                                new IFieldAggregateDescriptorFactory[] { new CountFieldAggregatorFactory(true) }),
-                        outDesc);
+                                new IFieldAggregateDescriptorFactory[] { new CountFieldAggregatorFactory(
+                                        true) }), outDesc);
 
                 createPartitionConstraint(spec, grouper, outSplits);
 
                 // Connect sorter with the pre-cluster
-                OneToOneConnectorDescriptor sortGroupConn2 = new OneToOneConnectorDescriptor(spec);
+                OneToOneConnectorDescriptor sortGroupConn2 = new OneToOneConnectorDescriptor(
+                        spec);
                 spec.connect(sortGroupConn2, sorter2, 0, grouper, 0);
                 break;
             case 2: // Inmem
-                grouper = new HashGroupOperatorDescriptor(spec, keys, new FieldHashPartitionComputerFactory(keys,
-                        new IBinaryHashFunctionFactory[] {
-                        // PointableBinaryHashFunctionFactory.of(IntegerPointable.FACTORY),
-                        PointableBinaryHashFunctionFactory.of(IntegerPointable.FACTORY) }),
+                grouper = new HashGroupOperatorDescriptor(spec,
+                        keys,
+                        new FieldHashPartitionComputerFactory(keys,
+                                new IBinaryHashFunctionFactory[] {
+                                // PointableBinaryHashFunctionFactory.of(IntegerPointable.FACTORY),
+                                PointableBinaryHashFunctionFactory
+                                        .of(IntegerPointable.FACTORY) }),
                         new IBinaryComparatorFactory[] {
                         // PointableBinaryComparatorFactory.of(IntegerPointable.FACTORY),
-                        PointableBinaryComparatorFactory.of(IntegerPointable.FACTORY) },
+                        PointableBinaryComparatorFactory
+                                .of(IntegerPointable.FACTORY) },
                         new MultiFieldsAggregatorFactory(
-                                new IFieldAggregateDescriptorFactory[] { new CountFieldAggregatorFactory(true) }),
-                        outDesc, htSize);
+                                new IFieldAggregateDescriptorFactory[] { new CountFieldAggregatorFactory(
+                                        true) }), outDesc, htSize);
 
                 createPartitionConstraint(spec, grouper, outSplits);
 
                 // Connect scanner with the grouper
-                IConnectorDescriptor scanConn2 = new MToNPartitioningConnectorDescriptor(spec,
-                        new FieldHashPartitionComputerFactory(keys, new IBinaryHashFunctionFactory[] {
-                        // PointableBinaryHashFunctionFactory.of(IntegerPointable.FACTORY),
-                        PointableBinaryHashFunctionFactory.of(IntegerPointable.FACTORY) }));
+                IConnectorDescriptor scanConn2 = new MToNPartitioningConnectorDescriptor(
+                        spec, new FieldHashPartitionComputerFactory(keys,
+                                new IBinaryHashFunctionFactory[] {
+                                // PointableBinaryHashFunctionFactory.of(IntegerPointable.FACTORY),
+                                PointableBinaryHashFunctionFactory
+                                        .of(IntegerPointable.FACTORY) }));
                 spec.connect(scanConn2, fileScanner, 0, grouper, 0);
                 break;
             default:
-                grouper = new edu.uci.ics.hyracks.dataflow.std.group.external.ExternalGroupOperatorDescriptor(spec,
-                        keys, framesLimit, new IBinaryComparatorFactory[] {
+                grouper = new edu.uci.ics.hyracks.dataflow.std.group.external.ExternalGroupOperatorDescriptor(
+                        spec,
+                        keys,
+                        framesLimit,
+                        new IBinaryComparatorFactory[] {
                         // PointableBinaryComparatorFactory.of(IntegerPointable.FACTORY),
-                        PointableBinaryComparatorFactory.of(IntegerPointable.FACTORY) },
-                        new IntegerNormalizedKeyComputerFactory(), new MultiFieldsAggregatorFactory(
-                                new IFieldAggregateDescriptorFactory[] { new CountFieldAggregatorFactory(false) }),
+                        PointableBinaryComparatorFactory
+                                .of(IntegerPointable.FACTORY) },
+                        new IntegerNormalizedKeyComputerFactory(),
                         new MultiFieldsAggregatorFactory(
-                                new IFieldAggregateDescriptorFactory[] { new IntSumFieldAggregatorFactory(keys.length,
-                                        false) }), outDesc, new HashSpillableTableFactory(
-                                new FieldHashPartitionComputerFactory(keys, new IBinaryHashFunctionFactory[] {
-                                // PointableBinaryHashFunctionFactory.of(IntegerPointable.FACTORY),
-                                PointableBinaryHashFunctionFactory.of(IntegerPointable.FACTORY) }), htSize), false);
+                                new IFieldAggregateDescriptorFactory[] { new CountFieldAggregatorFactory(
+                                        false) }),
+                        new MultiFieldsAggregatorFactory(
+                                new IFieldAggregateDescriptorFactory[] { new IntSumFieldAggregatorFactory(
+                                        keys.length, false) }),
+                        outDesc,
+                        new HashSpillableTableFactory(
+                                new FieldHashPartitionComputerFactory(keys,
+                                        new IBinaryHashFunctionFactory[] {
+                                        // PointableBinaryHashFunctionFactory.of(IntegerPointable.FACTORY),
+                                        PointableBinaryHashFunctionFactory
+                                                .of(IntegerPointable.FACTORY) }),
+                                htSize), false);
 
                 createPartitionConstraint(spec, grouper, outSplits);
 
                 // Connect scanner with the grouper
-                IConnectorDescriptor scanGroupConnDef = new MToNPartitioningConnectorDescriptor(spec,
-                        new FieldHashPartitionComputerFactory(keys, new IBinaryHashFunctionFactory[] {
-                        // PointableBinaryHashFunctionFactory.of(IntegerPointable.FACTORY),
-                        PointableBinaryHashFunctionFactory.of(IntegerPointable.FACTORY) }));
+                IConnectorDescriptor scanGroupConnDef = new MToNPartitioningConnectorDescriptor(
+                        spec, new FieldHashPartitionComputerFactory(keys,
+                                new IBinaryHashFunctionFactory[] {
+                                // PointableBinaryHashFunctionFactory.of(IntegerPointable.FACTORY),
+                                PointableBinaryHashFunctionFactory
+                                        .of(IntegerPointable.FACTORY) }));
                 spec.connect(scanGroupConnDef, fileScanner, 0, grouper, 0);
         }
 
-        IFileSplitProvider outSplitProvider = new ConstantFileSplitProvider(outSplits);
+        IFileSplitProvider outSplitProvider = new ConstantFileSplitProvider(
+                outSplits);
 
         AbstractSingleActivityOperatorDescriptor writer;
 
         if (outPlain)
-            writer = new PlainFileWriterOperatorDescriptor(spec, outSplitProvider, "|");
+            writer = new PlainFileWriterOperatorDescriptor(spec,
+                    outSplitProvider, "|");
         else
-            writer = new FrameFileWriterOperatorDescriptor(spec, outSplitProvider);
+            writer = new FrameFileWriterOperatorDescriptor(spec,
+                    outSplitProvider);
 
         createPartitionConstraint(spec, writer, outSplits);
 
-        IConnectorDescriptor groupOutConn = new OneToOneConnectorDescriptor(spec);
+        IConnectorDescriptor groupOutConn = new OneToOneConnectorDescriptor(
+                spec);
         spec.connect(groupOutConn, grouper, 0, writer, 0);
 
         spec.addRoot(writer);
         return spec;
     }
 
-    private static void createPartitionConstraint(JobSpecification spec, IOperatorDescriptor op, FileSplit[] splits) {
+    private static void createPartitionConstraint(JobSpecification spec,
+            IOperatorDescriptor op, FileSplit[] splits) {
         String[] parts = new String[splits.length];
         for (int i = 0; i < splits.length; ++i) {
             parts[i] = splits[i].getNodeName();
         }
-        PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, op, parts);
+        PartitionConstraintHelper
+                .addAbsoluteLocationConstraint(spec, op, parts);
     }
 }

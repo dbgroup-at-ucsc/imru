@@ -17,17 +17,20 @@ package edu.uci.ics.hyracks.imru.runtime.bootstrap;
 import java.util.logging.Logger;
 
 import edu.uci.ics.hyracks.api.application.INCApplicationContext;
-import edu.uci.ics.hyracks.api.application.INCBootstrap;
+import edu.uci.ics.hyracks.api.application.INCApplicationEntryPoint;
 
 /**
  * Bootstrap for creating the IMRU application context on node controllers.
  */
-public class IMRUNCBootstrapImpl implements INCBootstrap {
-    private static final Logger LOGGER = Logger.getLogger(IMRUNCBootstrapImpl.class.getName());
+public class IMRUNCBootstrapImpl implements INCApplicationEntryPoint {
+    private static final Logger LOGGER = Logger
+            .getLogger(IMRUNCBootstrapImpl.class.getName());
     private INCApplicationContext appCtx;
 
     @Override
-    public void start() throws Exception {
+    public void start(INCApplicationContext appCtx, String[] arg1)
+            throws Exception {
+        this.appCtx = appCtx;
         LOGGER.info("Starting NC Bootstrap");
         IMRURuntimeContext rCtx = new IMRURuntimeContext(appCtx);
         appCtx.setApplicationObject(rCtx);
@@ -35,14 +38,16 @@ public class IMRUNCBootstrapImpl implements INCBootstrap {
     }
 
     @Override
-    public void stop() throws Exception {
-        LOGGER.info("Stopping IMRU NC Bootstrap");
-        IMRURuntimeContext rCtx = (IMRURuntimeContext) appCtx.getApplicationObject();
-        rCtx.close();
+    public void notifyStartupComplete() throws Exception {
+        // TODO Auto-generated method stub
+
     }
 
     @Override
-    public void setApplicationContext(INCApplicationContext appCtx) {
-        this.appCtx = appCtx;
+    public void stop() throws Exception {
+        LOGGER.info("Stopping IMRU NC Bootstrap");
+        IMRURuntimeContext rCtx = (IMRURuntimeContext) appCtx
+                .getApplicationObject();
+        rCtx.close();
     }
 }

@@ -180,8 +180,8 @@ public class WordCountAllInOneExample {
 
             @Override
             public void contributeActivities(IActivityGraphBuilder builder) {
-                IActivity hashActivity = new AbstractActivityNode(new ActivityId(odId,
-                        HASH_BUILD_ACTIVITY_ID)) {
+                IActivity hashActivity = new AbstractActivityNode(
+                        new ActivityId(odId, HASH_BUILD_ACTIVITY_ID)) {
                     @Override
                     public IOperatorNodePushable createPushRuntime(
                             final IHyracksTaskContext ctx,
@@ -239,8 +239,8 @@ public class WordCountAllInOneExample {
                         };
                     }
                 };
-                IActivity outputActivity = new AbstractActivityNode(new ActivityId(odId,
-                        OUTPUT_ACTIVITY_ID)) {
+                IActivity outputActivity = new AbstractActivityNode(
+                        new ActivityId(odId, OUTPUT_ACTIVITY_ID)) {
                     @Override
                     public IOperatorNodePushable createPushRuntime(
                             final IHyracksTaskContext ctx,
@@ -345,8 +345,8 @@ public class WordCountAllInOneExample {
                     public void nextFrame(ByteBuffer buffer)
                             throws HyracksDataException {
                         try {
-                            TupleReader reader = new TupleReader(buffer,
-                                    ctx.getFrameSize(), 2);
+                            TupleReader reader = new TupleReader(buffer, ctx
+                                    .getFrameSize(), 2);
                             StringBuilder sb = new StringBuilder();
                             while (reader.nextTuple()) {
                                 reader.seekToField(0);
@@ -403,6 +403,7 @@ public class WordCountAllInOneExample {
             config.ccPort = 1099;
             config.clusterNetIPAddress = "127.0.0.1";
             config.dataIPAddress = "127.0.0.1";
+            config.datasetIPAddress = "127.0.0.1";
             config.nodeId = "NC" + i;
             NodeControllerService nc = new NodeControllerService(config);
             nc.start();
@@ -414,7 +415,7 @@ public class WordCountAllInOneExample {
         IHyracksClientConnection hcc = new HyracksConnection("localhost", 3099);
 
         //update application
-        hcc.createApplication("text", null);
+        hcc.deployBinary(null);
 
         try {
             Rt.write(new File("/tmp/a.txt"), "0a 1b 1c".getBytes());
@@ -424,8 +425,7 @@ public class WordCountAllInOneExample {
                     parseFileSplits("NC0:/tmp/a.txt,NC1:/tmp/b.txt"),
                     parseFileSplits("NC0:/tmp/out0.txt,NC1:/tmp/out1.txt"));
 
-            JobId jobId = hcc.startJob("text", job,
-                    EnumSet.noneOf(JobFlag.class));
+            JobId jobId = hcc.startJob(job, EnumSet.noneOf(JobFlag.class));
             hcc.waitForCompletion(jobId);
 
             Rt.np("Output 0:");

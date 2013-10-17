@@ -107,10 +107,19 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
                         try {
                             imruSpec.reduce(imruContext, input, out);
                             byte[] objectData = out.toByteArray();
-//                            Rt.p("reduce send "
-//                                    + MergedFrames.deserialize(objectData));
+                            //                            Rt.p("reduce send "
+                            //                                    + MergedFrames.deserialize(objectData));
+                            IMRUDebugger.sendDebugInfo(imruContext.getNodeId()
+                                    + " reduce start " + partition);
                             MergedFrames.serializeToFrames(imruContext, writer,
-                                    objectData, partition);
+                                    objectData, partition, imruContext
+                                            .getNodeId()
+                                            + " reduce "
+                                            + partition
+                                            + " "
+                                            + imruContext.getOperatorName());
+                            IMRUDebugger.sendDebugInfo(imruContext.getNodeId()
+                                    + " reduce finish");
                             //                            IMRUSerialize.serializeToFrames(imruContext,
                             //                                    writer, objectData);
                         } catch (HyracksDataException e) {
@@ -129,12 +138,14 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
             public void nextFrame(ByteBuffer encapsulatedChunk)
                     throws HyracksDataException {
                 try {
-//                    Rt.p("reduce frame");
+                    //                    Rt.p("reduce frame");
                     MergedFrames frames = MergedFrames.nextFrame(ctx,
-                            encapsulatedChunk, hash);
+                            encapsulatedChunk, hash, imruContext.getNodeId()
+                                    + " recv " + partition + " "
+                                    + imruContext.getOperatorName());
                     if (frames != null) {
-//                        Rt.p("reduce recv "
-//                                + MergedFrames.deserialize(frames.data));
+                        //                        Rt.p("reduce recv "
+                        //                                + MergedFrames.deserialize(frames.data));
                         io.add(frames.data);
                     }
                     //                    ByteBuffer chunk = chunkFrameHelper

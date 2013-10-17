@@ -10,6 +10,7 @@ import java.util.regex.Pattern;
 import edu.uci.ics.hyracks.api.client.HyracksConnection;
 import edu.uci.ics.hyracks.api.client.IHyracksClientConnection;
 import edu.uci.ics.hyracks.api.constraints.PartitionConstraintHelper;
+import edu.uci.ics.hyracks.api.deployment.DeploymentId;
 import edu.uci.ics.hyracks.api.job.JobFlag;
 import edu.uci.ics.hyracks.api.job.JobId;
 import edu.uci.ics.hyracks.api.job.JobSpecification;
@@ -26,8 +27,8 @@ import edu.uci.ics.hyracks.imru.util.Rt;
  * @author Rui Wang
  */
 public class SpreadFactory {
-    public static JobSpecification buildSpreadJob(String[] nodes,
-            String startNode, int frameSize, String dataFilePath) {
+    public static JobSpecification buildSpreadJob(DeploymentId deploymentId,
+            String[] nodes, String startNode, int frameSize, String dataFilePath) {
         nodes = new HashSet<String>(Arrays.asList(nodes))
                 .toArray(new String[0]);
         JobSpecification job = new JobSpecification();
@@ -39,8 +40,8 @@ public class SpreadFactory {
         for (int i = 0; i < graph.levels.length; i++) {
             SpreadGraph.Level level = graph.levels[i];
             String[] locations = level.getLocationContraint();
-            SpreadOD op = new SpreadOD(job, graph.levels, i, dataFilePath,
-                    null, 0, null);
+            SpreadOD op = new SpreadOD(deploymentId, job, graph.levels, i,
+                    dataFilePath, null, 0, null);
             if (i > 0)
                 job.connect(new SpreadConnectorDescriptor(job,
                         graph.levels[i - 1], level), last, 0, op, 0);
@@ -82,7 +83,7 @@ public class SpreadFactory {
         IHyracksClientConnection hcc = new HyracksConnection("localhost", 3099);
 
         //update application
-        hcc.createApplication("text", null);
+        DeploymentId deploymentId = hcc.deployBinary(null);
 
         try {
             String[] ss = new String[nodeCount];
@@ -92,19 +93,17 @@ public class SpreadFactory {
             byte[] bs = new byte[1000];
             Random random = new Random();
             random.nextBytes(bs);
-            Rt.write(
-                    new File(path
-                            .replaceAll(Pattern.quote("${NODE_ID}"), "NC0")),
-                    bs);
-            JobSpecification job = buildSpreadJob(ss, "NC0", 256, path);
+            Rt.write(new File(path.replaceAll(Pattern.quote("${NODE_ID}"),
+                    "NC0")), bs);
+            JobSpecification job = buildSpreadJob(deploymentId, ss, "NC0", 256,
+                    path);
 
-            JobId jobId = hcc.startJob("text", job,
-                    EnumSet.noneOf(JobFlag.class));
+            JobId jobId = hcc.startJob(job, EnumSet.noneOf(JobFlag.class));
             hcc.waitForCompletion(jobId);
 
             for (int i = 0; i < ss.length; i++) {
-                byte[] bs2 = Rt.readFileByte(new File(path.replaceAll(
-                        Pattern.quote("${NODE_ID}"), "NC0")));
+                byte[] bs2 = Rt.readFileByte(new File(path.replaceAll(Pattern
+                        .quote("${NODE_ID}"), "NC0")));
                 if (!Rt.bytesEquals(bs, bs2))
                     throw new Error();
             }

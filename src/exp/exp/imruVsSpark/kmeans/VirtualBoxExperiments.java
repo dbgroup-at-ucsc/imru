@@ -4,6 +4,7 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -15,10 +16,12 @@ import edu.uci.ics.hyracks.ec2.HyracksEC2Cluster;
 import edu.uci.ics.hyracks.ec2.HyracksEC2Node;
 import edu.uci.ics.hyracks.ec2.HyracksNode;
 import edu.uci.ics.hyracks.ec2.SSH;
+import edu.uci.ics.hyracks.imru.dataflow.IMRUDebugger;
 import edu.uci.ics.hyracks.imru.example.utils.Client;
 import edu.uci.ics.hyracks.imru.example.utils.ImruEC2;
 import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.ClusterMonitor;
+import exp.ImruDebugMonitor;
 import exp.imruVsSpark.LocalCluster;
 import exp.imruVsSpark.VirtualBox;
 import exp.imruVsSpark.data.DataGenerator;
@@ -165,23 +168,32 @@ public class VirtualBoxExperiments {
         }
     }
 
-    void uploadExperimentCode() throws Exception {
-        HyracksNode node = controller;
+    static void uploadExperimentCode(LocalCluster cluster, boolean isTemplate)
+            throws Exception {
+        HyracksNode node = cluster.cluster.controller;
         SSH ssh = node.ssh();
+        if (isTemplate) {
+            node.rsync(ssh, new File("/home/wangrui/ucscImru/dist/lib"),
+                    "/home/" + cluster.user + "/hyracks-ec2/lib/");
+            node.rsync(ssh, new File("/home/wangrui/ucscImru/dist/bin"),
+                    "/home/" + cluster.user + "/hyracks-ec2/bin/");
+            node.rsync(ssh, new File("/home/wangrui/ucscImru/bin/scripts"),
+                    "/home/" + cluster.user + "/hyracks-ec2/bin/");
+            //        node.rsync(ssh, new File("/home/wangrui/b/soft/scala-2.9.2"), "/home/"
+            //                + cluster.user + "/scala-2.9.2/");
+            //        node.rsync(ssh, new File("/home/wangrui/b/soft/spark-0.7.0"), "/home/"
+            //                + cluster.user + "/spark-0.7.0/");
+            //        node
+            //                .rsync(
+            //                        ssh,
+            //                        new File(
+            //                                "/home/wangrui/b/soft/spark-0.7.0/core/target/scala-2.9.2/classes"),
+            //                        "/home/"
+            //                                + cluster.user
+            //                                + "/spark-0.7.0/core/target/scala-2.9.2/classes/");
+        }
         node.rsync(ssh, new File("/home/wangrui/ucscImru/bin"), "/home/"
                 + cluster.user + "/test/bin/");
-        //        node.rsync(ssh, new File("/home/wangrui/b/soft/scala-2.9.2"), "/home/"
-        //                + cluster.user + "/scala-2.9.2/");
-        //        node.rsync(ssh, new File("/home/wangrui/b/soft/spark-0.7.0"), "/home/"
-        //                + cluster.user + "/spark-0.7.0/");
-        //        node
-        //                .rsync(
-        //                        ssh,
-        //                        new File(
-        //                                "/home/wangrui/b/soft/spark-0.7.0/core/target/scala-2.9.2/classes"),
-        //                        "/home/"
-        //                                + cluster.user
-        //                                + "/spark-0.7.0/core/target/scala-2.9.2/classes/");
         String startScript = Rt.readFile(new File(
                 "/home/wangrui/ucscImru/lib/ec2runSpark.sh"));
         startScript = startScript.replaceAll("/home/ubuntu", "/home/"
@@ -224,8 +236,8 @@ public class VirtualBoxExperiments {
     void runImru(boolean mem) throws Exception {
         String job = mem ? "imruMem" : "imruDisk";
         File resultFile = new File(resultDir, job + ".txt");
-        if (resultFile.exists() && resultFile.length() > 0)
-            return;
+        //        if (resultFile.exists() && resultFile.length() > 0)
+        //            return;
         cluster.stopAll();
         Rt.p("testing IMRU");
         cluster.cluster.startHyrackCluster();
@@ -247,7 +259,7 @@ public class VirtualBoxExperiments {
     }
 
     void runSpark() throws Exception {
-        if ( hasSparkResult())
+        if (hasSparkResult())
             return;
         cluster.stopAll();
         Rt.p("testing spark");
@@ -411,7 +423,7 @@ public class VirtualBoxExperiments {
                 + cluster.getSparkPort() + "/");
         Rt.p("IMRU: " + cluster.cluster.getAdminURL());
 
-        uploadExperimentCode();
+        uploadExperimentCode(cluster, false);
         generateSharedData();
 
         runImru(true);
@@ -423,20 +435,39 @@ public class VirtualBoxExperiments {
         cluster.stopAll();
     }
 
-    static void prepareTemplate() {
-        //                    nodes = new String[] { "192.168.56.110" };
-        //                exp.uploadExperimentCode();
+    void runIMRUMem() throws Exception {
+        Rt.p("IMRU: " + cluster.cluster.getAdminURL());
+
+        uploadExperimentCode(cluster, false);
+        generateSharedData();
+
+        runImru(true);
+
+        cluster.stopAll();
     }
 
-    public static void main(String[] args) throws Exception {
-//        generateResult(new File(
-//                "result/k3i1b1s3e10b100000/local1500M0.25core_16nodes"));
-//        generateResult(new File(
-//                "result/k3i1b1s3e10b100000/local1500M0.5core_8nodes"));
-//        System.exit(0);
+    static void createTemplate(String ip, String userName) throws Exception {
+        //                VirtualBox.remove();
+        //                System.exit(0);
+        File home = new File(System.getProperty("user.home"));
+        String[] nodes = new String[] { ip };
+        String cc = nodes[0];
+        LocalCluster cluster = new LocalCluster(new HyracksCluster(cc, nodes,
+                userName, new File(home, ".ssh/id_rsa")), userName);
+        uploadExperimentCode(cluster, true);
+        System.exit(0);
+    }
+
+    public static void runExp(String[] args) throws Exception {
+        //        generateResult(new File(
+        //                "result/k3i1b1s3e10b100000/local1500M0.25core_16nodes"));
+        //        generateResult(new File(
+        //                "result/k3i1b1s3e10b100000/local1500M0.5core_8nodes"));
+        //        System.exit(0);
         //        regenerateResults();
         try {
             VirtualBox.remove();
+            //            System.exit(0);
             int nodeCount = 16;
             int memory = 1500;
             int k = 3;
@@ -447,28 +478,46 @@ public class VirtualBoxExperiments {
             int batchSize = 100000;
             int network = 0;
             String cpu = "0.25";
+            int fanIn = 2;
 
             nodeCount = 12;
             memory = 1500;
             cpu = "0.25";
 
-            nodeCount = 8;
+            nodeCount = 2;
             memory = 2000;
             cpu = "0.5";
-            //            network = 1; 
-            int fanIn = 2;
+            iterations = 1;
+            fanIn = 2;
 
-            //                        for (k = 16; k <= 64; k *= 2) {
-            VirtualBox.setup(nodeCount, memory,
-                    (int) (Double.parseDouble(cpu) * 100), network);
-            Thread.sleep(2000 * nodeCount);
-            monitor = new ClusterMonitor();
-            String[] nodes = new String[nodeCount];
-            monitor.waitIp(nodes.length);
-            for (int i = 0; i < nodes.length; i++)
-                nodes[i] = monitor.ip[i];
-            //            for (network = 1; network <= 5; network *= 10) {
-            for (k = 1; k <= 10; k++) {
+            //            nodeCount = 16;
+            //            memory = 1500;
+            //            cpu = "0.25";
+            //            iterations = 1;
+            //            fanIn = 2;
+            //            network = 1; 
+
+            //            for (fanIn = 0; fanIn <= 6; fanIn++) {
+            //                if (fanIn == 1)
+            //                    continue;
+            for (k = 1; k <= 1; k++) {
+                //                File outputFile = new File("result/fan16_" + fanIn + "_" + k
+                //                        + ".txt");
+                //                if (outputFile.exists() && outputFile.length() > 0)
+                //                    continue;
+                //                        for (k = 16; k <= 64; k *= 2) {
+                VirtualBox.setup(nodeCount, memory, (int) (Double
+                        .parseDouble(cpu) * 100), network);
+                Thread.sleep(2000 * nodeCount);
+                monitor = new ClusterMonitor();
+                String[] nodes = new String[nodeCount];
+                monitor.waitIp(nodes.length);
+                for (int i = 0; i < nodes.length; i++) {
+                    nodes[i] = monitor.ip[i];
+                    System.out.println("NC" + i + ": " + nodes[i]);
+                }
+                //            for (network = 1; network <= 5; network *= 10) {
+                //            for (k = 1; k <= 10; k++) {
                 //                for (fanIn = 1; fanIn <= 5; fanIn++) {
 
                 String name = "local" + memory + "M" + cpu + "coreN" + network;
@@ -486,18 +535,31 @@ public class VirtualBoxExperiments {
                 VirtualBoxExperiments exp = new VirtualBoxExperiments(cluster,
                         name, k, iterations, batchStart, batchStep, batchEnd,
                         batchSize, fanIn > 1 ? "nary" : "none", fanIn);
-                exp.runExperiments();
+                //            exp.runExperiments();
+
+                //                IMRUDebugger.debug = true;
+                //                ImruDebugMonitor monitor = new ImruDebugMonitor(outputFile
+                //                        .getAbsolutePath());
+                exp.runIMRUMem();
+                //                monitor.close();
                 //                    generateResult(exp.resultDir);
 
                 //                }
+                //            }
+                VirtualBox.remove();
+                VirtualBoxExperiments.monitor.close();
             }
-            VirtualBox.remove();
-            monitor.close();
+            //            }
 
         } catch (Throwable e) {
             e.printStackTrace();
         } finally {
             System.exit(0);
         }
+    }
+
+    public static void main(String[] args) throws Exception {
+        //        createTemplate("192.168.56.110", "ubuntu");
+        runExp(args);
     }
 }

@@ -13,6 +13,7 @@ import edu.uci.ics.hyracks.api.context.IHyracksTaskContext;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.dataflow.common.comm.util.FrameUtils;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
+import edu.uci.ics.hyracks.imru.dataflow.IMRUDebugger;
 import edu.uci.ics.hyracks.imru.dataflow.IMRUSerialize;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
@@ -43,6 +44,12 @@ public class MergedFrames {
     public static MergedFrames nextFrame(IHyracksTaskContext ctx,
             ByteBuffer buffer, Hashtable<Integer, LinkedList<ByteBuffer>> hash)
             throws HyracksDataException {
+        return nextFrame(ctx, buffer, hash, null);
+    }
+
+    public static MergedFrames nextFrame(IHyracksTaskContext ctx,
+            ByteBuffer buffer, Hashtable<Integer, LinkedList<ByteBuffer>> hash,
+            String debugInfo) throws HyracksDataException {
         if (buffer == null)
             return null;
         int frameSize = ctx.getFrameSize();
@@ -60,6 +67,9 @@ public class MergedFrames {
         int position = buffer.getInt(POSITION_OFFSET);
         //        if (position == 0)
         //            Rt.p(position + "/" + size);
+        if (debugInfo != null)
+            IMRUDebugger.sendDebugInfo("recv " + debugInfo + " " + position);
+
         if (position + frameSize - HEADER - TAIL < size)
             return null;
         hash.remove(queue);
@@ -102,10 +112,11 @@ public class MergedFrames {
     }
 
     public static void serializeToFrames(IMRUContext ctx, IFrameWriter writer,
-            byte[] objectData, int partition) throws HyracksDataException {
+            byte[] objectData, int partition, String debugInfo)
+            throws HyracksDataException {
         ByteBuffer frame = ctx.allocateFrame();
         serializeToFrames(ctx, frame, ctx.getFrameSize(), writer, objectData,
-                partition, 0, partition);
+                partition, 0, partition, debugInfo);
     }
 
     public static Object deserialize(byte[] bytes) {
@@ -139,8 +150,8 @@ public class MergedFrames {
 
     public static void serializeToFrames(IMRUContext ctx, ByteBuffer frame,
             int frameSize, IFrameWriter writer, byte[] objectData,
-            int sourcePartition, int targetPartition, int replyPartition)
-            throws HyracksDataException {
+            int sourcePartition, int targetPartition, int replyPartition,
+            String debugInfo) throws HyracksDataException {
         int position = 0;
         //        Rt.p("send " + objectData.length + " " + deserialize(objectData));
         while (position < objectData.length) {
@@ -156,13 +167,16 @@ public class MergedFrames {
             int length = Math.min(objectData.length - position, frameSize
                     - HEADER - TAIL);
             frame.put(objectData, position, length);
-//            frame.position(frameSize - TAIL);
-//            frame.putInt(0); //tuple count
+            //            frame.position(frameSize - TAIL);
+            //            frame.putInt(0); //tuple count
             frame.position(frameSize);
             frame.flip();
             //            if (position == 0)
             //                Rt.p("send 0");
             //                Rt.p(frame);
+            if (debugInfo != null)
+                IMRUDebugger.sendDebugInfo("flush " + debugInfo + " "
+                        + position);
             FrameUtils.flushFrame(frame, writer);
             position += length;
         }

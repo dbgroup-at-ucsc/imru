@@ -113,16 +113,19 @@ public class Test {
         for (int i = 0; i < splits.length; ++i) {
             String s = splits[i].trim();
             int t = s.indexOf(':');
-            fSplits[i] = new FileSplit(s.substring(0, t), new FileReference(new File(s.substring(t + 1))));
+            fSplits[i] = new FileSplit(s.substring(0, t), new FileReference(
+                    new File(s.substring(t + 1))));
         }
         return fSplits;
     }
 
-    public static void createPartitionConstraint(JobSpecification spec, IOperatorDescriptor op, FileSplit[] splits) {
+    public static void createPartitionConstraint(JobSpecification spec,
+            IOperatorDescriptor op, FileSplit[] splits) {
         String[] parts = new String[splits.length];
         for (int i = 0; i < splits.length; i++)
             parts[i] = splits[i].getNodeName();
-        PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, op, parts);
+        PartitionConstraintHelper
+                .addAbsoluteLocationConstraint(spec, op, parts);
     }
 
     public static void main(String[] args) throws Exception {
@@ -155,7 +158,7 @@ public class Test {
         IHyracksClientConnection hcc = new HyracksConnection("localhost", 3099);
 
         //update application
-        hcc.createApplication("text", null);
+        hcc.deployBinary(null);
 
         Client.disableLogging();
 
@@ -174,13 +177,15 @@ public class Test {
                 String[] locations = level.getLocationContraint();
                 SpreadOD op = new SpreadOD(job, graph.levels, i);
                 if (i > 0)
-                    job.connect(new SpreadConnectorDescriptor(job, graph.levels[i - 1], level), last, 0, op, 0);
-                PartitionConstraintHelper.addAbsoluteLocationConstraint(job, op, locations);
+                    job.connect(new SpreadConnectorDescriptor(job,
+                            graph.levels[i - 1], level), last, 0, op, 0);
+                PartitionConstraintHelper.addAbsoluteLocationConstraint(job,
+                        op, locations);
                 last = op;
             }
             job.addRoot(last);
-            
-            JobId jobId = hcc.startJob("text", job, EnumSet.noneOf(JobFlag.class));
+
+            JobId jobId = hcc.startJob(job, EnumSet.noneOf(JobFlag.class));
             hcc.waitForCompletion(jobId);
             for (int i = 0; i < nodeCount; i++)
                 Rt.p(i + " " + SpreadOD.result[i]);

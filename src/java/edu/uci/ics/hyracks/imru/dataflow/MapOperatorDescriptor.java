@@ -183,12 +183,11 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                             reader.open();
                             final ByteBuffer inputFrame = fileCtx
                                     .allocateFrame();
-//                            ChunkFrameHelper chunkFrameHelper = new ChunkFrameHelper(
-//                                    ctx);
-//                            IMRUContext imruContext = new IMRUContext(
-//                                    chunkFrameHelper.getContext(), name);
-                            IMRUContext imruContext = new IMRUContext(
-                                    ctx, name);
+                            //                            ChunkFrameHelper chunkFrameHelper = new ChunkFrameHelper(
+                            //                                    ctx);
+                            //                            IMRUContext imruContext = new IMRUContext(
+                            //                                    chunkFrameHelper.getContext(), name);
+                            IMRUContext imruContext = new IMRUContext(ctx, name);
                             {
                                 Iterator<ByteBuffer> input = new Iterator<ByteBuffer>() {
                                     boolean read = false;
@@ -229,23 +228,22 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                                 byte[] objectData = out.toByteArray();
 
                                 MergedFrames.serializeToFrames(imruContext,
-                                        writer, objectData, partition);
-//                                IMRUSerialize.serializeToFrames(imruContext,
-//                                        writer, objectData);
+                                        writer, objectData, partition, null);
+                                //                                IMRUSerialize.serializeToFrames(imruContext,
+                                //                                        writer, objectData);
                             }
                         } else {
                             Vector vector = state.getMemCache();
                             Log.info("Cached in memory examples "
                                     + vector.size());
 
-//                            ChunkFrameHelper chunkFrameHelper = new ChunkFrameHelper(
-//                                    ctx);
-//                            IMRUContext imruContext = new IMRUContext(
-//                                    chunkFrameHelper.getContext(), name);
-                            IMRUContext imruContext = new IMRUContext(
-                                    ctx, name);
-//                            writer = chunkFrameHelper.wrapWriter(writer,
-//                                    partition);
+                            //                            ChunkFrameHelper chunkFrameHelper = new ChunkFrameHelper(
+                            //                                    ctx);
+                            //                            IMRUContext imruContext = new IMRUContext(
+                            //                                    chunkFrameHelper.getContext(), name);
+                            IMRUContext imruContext = new IMRUContext(ctx, name);
+                            //                            writer = chunkFrameHelper.wrapWriter(writer,
+                            //                                    partition);
 
                             ByteArrayOutputStream out = new ByteArrayOutputStream();
                             imruSpec.mapMem(imruContext,
@@ -253,13 +251,19 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                                     out, imruSpec.getCachedDataFrameSize());
                             byte[] objectData = out.toByteArray();
                             //                    Rt.p(objectData.length);
-//                            Rt.p("map send "
-//                                    + MergedFrames.deserialize(objectData));
+                            //                            Rt.p("map send "
+                            //                                    + MergedFrames.deserialize(objectData));
 
-                            MergedFrames.serializeToFrames(imruContext,
-                                    writer, objectData, partition);
-//                            IMRUSerialize.serializeToFrames(imruContext,
-//                                    writer, objectData);
+                            IMRUDebugger.sendDebugInfo(imruContext.getNodeId()
+                                    + " map start " + partition);
+                            MergedFrames.serializeToFrames(imruContext, writer,
+                                    objectData, partition, imruContext
+                                            .getNodeId()
+                                            + " map " + partition+" "+imruContext.getOperatorName());
+                            IMRUDebugger.sendDebugInfo(imruContext.getNodeId()
+                                    + " map finish");
+                            //                            IMRUSerialize.serializeToFrames(imruContext,
+                            //                                    writer, objectData);
                         }
                     } else {
                         final IMRUFileSplit split = inputSplits[partition];
@@ -304,10 +308,10 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                                 imruSpec.getCachedDataFrameSize());
                         byte[] objectData = out.toByteArray();
                         //                    Rt.p(objectData.length);
-                        MergedFrames.serializeToFrames(imruContext,
-                                writer, objectData, partition);
-//                        IMRUSerialize.serializeToFrames(imruContext, writer,
-//                                objectData);
+                        MergedFrames.serializeToFrames(imruContext, writer,
+                                objectData, partition, null);
+                        //                        IMRUSerialize.serializeToFrames(imruContext, writer,
+                        //                                objectData);
                     }
                     writer.close();
                 } catch (HyracksDataException e) {

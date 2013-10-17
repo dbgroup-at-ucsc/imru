@@ -76,7 +76,7 @@ public class KmeansExperiment {
                 start = System.currentTimeMillis();
                 String path = getImruDataPath(sizePerNode, nodeCount, "%d");
                 int processed2 = IMRUKMeans.runEc2(master, nodeCount, dataSize,
-                        path, false, false, k, iterations,aggType,aggArg);
+                        path, false, false, k, iterations, aggType, aggArg);
                 long imruDiskTime = System.currentTimeMillis() - start;
                 plot.startNewX(pointPerNode / 100000);
                 //                plot.addY(dataTime / 1000.0);
@@ -87,7 +87,7 @@ public class KmeansExperiment {
                 start = System.currentTimeMillis();
                 String path = getImruDataPath(sizePerNode, nodeCount, "%d");
                 int processed1 = IMRUKMeans.runEc2(master, nodeCount, dataSize,
-                        path, true, false, k, iterations,aggType,aggArg);
+                        path, true, false, k, iterations, aggType, aggArg);
                 long imruMemTime = System.currentTimeMillis() - start;
 
                 //            start = System.currentTimeMillis();
@@ -146,6 +146,10 @@ public class KmeansExperiment {
     }
 
     public static void main(String[] args) throws Exception {
+        if (args.length == 0) {
+            args = "-master 192.168.56.104 -nodeCount 2 -type imruMem -k 6 -iterations 1 -batchStart 1 -batchStep 3 -batchEnd 1 -batchSize 100000 -agg-tree-type nary -agg-count 2 -fan-in 2"
+                    .split(" ");
+        }
         Options options = new Options();
         CmdLineParser parser = new CmdLineParser(options);
         parser.parseArgument(args);

@@ -36,6 +36,7 @@ import edu.uci.ics.hyracks.api.dataflow.IConnectorDescriptor;
 import edu.uci.ics.hyracks.api.dataflow.IOperatorDescriptor;
 import edu.uci.ics.hyracks.api.dataflow.value.ISerializerDeserializer;
 import edu.uci.ics.hyracks.api.dataflow.value.RecordDescriptor;
+import edu.uci.ics.hyracks.api.deployment.DeploymentId;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.api.exceptions.HyracksException;
 import edu.uci.ics.hyracks.api.job.JobSpecification;
@@ -239,10 +240,10 @@ public class IMRUJobFactory {
         return spec;
     }
 
-    public JobSpecification generateModelSpreadJob(String modelPath,
-            int roundNum) {
-        return generateModelSpreadJob(mapAndUpdateNodesLocations, modelNode,
-                imruConnection, modelPath, roundNum, null);
+    public JobSpecification generateModelSpreadJob(DeploymentId deploymentId,
+            String modelPath, int roundNum) {
+        return generateModelSpreadJob(deploymentId, mapAndUpdateNodesLocations,
+                modelNode, imruConnection, modelPath, roundNum, null);
     }
 
     /**
@@ -258,9 +259,9 @@ public class IMRUJobFactory {
      * @return
      */
     public static JobSpecification generateModelSpreadJob(
-            String[] mapNodesLocations, String initialNode,
-            IMRUConnection imruConnection, String modelName, int modelAge,
-            String dataFilePath) {
+            DeploymentId deploymentId, String[] mapNodesLocations,
+            String initialNode, IMRUConnection imruConnection,
+            String modelName, int modelAge, String dataFilePath) {
         JobSpecification job = new JobSpecification();
         //        job.setFrameSize(frameSize);
         SpreadGraph graph = new SpreadGraph(mapNodesLocations, initialNode);
@@ -269,8 +270,8 @@ public class IMRUJobFactory {
         for (int i = 0; i < graph.levels.length; i++) {
             SpreadGraph.Level level = graph.levels[i];
             String[] locations = level.getLocationContraint();
-            SpreadOD op = new SpreadOD(job, graph.levels, i, modelName,
-                    imruConnection, modelAge, dataFilePath);
+            SpreadOD op = new SpreadOD(deploymentId, job, graph.levels, i,
+                    modelName, imruConnection, modelAge, dataFilePath);
             if (i > 0)
                 job.connect(new SpreadConnectorDescriptor(job,
                         graph.levels[i - 1], level), last, 0, op, 0);

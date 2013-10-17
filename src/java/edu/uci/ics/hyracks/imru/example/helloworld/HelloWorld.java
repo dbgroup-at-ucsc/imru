@@ -36,14 +36,16 @@ public class HelloWorld {
                     Client.getLocalIp(), 3099);
             if (useExistingCluster) {
                 // hostname of cluster controller
-                cmdline += "-host " + Client.getLocalIp() + " -port 3099";
+                String ip=Client.getLocalIp();
+                cmdline += "-host " + ip + " -port 3099";
                 System.out.println("Connecting to " + Client.getLocalIp());
             } else {
                 // debugging mode, everything run in one process
                 cmdline += "-host localhost -port 3099 -debug -disable-logging";
                 cmdline += " -debugNodes " + totalNodes;
                 cmdline += " -agg-tree-type nary -fan-in 4";
-                
+                cmdline += " -agg-tree-type none";
+
                 System.out.println("Starting hyracks cluster");
             }
 
@@ -64,8 +66,13 @@ public class HelloWorld {
             args = cmdline.split(" ");
         }
 
-        String finalModel = Client.run(new HelloWorldJob(), "", args);
-        System.out.println("FinalModel: " + finalModel);
+        try {
+            String finalModel = Client.run(new HelloWorldJob(), "", args);
+            System.out.println("FinalModel: " + finalModel);
+        } catch (Throwable e) {
+            e.printStackTrace();
+            System.exit(0);
+        }
         System.exit(0);
     }
 }

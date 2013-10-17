@@ -36,14 +36,14 @@ import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 
 import edu.uci.ics.hyracks.api.application.ICCApplicationContext;
-import edu.uci.ics.hyracks.api.application.ICCBootstrap;
+import edu.uci.ics.hyracks.api.application.ICCApplicationEntryPoint;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 /**
  * The bootstrap class of the application that will manage its life cycle at the
  * Cluster Controller.
  */
-public class IMRUCCBootstrapImpl implements ICCBootstrap {
+public class IMRUCCBootstrapImpl implements ICCApplicationEntryPoint {
     private static final Logger LOGGER = Logger
             .getLogger(IMRUCCBootstrapImpl.class.getName());
     private Server webServer;
@@ -51,26 +51,23 @@ public class IMRUCCBootstrapImpl implements ICCBootstrap {
     private Hashtable<String, String> jobStatus = new Hashtable<String, String>();
 
     @Override
-    public void start() throws Exception {
+    public void start(ICCApplicationContext appCtx, String[] arg1)
+            throws Exception {
         LOGGER.info("Starting IMRU model uploader/downloader");
         try {
+            this.appCtx = appCtx;
             setupWebServer();
             webServer.start();
         } catch (java.net.BindException e) {
             Rt.p(e.getMessage());
         }
+
     }
 
     @Override
     public void stop() throws Exception {
         LOGGER.info("Stopping IMRU model uploader/downloader");
-
         webServer.stop();
-    }
-
-    @Override
-    public void setApplicationContext(ICCApplicationContext appCtx) {
-        this.appCtx = appCtx;
     }
 
     int port = 3288;
