@@ -10,6 +10,8 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.Enumeration;
 
+import scala.actors.threadpool.Arrays;
+
 import edu.uci.ics.hyracks.api.client.HyracksConnection;
 import edu.uci.ics.hyracks.ec2.HyracksCluster;
 import edu.uci.ics.hyracks.ec2.HyracksEC2Cluster;
@@ -25,6 +27,9 @@ import exp.ImruDebugMonitor;
 import exp.imruVsSpark.LocalCluster;
 import exp.imruVsSpark.VirtualBox;
 import exp.imruVsSpark.data.DataGenerator;
+import exp.imruVsSpark.kmeans.exp.DataPointsPerNode;
+import exp.imruVsSpark.kmeans.exp.FanInAndK;
+import exp.imruVsSpark.kmeans.exp.KmeansFigs;
 import exp.imruVsSpark.kmeans.imru.IMRUKMeans;
 import exp.imruVsSpark.kmeans.spark.SparkKMeans;
 import exp.test0.GnuPlot;
@@ -44,7 +49,7 @@ public class VirtualBoxExperiments {
     int aggArg;
     File resultDir;
     File figDir;
-    static ClusterMonitor monitor;
+    public static ClusterMonitor monitor;
 
     public VirtualBoxExperiments(LocalCluster cluster, String name, int k,
             int iterations, int batchStart, int batchStep, int batchEnd,
@@ -179,18 +184,11 @@ public class VirtualBoxExperiments {
                     "/home/" + cluster.user + "/hyracks-ec2/bin/");
             node.rsync(ssh, new File("/home/wangrui/ucscImru/bin/scripts"),
                     "/home/" + cluster.user + "/hyracks-ec2/bin/");
-            //        node.rsync(ssh, new File("/home/wangrui/b/soft/scala-2.9.2"), "/home/"
-            //                + cluster.user + "/scala-2.9.2/");
-            //        node.rsync(ssh, new File("/home/wangrui/b/soft/spark-0.7.0"), "/home/"
-            //                + cluster.user + "/spark-0.7.0/");
-            //        node
-            //                .rsync(
-            //                        ssh,
-            //                        new File(
-            //                                "/home/wangrui/b/soft/spark-0.7.0/core/target/scala-2.9.2/classes"),
-            //                        "/home/"
-            //                                + cluster.user
-            //                                + "/spark-0.7.0/core/target/scala-2.9.2/classes/");
+            node.rsync(ssh, new File("/home/wangrui/b/soft/scala-2.9.3"),
+                    "/home/" + cluster.user + "/scala-2.9.3/");
+            node.rsync(ssh, new File(
+                    "/home/wangrui/b/soft/spark-0.8.0-incubating"), "/home/"
+                    + cluster.user + "/spark-0.8.0-incubating/");
         }
         node.rsync(ssh, new File("/home/wangrui/ucscImru/bin"), "/home/"
                 + cluster.user + "/test/bin/");
@@ -416,7 +414,11 @@ public class VirtualBoxExperiments {
         //        plot.show();
     }
 
-    void runExperiments() throws Exception {
+    public boolean hasAllResults() throws Exception {
+        return hasResult(true) && hasResult(false) && hasSparkResult();
+    }
+
+    public void runExperiments() throws Exception {
         if (hasResult(true) && hasResult(false) && hasSparkResult())
             return;
         Rt.p("Spark: http://" + controller.publicIp + ":"
@@ -427,15 +429,15 @@ public class VirtualBoxExperiments {
         generateSharedData();
 
         runImru(true);
-
         runImru(false);
-
         runSpark();
 
         cluster.stopAll();
     }
 
-    void runIMRUMem() throws Exception {
+    public void runIMRUMem() throws Exception {
+        if (hasResult(true))
+            return;
         Rt.p("IMRU: " + cluster.cluster.getAdminURL());
 
         uploadExperimentCode(cluster, false);
@@ -446,9 +448,64 @@ public class VirtualBoxExperiments {
         cluster.stopAll();
     }
 
+    public static boolean IMRU_ONLY = false;
+
+    public static void runExperiment(int nodeCount, int memory, int k,
+            int iterations, int batchStart, int batchStep, int batchEnd,
+            int batchSize, int network, String cpu, int fanIn) throws Exception {
+        File home = new File(System.getProperty("user.home"));
+        String userName = "ubuntu";
+        String name = "local" + memory + "M" + cpu + "coreN" + network;
+        String[] nodes = new String[nodeCount];
+        {
+            Arrays.fill(nodes, "");
+            LocalCluster cluster = new LocalCluster(new HyracksCluster("",
+                    nodes, userName, new File(home, ".ssh/id_rsa")), userName);
+            VirtualBoxExperiments exp = new VirtualBoxExperiments(cluster,
+                    name, k, iterations, batchStart, batchStep, batchEnd,
+                    batchSize, fanIn > 1 ? "nary" : "none", fanIn);
+            if (exp.hasAllResults() || IMRU_ONLY && exp.hasResult(true)) {
+                Rt.p("skip " + exp.resultDir.getPath());
+                return;
+            } else {
+                Rt.p("run " + exp.resultDir.getPath());
+            }
+        }
+
+        VirtualBox.remove();
+        VirtualBox.setup(nodeCount, memory,
+                (int) (Double.parseDouble(cpu) * 100), network);
+        Thread.sleep(2000 * nodeCount);
+        VirtualBoxExperiments.monitor = new ClusterMonitor();
+        VirtualBoxExperiments.monitor.waitIp(nodes.length);
+        for (int i = 0; i < nodes.length; i++) {
+            nodes[i] = VirtualBoxExperiments.monitor.ip[i];
+            System.out.println("NC" + i + ": " + nodes[i]);
+        }
+
+        HyracksNode.HYRACKS_PATH = "/home/" + userName + "/hyracks-ec2";
+        String cc = nodes[0];
+        LocalCluster cluster = new LocalCluster(new HyracksCluster(cc, nodes,
+                userName, new File(home, ".ssh/id_rsa")), userName);
+        //                File hyracksEc2Root = new File(home, "ucscImru/dist");
+        //        cluster.cluster.install(hyracksEc2Root);
+        VirtualBoxExperiments exp = new VirtualBoxExperiments(cluster, name, k,
+                iterations, batchStart, batchStep, batchEnd, batchSize,
+                fanIn > 1 ? "nary" : "none", fanIn);
+        //      IMRUDebugger.debug = true;
+        //                ImruDebugMonitor monitor = new ImruDebugMonitor(outputFile
+        //                        .getAbsolutePath());
+        if (IMRU_ONLY)
+            exp.runIMRUMem();
+        else
+            exp.runExperiments();
+        //                monitor.close();
+        //        generateResult(exp.resultDir);
+        VirtualBox.remove();
+        VirtualBoxExperiments.monitor.close();
+    }
+
     static void createTemplate(String ip, String userName) throws Exception {
-        //                VirtualBox.remove();
-        //                System.exit(0);
         File home = new File(System.getProperty("user.home"));
         String[] nodes = new String[] { ip };
         String cc = nodes[0];
@@ -458,108 +515,10 @@ public class VirtualBoxExperiments {
         System.exit(0);
     }
 
-    public static void runExp(String[] args) throws Exception {
-        //        generateResult(new File(
-        //                "result/k3i1b1s3e10b100000/local1500M0.25core_16nodes"));
-        //        generateResult(new File(
-        //                "result/k3i1b1s3e10b100000/local1500M0.5core_8nodes"));
-        //        System.exit(0);
-        //        regenerateResults();
-        try {
-            VirtualBox.remove();
-            //            System.exit(0);
-            int nodeCount = 16;
-            int memory = 1500;
-            int k = 3;
-            int iterations = 5;
-            int batchStart = 1;
-            int batchStep = 3;
-            int batchEnd = 1;
-            int batchSize = 100000;
-            int network = 0;
-            String cpu = "0.25";
-            int fanIn = 2;
-
-            nodeCount = 12;
-            memory = 1500;
-            cpu = "0.25";
-
-            nodeCount = 2;
-            memory = 2000;
-            cpu = "0.5";
-            iterations = 1;
-            fanIn = 2;
-
-            //            nodeCount = 16;
-            //            memory = 1500;
-            //            cpu = "0.25";
-            //            iterations = 1;
-            //            fanIn = 2;
-            //            network = 1; 
-
-            //            for (fanIn = 0; fanIn <= 6; fanIn++) {
-            //                if (fanIn == 1)
-            //                    continue;
-            for (k = 1; k <= 1; k++) {
-                //                File outputFile = new File("result/fan16_" + fanIn + "_" + k
-                //                        + ".txt");
-                //                if (outputFile.exists() && outputFile.length() > 0)
-                //                    continue;
-                //                        for (k = 16; k <= 64; k *= 2) {
-                VirtualBox.setup(nodeCount, memory, (int) (Double
-                        .parseDouble(cpu) * 100), network);
-                Thread.sleep(2000 * nodeCount);
-                monitor = new ClusterMonitor();
-                String[] nodes = new String[nodeCount];
-                monitor.waitIp(nodes.length);
-                for (int i = 0; i < nodes.length; i++) {
-                    nodes[i] = monitor.ip[i];
-                    System.out.println("NC" + i + ": " + nodes[i]);
-                }
-                //            for (network = 1; network <= 5; network *= 10) {
-                //            for (k = 1; k <= 10; k++) {
-                //                for (fanIn = 1; fanIn <= 5; fanIn++) {
-
-                String name = "local" + memory + "M" + cpu + "coreN" + network;
-
-                File home = new File(System.getProperty("user.home"));
-                LocalCluster cluster;
-                String userName = "ubuntu";
-
-                HyracksNode.HYRACKS_PATH = "/home/" + userName + "/hyracks-ec2";
-                String cc = nodes[0];
-                cluster = new LocalCluster(new HyracksCluster(cc, nodes,
-                        userName, new File(home, ".ssh/id_rsa")), userName);
-                //                File hyracksEc2Root = new File(home, "ucscImru/dist");
-                //        cluster.cluster.install(hyracksEc2Root);
-                VirtualBoxExperiments exp = new VirtualBoxExperiments(cluster,
-                        name, k, iterations, batchStart, batchStep, batchEnd,
-                        batchSize, fanIn > 1 ? "nary" : "none", fanIn);
-                //            exp.runExperiments();
-
-                //                IMRUDebugger.debug = true;
-                //                ImruDebugMonitor monitor = new ImruDebugMonitor(outputFile
-                //                        .getAbsolutePath());
-                exp.runIMRUMem();
-                //                monitor.close();
-                //                    generateResult(exp.resultDir);
-
-                //                }
-                //            }
-                VirtualBox.remove();
-                VirtualBoxExperiments.monitor.close();
-            }
-            //            }
-
-        } catch (Throwable e) {
-            e.printStackTrace();
-        } finally {
-            System.exit(0);
-        }
-    }
-
     public static void main(String[] args) throws Exception {
-        //        createTemplate("192.168.56.110", "ubuntu");
-        runExp(args);
+                VirtualBox.remove();System.exit(0);
+        //        createTemplate("192.168.56.102", "ubuntu");
+        //        FanInAndK.runExp();
+//        DataPointsPerNode.runExp();
     }
 }

@@ -10,13 +10,13 @@ import java.util.List;
 import java.util.zip.ZipOutputStream;
 
 import scala.Tuple2;
-import spark.api.java.JavaPairRDD;
-import spark.api.java.JavaRDD;
-import spark.api.java.JavaSparkContext;
-import spark.api.java.function.FlatMapFunction;
-import spark.api.java.function.Function;
-import spark.api.java.function.Function2;
-import spark.api.java.function.PairFunction;
+import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.function.FlatMapFunction;
+import org.apache.spark.api.java.function.Function;
+import org.apache.spark.api.java.function.Function2;
+import org.apache.spark.api.java.function.PairFunction;
 import edu.uci.ics.hyracks.api.util.JavaSerializationUtils;
 import edu.uci.ics.hyracks.imru.example.utils.CreateHar;
 import edu.uci.ics.hyracks.imru.util.Rt;
@@ -36,7 +36,7 @@ public class SparkKMeans {
             final SKMeansModel model = new SKMeansModel(k, dataGenerator, 20);
             byte[] bs = JavaSerializationUtils.serialize(model);
             Rt.p("Model size: %,d", bs.length);
-            int frameSize =(int)((bs.length / 1024 / 1024)*1.1 + 2);
+            int frameSize = (int) ((bs.length / 1024 / 1024) * 1.1 + 2);
             System.setProperty("spark.akka.frameSize", Integer
                     .toString(frameSize));
         }
@@ -44,6 +44,8 @@ public class SparkKMeans {
         //cd /data/b/soft/lib/spark-0.7.0;sbt/sbt package;cp core/target/scala-2.9.2/spark-core_2.9.2-0.7.0.jar /data/a/imru/ucscImru/lib/spark-0.7.0/
         //cd /data/b/soft;lib/spark-0.7.0/run spark.deploy.master.Master -i 192.168.56.101 -p 7077
         //cd /data/b/soft;lib/spark-0.7.0/run spark.deploy.worker.Worker spark://192.168.56.101:7077
+        //cd /data/b/soft/spark-0.8.0-incubating;bin/start-master.sh
+        //cd /data/b/soft/spark-0.8.0-incubating;./spark-class org.apache.spark.deploy.worker.Worker spark://192.168.56.101:7077
 
         System.setProperty("SPARK_LOCAL_IP", host);
         File templateDir = new File(DataGenerator.TEMPLATE);
@@ -72,7 +74,9 @@ public class SparkKMeans {
                     }
                 }).cache();
 
-        FlatMapFunction f = new FlatMapFunction<Iterator<SparseVector>, FilledVectors>() {
+        //Modify core/src/main/scala/org/apache/spark/api/java/function/FlatMapFunction.scala
+        //call to call3 to avoid AbstractMethodError
+        FlatMapFunction flatMapFunction1 = new FlatMapFunction<Iterator<SparseVector>, FilledVectors>() {
             public java.lang.Iterable<FilledVectors> call(
                     Iterator<SparseVector> input) throws Exception {
                 return call3(input);
@@ -92,7 +96,8 @@ public class SparkKMeans {
         };
         for (int i = 1; i <= iterations; i++) {
             System.out.println("On iteration " + i);
-            JavaRDD<FilledVectors> kmeansModels = points.mapPartitions(f);
+            JavaRDD<FilledVectors> kmeansModels = points
+                    .mapPartitions(flatMapFunction1);
             FilledVectors revisedCentroids = kmeansModels
                     .reduce(new Function2<FilledVectors, FilledVectors, FilledVectors>() {
                         public FilledVectors call(FilledVectors a,
@@ -107,8 +112,8 @@ public class SparkKMeans {
             Rt.p(revisedCentroids.distanceSum);
             boolean changed = model.set(revisedCentroids);
             Rt.p("Total examples: " + model.totalExamples);
-//            if (!changed)
-//                break;
+            //            if (!changed)
+            //                break;
         }
         sc.stop();
         return model.totalExamples;
@@ -116,7 +121,8 @@ public class SparkKMeans {
 
     public static void main(String[] args) throws Exception {
         String host = "192.168.56.101";
-        run(host, 1000000, "/data/b/soft/spark-0.7.0",
+        host = "wrvm";
+        run(host, 1000000, "/data/b/soft/spark-0.8.0-incubating",
                 "/data/b/data/imru/productName.txt", 1, 3, 5);
         System.exit(0);
     }

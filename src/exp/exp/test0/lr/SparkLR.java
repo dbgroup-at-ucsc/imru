@@ -1,9 +1,9 @@
 package exp.test0.lr;
 
-import spark.api.java.JavaRDD;
-import spark.api.java.JavaSparkContext;
-import spark.api.java.function.Function;
-import spark.api.java.function.Function2;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.function.Function;
+import org.apache.spark.api.java.function.Function2;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;

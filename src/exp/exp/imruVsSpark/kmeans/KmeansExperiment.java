@@ -103,7 +103,7 @@ public class KmeansExperiment {
                 String path = getSparkDataPath(sizePerNode, nodeCount);
                 int processed = SparkKMeans
                         .run(master, dataSize,
-                                "/home/" + user + "/spark-0.7.0", path,
+                                "/home/" + user + "/spark-0.8.0-incubating", path,
                                 nodeCount, k, iterations);
                 long sparkTime = System.currentTimeMillis() - start;
                 plot.startNewX(pointPerNode / 100000);

@@ -8,8 +8,8 @@ import java.util.zip.ZipOutputStream;
 
 import edu.uci.ics.hyracks.imru.example.utils.CreateHar;
 import edu.uci.ics.hyracks.imru.util.Rt;
-import spark.api.java.*;
-import spark.api.java.function.Function;
+import org.apache.spark.api.java.*;
+import org.apache.spark.api.java.function.Function;
 
 public class SparkTest {
     public static void main(String[] args) throws IOException {

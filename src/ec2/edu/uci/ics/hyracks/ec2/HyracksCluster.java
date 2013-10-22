@@ -157,7 +157,7 @@ public class HyracksCluster {
 
     public void startHyrackCluster() throws Exception {
         controller.startCC();
-        Thread.sleep(5000); // wait to avoid connection refuse exception
+        Thread.sleep(5000 + 5000 * nodes.length); // wait to avoid connection refuse exception
         for (int i = 0; i < 100; i++) {
             try {
                 Socket hcc = new Socket(controller.publicIp, 3099);

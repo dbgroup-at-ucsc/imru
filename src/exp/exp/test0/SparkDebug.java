@@ -12,10 +12,10 @@ import java.util.zip.ZipOutputStream;
 
 import edu.uci.ics.hyracks.imru.util.Rt;
 
-import spark.api.java.JavaRDD;
-import spark.api.java.JavaSparkContext;
-import spark.api.java.function.Function;
-import spark.api.java.function.Function2;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.function.Function;
+import org.apache.spark.api.java.function.Function2;
 
 public class SparkDebug {
     public static void copy(InputStream in, OutputStream out) throws IOException {

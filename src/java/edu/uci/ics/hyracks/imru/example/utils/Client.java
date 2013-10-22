@@ -549,6 +549,11 @@ public class Client<Model extends Serializable, Data extends Serializable> {
         deploymentId = uploadApp();
     }
 
+    public void uninit() throws Exception {
+        if (deploymentId != null)
+            hcc.unDeployBinary(deploymentId);
+    }
+
     /**
      * run job
      * 
@@ -582,6 +587,8 @@ public class Client<Model extends Serializable, Data extends Serializable> {
                 System.err.println("Job failed; see CC and NC logs");
                 System.exit(-1);
             }
+            
+            client.uninit();
             // System.out.println("Terminated after "
             // + client.control.getIterationCount() + " iterations");
 

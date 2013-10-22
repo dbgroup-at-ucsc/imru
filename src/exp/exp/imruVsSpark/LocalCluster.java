@@ -57,6 +57,9 @@ public class LocalCluster {
                         + "/spark-0.7.0/run spark.deploy.master.Master -i "
                         + master + " -p 7077 --webui-port " + webport
                         + " > masterSpark.log 2>&1 &";
+                cmd = "SPARK_MASTER_IP=" + master + " " + home
+                        + "/spark-0.8.0-incubating/bin/start-master.sh"
+                        + " > masterSpark.log 2>&1 &";
                 Rt.np(cmd);
                 Rt.runCommand(sshCmd + node.internalIp + " \"" + cmd + "\"");
             }
@@ -78,6 +81,10 @@ public class LocalCluster {
                             + node.internalIp + " spark://" + master
                             + ":7077 --webui-port " + (webport + 1)
                             + "  > slaveSpark.log 2>&1 &";
+                    cmd = home + "/spark-0.8.0-incubating/spark-class"
+                            + " org.apache.spark.deploy.worker.Worker"
+                            + " spark://" + master
+                            + ":7077 > slaveSpark.log 2>&1 &";
                     Rt.np(cmd);
                     Rt
                             .runCommand(sshCmd + node.internalIp + " \"" + cmd
