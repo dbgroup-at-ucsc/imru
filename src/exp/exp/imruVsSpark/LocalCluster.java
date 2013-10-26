@@ -111,6 +111,88 @@ public class LocalCluster {
         ssh.close();
     }
 
+    public void startStratosphere() throws Exception {
+        final int webport = getSparkPort();
+        Rt.p("Starting stratosphere");
+        final String master = cluster.controller.internalIp;
+        final String sshCmd = "ssh -l ubuntu -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ";
+        final String config = "jobmanager.rpc.address: " + master + "\n"
+                + "jobmanager.rpc.port: 6123\n"
+                + "jobmanager.profiling.enable: false\n"
+                + "jobmanager.rpc.numhandler: 8\n"
+                + "jobmanager.heap.mb: 256\n" + "taskmanager.rpc.port: 6122\n"
+                + "taskmanager.heap.mb: 512\n"
+                + "channel.network.numberOfBuffers: 2048\n"
+                + "channel.network.bufferSizeInBytes: 32768\n"
+                + "pact.parallelization.degree: -1\n"
+                + "pact.parallelization.max-intra-node-degree: -1\n"
+                + "pact.parallelization.maxmachines: -1\n"
+                + "pact.web.port: 8080\n"
+                + "pact.web.rootpath: ./resources/web-docs/\n";
+        {
+            HyracksNode node = cluster.controller;
+            Rt.p(node.getName());
+            SSH ssh = node.ssh();
+            Rt.p("uploading config");
+            ssh.put("/home/ubuntu/stratosphere/conf/stratosphere-conf.yaml",
+                    config.getBytes());
+            Rt.p("finished");
+            String result = Rt.runCommand(sshCmd + node.internalIp
+                    + " \"ps aux | grep stratosphere | grep nephele\"");
+            Rt.p(result);
+            boolean hasMaster = result.contains("jobmanager");
+            Rt.p(hasMaster);
+            if (!hasMaster) {
+                String cmd = home
+                        + "/stratosphere/bin/nephele-jobmanager.sh start cluster > stratosphereJob.log 2>&1 &";
+                Rt.np(cmd);
+                Rt.runCommand(sshCmd + node.internalIp + " \"" + cmd + "\"");
+            }
+        }
+        Rt.sleep(3000);
+        cluster.executeOnAllNode(new NodeCallback() {
+            @Override
+            public void run(HyracksNode node) throws Exception {
+                Thread.sleep(100 * node.nodeId);
+                SSH ssh = node.ssh();
+                ssh
+                        .put(
+                                "/home/ubuntu/stratosphere/conf/stratosphere-conf.yaml",
+                                config.getBytes());
+                ssh.close();
+                Rt.p(node.getName());
+                String result = Rt.runCommand(sshCmd + node.internalIp
+                        + " \"ps aux | grep stratosphere | grep nephele\"");
+                boolean hasWorker = result.contains("taskmanager");
+                if (!hasWorker) {
+                    String cmd = home
+                            + "/stratosphere/bin/nephele-taskmanager.sh start > stratosphereTask.log 2>&1 &";
+                    Rt.np(cmd);
+                    Rt
+                            .runCommand(sshCmd + node.internalIp + " \"" + cmd
+                                    + "\"");
+                }
+            }
+        });
+        Thread.sleep(3000);
+    }
+
+    public void stopStratosphere() throws Exception {
+        Rt.p("http://" + cluster.controller.publicIp + ":8080/");
+        SSH ssh = cluster.controller.ssh();
+        String cmd = home + "/stratosphere/bin/nephele-jobmanager.sh stop";
+        cmd = "ps aux | grep stratosphere | grep nephele";
+        Rt.np(cmd);
+        for (String line : ssh.execute(cmd, true).split("\n")) {
+            if (line.contains("nephele")) {
+                String[] ss = line.split("[ |\t]+");
+                int pid = Integer.parseInt(ss[1]);
+                ssh.execute("kill " + pid);
+            }
+        }
+        ssh.close();
+    }
+
     public void setNetworkSpeed(final int kbit) throws Exception {
         cluster.executeOnAllNode(new NodeCallback() {
             @Override
@@ -128,7 +210,7 @@ public class LocalCluster {
             .newCachedThreadPool();
 
     public void stopAll() throws Exception {
-        Rt.p("Stopping Spark and Hyracks");
+        Rt.p("Stopping Spark, Hyracks and Stratesphere");
         cluster.executeOnAllNode(new NodeCallback() {
             @Override
             public void run(HyracksNode node) throws Exception {
@@ -153,7 +235,7 @@ public class LocalCluster {
                 }
                 for (String line : ssh.execute("ps aux | grep java", true)
                         .split("\n")) {
-                    if (line.contains("hyracks")
+                    if ((line.contains("hyracks") || line.contains("nephele"))
                             && !line.contains("Ec2Experiments")) {
                         String[] ss = line.split("[ |\t]+");
                         int pid = Integer.parseInt(ss[1]);

@@ -13,7 +13,7 @@ public class NumberOfNodes {
             int nodeCount = 16;
             int memory = 1500;
             int k = 3;
-            int iterations = 1;
+            int iterations = 5;
             int batchStart = 1;
             int batchStep = 3;
             int batchEnd = 1;
@@ -28,8 +28,8 @@ public class NumberOfNodes {
                         network, cpu, fanIn);
         } catch (Throwable e) {
             e.printStackTrace();
-        } finally {
             System.exit(0);
+        } finally {
         }
     }
 
@@ -39,7 +39,7 @@ public class NumberOfNodes {
         File file = new File(
                 "result/k3i5b1s3e10b100000/local1500M0.25core_8nodes");
         file = new File(
-                "result/k3i1b1s3e1b100000/local1500M0.25coreN0_8nodes_nary_2");
+                "result/k3i5b1s3e1b100000/local1500M0.25coreN0_8nodes_nary_2");
         KmeansFigs f = new KmeansFigs(file);
         plot.extra = "set title \"K-means" + " 10^5 points/node K=" + f.k
                 + " Iteration=" + f.iterations + "\\n cpu=" + f.core
@@ -51,7 +51,7 @@ public class NumberOfNodes {
         plot.colored = true;
         for (int nodeCount = 1; nodeCount <= 16; nodeCount++) {
             f = new KmeansFigs(new File(
-                    "result/k3i1b1s3e1b100000/local1500M0.25coreN0_"
+                    "result/k3i5b1s3e1b100000/local1500M0.25coreN0_"
                             + nodeCount + "nodes_nary_2"));
             plot.startNewX(nodeCount);
             plot.addY(f.get("spark1"));

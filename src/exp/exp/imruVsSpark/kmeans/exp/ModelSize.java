@@ -13,7 +13,7 @@ public class ModelSize {
             int nodeCount = 8;
             int memory = 2000;
             int k = 3;
-            int iterations = 1;
+            int iterations = 5;
             int batchStart = 1;
             int batchStep = 3;
             int batchEnd = 1;
@@ -28,8 +28,8 @@ public class ModelSize {
                         network, cpu, fanIn);
         } catch (Throwable e) {
             e.printStackTrace();
-        } finally {
             System.exit(0);
+        } finally {
         }
     }
 
@@ -37,7 +37,7 @@ public class ModelSize {
         GnuPlot plot = new GnuPlot(new File("/tmp/cache"), "kmeans100kK", "k",
                 "Time (seconds)");
         File file = new File(
-                "result/k8i1b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2");
+                "result/k8i5b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2");
         KmeansFigs f = new KmeansFigs(file);
         plot.extra = "set title \"K-means" + " 10^5 points/node*" + f.nodeCount
                 + " Iteration=" + f.iterations + "\\n cpu=" + f.core
@@ -50,7 +50,7 @@ public class ModelSize {
         plot.colored = true;
         for (int k = 2; k <= 8; k++) {
             f = new KmeansFigs(new File("result/k" + k
-                    + "i1b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2"));
+                    + "i5b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2"));
             plot.startNewX(k);
             plot.addY(f.get("spark1"));
             plot.addY(f.get("imruDisk1"));

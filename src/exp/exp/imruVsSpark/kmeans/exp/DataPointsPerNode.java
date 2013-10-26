@@ -13,7 +13,7 @@ public class DataPointsPerNode {
             int nodeCount = 8;
             int memory = 2000;
             int k = 3;
-            int iterations = 1;
+            int iterations = 5;
             int batchStart = 1;
             int batchStep = 1;
             int batchEnd = 8;
@@ -27,8 +27,8 @@ public class DataPointsPerNode {
                     network, cpu, fanIn);
         } catch (Throwable e) {
             e.printStackTrace();
-        } finally {
             System.exit(0);
+        } finally {
         }
     }
 
@@ -36,7 +36,7 @@ public class DataPointsPerNode {
         GnuPlot plot = new GnuPlot(new File("/tmp/cache"), "kmeansSplitSize",
                 "10^5 points/node", "Time (seconds)");
         File file = new File(
-                "result/k3i1b1s1e8b100000/local2000M0.5coreN0_8nodes_nary_2");
+                "result/k3i5b1s1e8b100000/local2000M0.5coreN0_8nodes_nary_2");
         KmeansFigs f = new KmeansFigs(file);
         plot.extra = "set title \"K-means"
                 //+ " 10^5 points/node*" + f.nodeCount

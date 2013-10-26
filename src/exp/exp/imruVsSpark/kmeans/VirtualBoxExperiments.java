@@ -189,6 +189,8 @@ public class VirtualBoxExperiments {
             node.rsync(ssh, new File(
                     "/home/wangrui/b/soft/spark-0.8.0-incubating"), "/home/"
                     + cluster.user + "/spark-0.8.0-incubating/");
+            node.rsync(ssh, new File("/home/wangrui/b/soft/stratosphere"),
+                    "/home/" + cluster.user + "/stratosphere/");
         }
         node.rsync(ssh, new File("/home/wangrui/ucscImru/bin"), "/home/"
                 + cluster.user + "/test/bin/");
@@ -277,6 +279,29 @@ public class VirtualBoxExperiments {
         Rt.write(new File(resultDir, "spark.txt"), result.getBytes());
         //        cluster.stopSpark();
         ssh.close();
+    }
+
+    void runStratesphere() throws Exception {
+        //        if (hasSparkResult())
+        //            return;
+        cluster.stopAll();
+        Rt.p("testing stratesphere");
+        cluster.startStratosphere();
+//        Thread.sleep(10000);
+        //        SSH ssh = controller.ssh();
+        //        ssh.execute("cd test;");
+        //        monitor.start(figDir, "spark", nodes);
+        //        ssh.execute("rm result/*");
+        //        runExperiment(ssh, "spark");
+        //        monitor.stop();
+        //        ssh.execute("cat " + "/home/" + cluster.user + "/masterSpark.log");
+        //        ssh.execute("cat " + "/home/" + cluster.user + "/slaveSpark.log");
+        //        String result = new String(Rt.read(ssh.get("/home/" + cluster.user
+        //                + "/test/result/kmeansspark_org.data")));
+        //        Rt.p(result);
+        //        Rt.write(new File(resultDir, "spark.txt"), result.getBytes());
+        //        cluster.stopSpark();
+        //        ssh.close();
     }
 
     static LocalCluster getEc2Cluster(int nodeCount) throws Exception {
@@ -515,10 +540,59 @@ public class VirtualBoxExperiments {
         System.exit(0);
     }
 
+    static void testStratesphere() throws Exception {
+        int nodeCount = 2;
+        int memory = 4096;
+        String cpu = "1";
+        int network = 0;
+        //        VirtualBox.remove();
+        //        VirtualBox.setup(nodeCount, memory,
+        //                (int) (Double.parseDouble(cpu) * 100), network);
+        //        Thread.sleep(2000 * nodeCount);
+        //        String[] nodes = new String[nodeCount];
+        //        VirtualBoxExperiments.monitor = new ClusterMonitor();
+        //        VirtualBoxExperiments.monitor.waitIp(nodes.length);
+        //        for (int i = 0; i < nodes.length; i++) {
+        //            nodes[i] = VirtualBoxExperiments.monitor.ip[i];
+        //            System.out.println("NC" + i + ": " + nodes[i]);
+        //        }
+        String[] nodes = { "192.168.56.102", "192.168.56.103", };
+        File home = new File(System.getProperty("user.home"));
+
+        String userName = "ubuntu";
+        HyracksNode.HYRACKS_PATH = "/home/" + userName + "/hyracks-ec2";
+        String cc = nodes[0];
+        LocalCluster cluster = new LocalCluster(new HyracksCluster(cc, nodes,
+                userName, new File(home, ".ssh/id_rsa")), userName);
+        //                File hyracksEc2Root = new File(home, "ucscImru/dist");
+        //        cluster.cluster.install(hyracksEc2Root);
+        String name = "tmp";
+        int k = 3;
+        int iterations = 5;
+        int batchStart = 1;
+        int batchStep = 1;
+        int batchEnd = 8;
+        int batchSize = 100000;
+        int fanIn = 2;
+        VirtualBoxExperiments exp = new VirtualBoxExperiments(cluster, name, k,
+                iterations, batchStart, batchStep, batchEnd, batchSize,
+                fanIn > 1 ? "nary" : "none", fanIn);
+        //      IMRUDebugger.debug = true;
+        //                ImruDebugMonitor monitor = new ImruDebugMonitor(outputFile
+        //                        .getAbsolutePath());
+        //        exp.runExperiments();
+        exp.runStratesphere();
+        //                monitor.close();
+        //        generateResult(exp.resultDir);
+        //        VirtualBox.remove();
+        //        VirtualBoxExperiments.monitor.close();
+    }
+
     public static void main(String[] args) throws Exception {
-                VirtualBox.remove();System.exit(0);
-        //        createTemplate("192.168.56.102", "ubuntu");
+        testStratesphere();
+        //                VirtualBox.remove();System.exit(0);
+        //        createTemplate("192.168.56.110", "ubuntu");
         //        FanInAndK.runExp();
-//        DataPointsPerNode.runExp();
+        //        DataPointsPerNode.runExp();
     }
 }

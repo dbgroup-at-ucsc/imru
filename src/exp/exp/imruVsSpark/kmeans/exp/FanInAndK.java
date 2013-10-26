@@ -28,7 +28,7 @@ public class FanInAndK {
             String cpu = "0.25";
             int fanIn = 2;
 
-            iterations = 1;
+            iterations = 5;
 
             for (fanIn = 2; fanIn <= 7; fanIn++) {
                 if (fanIn == 1)
@@ -46,8 +46,8 @@ public class FanInAndK {
             }
         } catch (Throwable e) {
             e.printStackTrace();
-        } finally {
             System.exit(0);
+        } finally {
         }
     }
 
@@ -59,7 +59,7 @@ public class FanInAndK {
         String name = "local2000M0.5coreN0_8nodes_";
         name = "local1500M0.25coreN0_12nodes_";
         name = "local1500M0.25coreN0_16nodes_";
-        File file = new File("result/k2i1b1s3e1b100000/" + name + "nary_2");
+        File file = new File("result/k2i5b1s3e1b100000/" + name + "nary_2");
         KmeansFigs f = new KmeansFigs(file);
         plotMem.extra = "set title \"K-means" + " 10^6 points/node"
                 + " Iteration=" + f.iterations + "\\n cpu=" + f.core
@@ -82,7 +82,7 @@ public class FanInAndK {
             for (int k = 2; k < 6; k++) {
                 try {
                     f = new KmeansFigs(new File("result/k" + k
-                            + "i1b1s3e1b100000/" + name + "nary_" + nary));
+                            + "i5b1s3e1b100000/" + name + "nary_" + nary));
                 } catch (Throwable e) {
                     e.printStackTrace();
                     plotDisk.addY(0);
