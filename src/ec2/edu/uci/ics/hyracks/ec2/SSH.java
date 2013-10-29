@@ -21,6 +21,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.util.Date;
 
 import javax.swing.JOptionPane;
 
@@ -160,6 +161,8 @@ public class SSH implements Runnable {
     private boolean executed = false;
     StringBuilder input;
     public static int timeout = 0;
+    public long lastOutputTime = 0;
+    public long maxFreezeTime = 0;
 
     public synchronized String execute(String cmd) {
         return execute(cmd, false);
@@ -173,6 +176,8 @@ public class SSH implements Runnable {
             input = null;
         this.cmd = cmd;
         long start = System.currentTimeMillis();
+        lastOutputTime=System.currentTimeMillis();
+        Rt.p(new Date(lastOutputTime));
         while (result == null) {
             Rt.sleep(50);
             if (timeout > 0) {
@@ -181,6 +186,11 @@ public class SSH implements Runnable {
                     out.flush();
                     throw new Error("timeout");
                 }
+            }
+            if (maxFreezeTime>0&&System.currentTimeMillis() > lastOutputTime
+                    + maxFreezeTime) {
+                Rt.p(new Date(lastOutputTime));
+                throw new Error("timeout "+cmd);
             }
         }
         // R.np("["+cmd+"] finished");
@@ -229,9 +239,10 @@ public class SSH implements Runnable {
             while (!exitFlag) {
                 String line = readLineNoWait(in);
                 if (line == null) {
-                    Thread.sleep(20);
+                    Thread.sleep(100);
                     continue;
                 }
+                lastOutputTime = System.currentTimeMillis();
                 line = formatLine(line);
                 if (input != null) {
                     synchronized (input) {

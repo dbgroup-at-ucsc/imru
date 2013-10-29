@@ -22,7 +22,7 @@ import java.util.UUID;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class FilledVector implements Serializable {
-    private float[] dimValues;
+    public float[] dimValues;
     private float squareSum = 0;
     public int count = 0;
 

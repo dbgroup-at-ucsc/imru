@@ -35,8 +35,8 @@ public class DataPointsPerNode {
     public static GnuPlot plot() throws Exception {
         GnuPlot plot = new GnuPlot(new File("/tmp/cache"), "kmeansSplitSize",
                 "10^5 points/node", "Time (seconds)");
-        File file = new File(
-                "result/k3i5b1s1e8b100000/local2000M0.5coreN0_8nodes_nary_2");
+        File file = new File(KmeansFigs.figsDir, "k3i" + KmeansFigs.ITERATIONS
+                + "b1s1e8b100000/local2000M0.5coreN0_8nodes_nary_2");
         KmeansFigs f = new KmeansFigs(file);
         plot.extra = "set title \"K-means"
                 //+ " 10^5 points/node*" + f.nodeCount

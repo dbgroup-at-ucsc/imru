@@ -1,7 +1,7 @@
 /bin
 /ClusterControllerService
 /edu.uci.ics.hyracks.control.nc.NodeControllerService
-/result
+/result*
 /tmp
 imruMem*.pdf
 imruDisk*.pdf

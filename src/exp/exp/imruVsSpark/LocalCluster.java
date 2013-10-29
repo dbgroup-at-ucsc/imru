@@ -210,7 +210,7 @@ public class LocalCluster {
             .newCachedThreadPool();
 
     public void stopAll() throws Exception {
-        Rt.p("Stopping Spark, Hyracks and Stratesphere");
+        Rt.p("Stopping Spark, Hyracks and Stratosphere");
         cluster.executeOnAllNode(new NodeCallback() {
             @Override
             public void run(HyracksNode node) throws Exception {

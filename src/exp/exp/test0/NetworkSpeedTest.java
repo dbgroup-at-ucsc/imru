@@ -84,7 +84,7 @@ public class NetworkSpeedTest {
                 VirtualBox.setup(2, 2000, 50, 0);
         monitor = new ClusterMonitor();
         String[] nodes = new String[2];
-        monitor.waitIp(nodes.length);
+        monitor.waitIp(nodes.length,600000);
         for (int i = 0; i < nodes.length; i++)
             nodes[i] = monitor.ip[i];
         String userName = "ubuntu";

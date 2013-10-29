@@ -36,10 +36,10 @@ public class NumberOfNodes {
     public static GnuPlot plot() throws Exception {
         GnuPlot plot = new GnuPlot(new File("/tmp/cache"), "kmeans100Knodes",
                 "Nodes", "Time (seconds)");
-        File file = new File(
-                "result/k3i5b1s3e10b100000/local1500M0.25core_8nodes");
-        file = new File(
-                "result/k3i5b1s3e1b100000/local1500M0.25coreN0_8nodes_nary_2");
+        File file = new File(KmeansFigs.figsDir, "k3i" + KmeansFigs.ITERATIONS
+                + "b1s3e10b100000/local1500M0.25core_8nodes");
+        file = new File(KmeansFigs.figsDir, "k3i" + KmeansFigs.ITERATIONS
+                + "b1s3e1b100000/local1500M0.25coreN0_8nodes_nary_2");
         KmeansFigs f = new KmeansFigs(file);
         plot.extra = "set title \"K-means" + " 10^5 points/node K=" + f.k
                 + " Iteration=" + f.iterations + "\\n cpu=" + f.core
@@ -50,9 +50,10 @@ public class NumberOfNodes {
         plot.scale = false;
         plot.colored = true;
         for (int nodeCount = 1; nodeCount <= 16; nodeCount++) {
-            f = new KmeansFigs(new File(
-                    "result/k3i5b1s3e1b100000/local1500M0.25coreN0_"
-                            + nodeCount + "nodes_nary_2"));
+            f = new KmeansFigs(new File(KmeansFigs.figsDir, "k3i"
+                    + KmeansFigs.ITERATIONS
+                    + "b1s3e1b100000/local1500M0.25coreN0_" + nodeCount
+                    + "nodes_nary_2"));
             plot.startNewX(nodeCount);
             plot.addY(f.get("spark1"));
             plot.addY(f.get("imruDisk1"));

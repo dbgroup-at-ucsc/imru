@@ -15,12 +15,20 @@
 
 package exp.imruVsSpark.kmeans;
 
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.regex.Pattern;
 
-public class SparseVector implements Serializable {
+import eu.stratosphere.pact.common.type.Value;
+
+public class SparseVector implements Serializable, Value {
     public int[] keys;
     public float[] values;
+
+    public SparseVector() {
+    }
 
     public SparseVector(String line) {
         Pattern p = Pattern.compile("[ |\\t]+");
@@ -38,5 +46,27 @@ public class SparseVector implements Serializable {
     public SparseVector(int dimensions) {
         keys = new int[dimensions];
         values = new float[dimensions];
+    }
+
+    //For stratosphere only
+    @Override
+    public void read(DataInput in) throws IOException {
+        int n = in.readInt();
+        keys = new int[n];
+        values = new float[n];
+        for (int i = 0; i < n; i++) {
+            keys[i] = in.readInt();
+            values[i] = in.readFloat();
+        }
+    }
+
+    //For stratosphere only
+    @Override
+    public void write(DataOutput out) throws IOException {
+        out.writeInt(keys.length);
+        for (int i = 0; i < keys.length; i++) {
+            out.writeInt(keys[i]);
+            out.writeFloat(values[i]);
+        }
     }
 }

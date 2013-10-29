@@ -74,5 +74,23 @@
 	<classpathentry kind="lib" path="dist/lib/jsch-0.1.49.jar"/>
 	<classpathentry kind="lib" path="dist/lib/hyracks-comm-0.2.10-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="lib/spark-0.8.0/spark-assembly-0.8.0-incubating-hadoop1.0.4.jar"/>
+	<classpathentry kind="lib" path="lib/stratosphere/nephele-clustermanager-0.4-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="lib/stratosphere/nephele-common-0.4-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="lib/stratosphere/nephele-examples-0.4-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="lib/stratosphere/nephele-hdfs-0.4-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="lib/stratosphere/nephele-management-0.4-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="lib/stratosphere/nephele-profiling-0.4-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="lib/stratosphere/nephele-queuescheduler-0.4-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="lib/stratosphere/nephele-s3-0.4-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="lib/stratosphere/nephele-server-0.4-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="lib/stratosphere/nephele-visualization-0.4-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="lib/stratosphere/pact-array-datamodel-0.4-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="lib/stratosphere/pact-clients-0.4-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="lib/stratosphere/pact-common-0.4-SNAPSHOT.jar" sourcepath="/home/wangrui/b/soft/stratosphereSource/stratosphere/pact/pact-common/src/main/java"/>
+	<classpathentry kind="lib" path="lib/stratosphere/pact-compiler-0.4-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="lib/stratosphere/pact-examples-0.4-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="lib/stratosphere/pact-runtime-0.4-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="lib/stratosphere/pact-scala-core-0.4-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="lib/stratosphere/pact-scala-examples-0.4-SNAPSHOT.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

@@ -10,6 +10,8 @@ import exp.imruVsSpark.data.DataGenerator;
 import exp.test0.GnuPlot;
 
 public class KmeansFigs extends Hashtable<String, Double> {
+    public static File figsDir = new File("results");
+    public static int ITERATIONS = 5;
     public String name;
     public int memory;
     public String core;
@@ -136,6 +138,7 @@ public class KmeansFigs extends Hashtable<String, Double> {
     }
 
     public static void main(String[] args) throws Exception {
+        figsDir = new File("result1");
         DataPointsPerNode.plot();
         ModelSize.plot();
         NumberOfNodes.plot();

@@ -12,6 +12,7 @@ import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.imruVsSpark.data.DataGenerator;
 import exp.imruVsSpark.kmeans.imru.IMRUKMeans;
 import exp.imruVsSpark.kmeans.spark.SparkKMeans;
+import exp.imruVsSpark.kmeans.stratosphere.StratosphereKMeans;
 import exp.test0.GnuPlot;
 
 public class KmeansExperiment {
@@ -101,10 +102,21 @@ public class KmeansExperiment {
                 Rt.p("running spark " + sizePerNode);
                 start = System.currentTimeMillis();
                 String path = getSparkDataPath(sizePerNode, nodeCount);
-                int processed = SparkKMeans
-                        .run(master, dataSize,
-                                "/home/" + user + "/spark-0.8.0-incubating", path,
-                                nodeCount, k, iterations);
+                int processed = SparkKMeans.run(master, dataSize, "/home/"
+                        + user + "/spark-0.8.0-incubating", path, nodeCount, k,
+                        iterations);
+                long sparkTime = System.currentTimeMillis() - start;
+                plot.startNewX(pointPerNode / 100000);
+                //                plot.addY(dataTime / 1000.0);
+                plot.addY(sparkTime / 1000.0);
+                plot.addY(processed);
+            } else if ("stratosphere".equals(type)) {
+                Rt.p("running stratosphere " + sizePerNode);
+                start = System.currentTimeMillis();
+                String path = getSparkDataPath(sizePerNode, nodeCount);
+                int processed = StratosphereKMeans.run(master, dataSize,
+                        "/home/" + user + "/spark-0.8.0-incubating", path,
+                        nodeCount, k, iterations);
                 long sparkTime = System.currentTimeMillis() - start;
                 plot.startNewX(pointPerNode / 100000);
                 //                plot.addY(dataTime / 1000.0);

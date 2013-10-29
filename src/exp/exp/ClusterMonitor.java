@@ -179,15 +179,25 @@ public class ClusterMonitor {
         //        monitorThread.interrupt();
     }
 
-    public void waitIp(int n) throws InterruptedException {
+    public void waitIp(int n, int timeout)
+            throws ImruExperimentTimeoutException, InterruptedException {
         int id = 0;
+        long startTime = System.currentTimeMillis();
+        long maxTime = startTime + timeout;
+        int connected = 0;
         while (true) {
+            if (System.currentTimeMillis() > maxTime)
+                throw new ImruExperimentTimeoutException("timeout " + connected
+                        + " of " + nodes + " connected");
             if (id % 10 == 0)
                 Rt.p(nodes);
+            connected = 0;
             boolean hasIp = true;
             for (int i = 0; i < nodes; i++) {
                 if (ip[i] == null)
                     hasIp = false;
+                else
+                    connected++;
             }
             if (hasIp && nodes == n)
                 return;

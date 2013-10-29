@@ -36,8 +36,8 @@ public class ModelSize {
     public static GnuPlot plot() throws Exception {
         GnuPlot plot = new GnuPlot(new File("/tmp/cache"), "kmeans100kK", "k",
                 "Time (seconds)");
-        File file = new File(
-                "result/k8i5b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2");
+        File file = new File(KmeansFigs.figsDir, "k8i" + KmeansFigs.ITERATIONS
+                + "b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2");
         KmeansFigs f = new KmeansFigs(file);
         plot.extra = "set title \"K-means" + " 10^5 points/node*" + f.nodeCount
                 + " Iteration=" + f.iterations + "\\n cpu=" + f.core
@@ -49,8 +49,9 @@ public class ModelSize {
         plot.scale = false;
         plot.colored = true;
         for (int k = 2; k <= 8; k++) {
-            f = new KmeansFigs(new File("result/k" + k
-                    + "i5b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2"));
+            f = new KmeansFigs(new File(KmeansFigs.figsDir, "k" + k + "i"
+                    + KmeansFigs.ITERATIONS
+                    + "b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2"));
             plot.startNewX(k);
             plot.addY(f.get("spark1"));
             plot.addY(f.get("imruDisk1"));

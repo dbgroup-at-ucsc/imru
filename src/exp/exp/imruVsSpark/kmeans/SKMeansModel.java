@@ -15,21 +15,37 @@
 
 package exp.imruVsSpark.kmeans;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.util.Random;
 
+import eu.stratosphere.pact.common.type.Value;
 import exp.imruVsSpark.data.DataGenerator;
 
 /**
  * IMRU model which will be used in map() and updated in update()
  */
-public class SKMeansModel implements Serializable {
+public class SKMeansModel implements Serializable, Value {
     public FilledVector[] centroids;
+    public int k;
+    public int dims;
     public int totalExamples = 0;
     public int roundsRemaining = 20;
+
+    public SKMeansModel() {
+    }
 
     public SKMeansModel(int k, DataGenerator dataGenerator, int roundsRemaining) {
         this.roundsRemaining = roundsRemaining;
         centroids = new FilledVector[k];
+        this.k = k;
+        this.dims = dataGenerator.dims;
         for (int i = 0; i < k; i++) {
             centroids[i] = new FilledVector(dataGenerator.dims);
             centroids[i].count = 1;
@@ -38,11 +54,36 @@ public class SKMeansModel implements Serializable {
         }
     }
 
+    public SKMeansModel(int k, int dims, float min, float max,
+            int roundsRemaining) {
+        this.roundsRemaining = roundsRemaining;
+        centroids = new FilledVector[k];
+        this.k = k;
+        this.dims = dims;
+        Random random = new Random();
+        for (int i = 0; i < k; i++) {
+            centroids[i] = new FilledVector(dims);
+            centroids[i].count = 1;
+            for (int j = 0; j < dims; j++)
+                centroids[i].set(j, random.nextFloat() * (max - min) + min);
+        }
+    }
+
+    public SKMeansModel(FilledVectors combined) {
+        this.k = combined.k;
+        this.dims = combined.dimensions;
+        centroids = new FilledVector[k];
+        for (int i = 0; i < k; i++)
+            centroids[i] = new FilledVector(dims);
+        set(combined);
+    }
+
     public boolean set(FilledVectors combined) {
         boolean changed = false;
         for (int i = 0; i < centroids.length; i++) {
             totalExamples += combined.centroids[i].count;
-            changed = changed || centroids[i].set(combined.centroids[i]);
+            if (centroids[i].set(combined.centroids[i]))
+                changed = true;
         }
         return changed;
     }
@@ -70,6 +111,42 @@ public class SKMeansModel implements Serializable {
 
     @Override
     public String toString() {
-        return ""+totalExamples;
+        return "" + totalExamples;
+    }
+
+    //For stratosphere only
+    @Override
+    public void read(DataInput dataIn) throws IOException {
+        try {
+            k = dataIn.readInt();
+            dims = dataIn.readInt();
+            totalExamples = dataIn.readInt();
+            roundsRemaining = dataIn.readInt();
+            int size = dataIn.readInt();
+            byte[] bs = new byte[size];
+            dataIn.readFully(bs);
+            ByteArrayInputStream in = new ByteArrayInputStream(bs);
+            ObjectInputStream objIn = new ObjectInputStream(in);
+            centroids = (FilledVector[]) objIn.readObject();
+            objIn.close();
+            in.close();
+        } catch (ClassNotFoundException e) {
+            throw new IOException(e);
+        }
+    }
+
+    //For stratosphere only
+    @Override
+    public void write(DataOutput out) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream(baos);
+        oos.writeObject(centroids);
+        oos.flush();
+        out.writeInt(k);
+        out.writeInt(dims);
+        out.writeInt(totalExamples);
+        out.writeInt(roundsRemaining);
+        out.writeInt(baos.size());
+        out.write(baos.toByteArray());
     }
 }

@@ -18,6 +18,7 @@ package edu.uci.ics.hyracks.imru.example.utils;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -260,6 +261,29 @@ public class CreateHar {
         zip.finish();
     }
 
+    public static void createJar(File dir, File tmpJarFile) throws IOException {
+        ZipOutputStream zip2 = new ZipOutputStream(new FileOutputStream(
+                tmpJarFile));
+
+        //                    ByteArrayOutputStream memory = new ByteArrayOutputStream();
+        //                    ZipOutputStream zip2 = new ZipOutputStream(memory);
+        Rt.np("add " + dir.getAbsolutePath());
+        add("", dir, zip2);
+        {
+            //If cc is running in another process
+            //            ZipEntry entry = new ZipEntry(
+            //                    "imru-deployment.properties");
+            //            entry.setTime(System.currentTimeMillis());
+            //            zip2.putNextEntry(entry);
+            //            String text = "imru.port=" + imruPort + "\r\n";
+            //            text += "imru.tempdir=" + tempDir + "\r\n";
+            //            zip2.write(text.getBytes());
+            //            zip2.closeEntry();
+        }
+        zip2.finish();
+        zip2.close();
+    }
+
     public static long createJars(boolean withHadoopJar, int imruPort,
             String tempDir, Vector<String> jars, Vector<String> tmpJars)
             throws IOException {
@@ -276,29 +300,10 @@ public class CreateHar {
                 if (dir.isDirectory()) {
                     File tmpJarFile = File.createTempFile("imru-customer-code",
                             ".jar");
-                    ZipOutputStream zip2 = new ZipOutputStream(
-                            new FileOutputStream(tmpJarFile));
-
-                    //                    ByteArrayOutputStream memory = new ByteArrayOutputStream();
-                    //                    ZipOutputStream zip2 = new ZipOutputStream(memory);
-                    Rt.np("add " + dir.getAbsolutePath());
-                    add("", dir, zip2);
-                    {
-                        //If cc is running in this process
-                        System.setProperty("imru.port", "" + imruPort);
-                        System.setProperty("imru.tempdir", tempDir);
-                        //If cc is running in another process
-                        ZipEntry entry = new ZipEntry(
-                                "imru-deployment.properties");
-                        entry.setTime(System.currentTimeMillis());
-                        zip2.putNextEntry(entry);
-                        String text = "imru.port=" + imruPort + "\r\n";
-                        text += "imru.tempdir=" + tempDir + "\r\n";
-                        zip2.write(text.getBytes());
-                        zip2.closeEntry();
-                    }
-                    zip2.finish();
-                    zip2.close();
+                    //If cc is running in this process
+                    System.setProperty("imru.port", "" + imruPort);
+                    System.setProperty("imru.tempdir", tempDir);
+                    createJar(dir, tmpJarFile);
                     length += tmpJarFile.length();
                     tmpJars.add(tmpJarFile.getAbsolutePath());
                     jars.add(tmpJarFile.getAbsolutePath());
