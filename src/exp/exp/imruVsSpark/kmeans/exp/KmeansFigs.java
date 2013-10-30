@@ -20,6 +20,7 @@ public class KmeansFigs extends Hashtable<String, Double> {
 
     public KmeansFigs(File resultDir) throws IOException {
         name = resultDir.getName();
+        Rt.p("reading " + name);
         memory = Integer.parseInt(name.substring(5, name.indexOf("M")));
         core = name.substring(name.indexOf("M") + 1, name.indexOf("core"));
         nodeCount = Integer.parseInt(name.substring(name.lastIndexOf("_", name
@@ -38,16 +39,35 @@ public class KmeansFigs extends Hashtable<String, Double> {
         //        String[] data = Rt.readFile(new File(resultDir, "generateTime.txt"))
         //                .split("\n");
         File imruDiskFile = new File(resultDir, "imruDisk.txt");
-        String[] imruDisk = !imruDiskFile.exists() ? null : Rt.readFile(
-                imruDiskFile).split("\n");
-        String[] imruMem = Rt.readFile(new File(resultDir, "imruMem.txt"))
-                .split("\n");
+        File imruMemFile = new File(resultDir, "imruMem.txt");
         File sparkFile = new File(resultDir, "spark.txt");
-        String[] spark = !sparkFile.exists() ? null : Rt.readFile(sparkFile)
-                .split("\n");
-        String[] dataSizes = new String[imruMem.length];
-        String[] processed = new String[imruMem.length];
-        for (int i = 0; i < imruMem.length; i++) {
+        String[] imruDisk = null;
+        String[] imruMem = null;
+        String[] spark = null;
+        if (imruDiskFile.exists())
+            imruDisk = Rt.readFile(imruDiskFile).split("\n");
+        else
+            Rt.p("imru disk failed");
+        if (imruMemFile.exists())
+            imruMem = !imruMemFile.exists() ? null : Rt.readFile(imruMemFile)
+                    .split("\n");
+        else
+            Rt.p("imru memory failed");
+        if (sparkFile.exists())
+            spark = !sparkFile.exists() ? null : Rt.readFile(sparkFile).split(
+                    "\n");
+        else
+            Rt.p("spark failed");
+        int n = 0;
+        if (imruMem != null)
+            n = imruMem.length;
+        else if (imruDisk != null)
+            n = imruDisk.length;
+        else if (spark != null)
+            n = spark.length;
+        String[] dataSizes = new String[n];
+        String[] processed = new String[n];
+        for (int i = 0; i < n; i++) {
             String[] ss1 = imruMem[i].split("\t");
             double dataSize = Double.parseDouble(ss1[0]);
             dataSizes[i] = ss1[0];
@@ -138,7 +158,7 @@ public class KmeansFigs extends Hashtable<String, Double> {
     }
 
     public static void main(String[] args) throws Exception {
-        figsDir = new File("result1");
+        //        figsDir = new File("result1");
         DataPointsPerNode.plot();
         ModelSize.plot();
         NumberOfNodes.plot();

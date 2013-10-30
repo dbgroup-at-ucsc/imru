@@ -232,7 +232,7 @@ public class StratosphereKMeans implements PlanAssembler,
                 "" + iterations, "" + dataGenerator.dims, "" + k);
         File tmpJar = new File("/tmp/stratosphere_kmeans.jar");
         CreateHar.createJar(new File("bin"), tmpJar);
-        PlanExecutor ex = new RemoteExecutor("localhost", 6123, tmpJar
+        PlanExecutor ex = new RemoteExecutor(host, 6123, tmpJar
                 .getAbsolutePath());
         ex.executePlan(plan);
         return Integer.parseInt(Rt.readFile(resultFile).trim());
