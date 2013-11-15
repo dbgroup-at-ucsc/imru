@@ -24,6 +24,7 @@ import edu.uci.ics.hyracks.api.dataflow.IOperatorDescriptor;
 import edu.uci.ics.hyracks.api.job.JobSpecification;
 import edu.uci.ics.hyracks.dataflow.std.connectors.LocalityAwareMToNPartitioningConnectorDescriptor;
 import edu.uci.ics.hyracks.imru.api.IIMRUJob2;
+import edu.uci.ics.hyracks.imru.api.ImruParameters;
 import edu.uci.ics.hyracks.imru.dataflow.ReduceOperatorDescriptor;
 
 /**
@@ -62,38 +63,53 @@ public class ReduceAggregationTreeFactory {
      *            The IMRU job specification.
      */
     @SuppressWarnings( { "rawtypes" })
-    public static void buildAggregationTree(JobSpecification spec, IOperatorDescriptor producerOp, int producerPort,
-            int producerOpCount, IOperatorDescriptor consumerOp, int consumerPort, IConnectorDescriptor consumerConn,
-            int fanIn, boolean useLocalCombiners, String[] producerOpLocations, IIMRUJob2 imruSpec) {
+    public static void buildAggregationTree(JobSpecification spec,
+            IOperatorDescriptor producerOp, int producerPort,
+            int producerOpCount, IOperatorDescriptor consumerOp,
+            int consumerPort, IConnectorDescriptor consumerConn, int fanIn,
+            boolean useLocalCombiners, String[] producerOpLocations,
+            IIMRUJob2 imruSpec, ImruParameters parameters) {
         if (useLocalCombiners) {
-            producerOpCount = LocalReducerFactory.getReducerCount(producerOpLocations);
+            producerOpCount = LocalReducerFactory
+                    .getReducerCount(producerOpLocations);
         }
-        Integer[] levelNodeCounts = aggregationTreeNodeCounts(producerOpCount, fanIn);
+        Integer[] levelNodeCounts = aggregationTreeNodeCounts(producerOpCount,
+                fanIn);
         int numLevels = levelNodeCounts.length;
         ReduceOperatorDescriptor[] aggregatorOperators = new ReduceOperatorDescriptor[numLevels];
         for (int level = 0; level < numLevels; level++) {
-            aggregatorOperators[level] = new ReduceOperatorDescriptor(spec, imruSpec, "NAryReducerL" + level+"_");
+            aggregatorOperators[level] = new ReduceOperatorDescriptor(spec,
+                    imruSpec, "NAryReducerL" + level + "_", parameters);
             aggregatorOperators[level].level = level;
             //            aggregatorOperators[level].setDisplayName("ReduceOperatorDescriptor(level " + level + ")");
-            PartitionConstraintHelper.addPartitionCountConstraint(spec, aggregatorOperators[level],
+            PartitionConstraintHelper.addPartitionCountConstraint(spec,
+                    aggregatorOperators[level],
                     levelNodeCounts[levelNodeCounts.length - 1 - level]);
         }
         for (int level = 1; level < numLevels; level++) {
-            IConnectorDescriptor conn = new LocalityAwareMToNPartitioningConnectorDescriptor(spec,
-                    OneToOneTuplePartitionComputerFactory.INSTANCE, new RangeLocalityMap(
-                            levelNodeCounts[levelNodeCounts.length - 1 - level]));
-            conn.setDisplayName("AggregationTreeLevel" + level + "To" + (level - 1) + "Connector");
-            spec.connect(conn, aggregatorOperators[level], 0, aggregatorOperators[level - 1], 0);
+            IConnectorDescriptor conn = new LocalityAwareMToNPartitioningConnectorDescriptor(
+                    spec, OneToOneTuplePartitionComputerFactory.INSTANCE,
+                    new RangeLocalityMap(levelNodeCounts[levelNodeCounts.length
+                            - 1 - level]));
+            conn.setDisplayName("AggregationTreeLevel" + level + "To"
+                    + (level - 1) + "Connector");
+            spec.connect(conn, aggregatorOperators[level], 0,
+                    aggregatorOperators[level - 1], 0);
         }
-        IConnectorDescriptor producerConn = new LocalityAwareMToNPartitioningConnectorDescriptor(spec,
-                OneToOneTuplePartitionComputerFactory.INSTANCE, new RangeLocalityMap(producerOpCount));
+        IConnectorDescriptor producerConn = new LocalityAwareMToNPartitioningConnectorDescriptor(
+                spec, OneToOneTuplePartitionComputerFactory.INSTANCE,
+                new RangeLocalityMap(producerOpCount));
         if (useLocalCombiners) {
-            LocalReducerFactory.addLocalReducers(spec, producerOp, producerPort, producerOpLocations,
-                    aggregatorOperators[numLevels - 1], 0, producerConn, imruSpec);
+            LocalReducerFactory.addLocalReducers(spec, producerOp,
+                    producerPort, producerOpLocations,
+                    aggregatorOperators[numLevels - 1], 0, producerConn,
+                    imruSpec, parameters);
         } else {
-            spec.connect(producerConn, producerOp, producerPort, aggregatorOperators[numLevels - 1], 0);
+            spec.connect(producerConn, producerOp, producerPort,
+                    aggregatorOperators[numLevels - 1], 0);
         }
-        spec.connect(consumerConn, aggregatorOperators[0], 0, consumerOp, consumerPort);
+        spec.connect(consumerConn, aggregatorOperators[0], 0, consumerOp,
+                consumerPort);
     }
 
     /**
@@ -108,8 +124,8 @@ public class ReduceAggregationTreeFactory {
      *         the root (but not including the root).
      */
     public static Integer[] aggregationTreeNodeCounts(int size, int fanIn) {
-        if (size==1)
-            return new Integer[] {1};
+        if (size == 1)
+            return new Integer[] { 1 };
         List<Integer> levels = new ArrayList<Integer>();
         while (size > 1) {
             size = (int) Math.round(Math.ceil((1.0 * size) / fanIn));

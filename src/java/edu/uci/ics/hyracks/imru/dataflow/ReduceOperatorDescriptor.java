@@ -35,6 +35,7 @@ import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryInputUnaryOutputOperat
 import edu.uci.ics.hyracks.imru.api.ASyncIO;
 import edu.uci.ics.hyracks.imru.api.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
+import edu.uci.ics.hyracks.imru.api.ImruParameters;
 import edu.uci.ics.hyracks.imru.data.ChunkFrameHelper;
 import edu.uci.ics.hyracks.imru.data.MergedFrames;
 import edu.uci.ics.hyracks.imru.util.Rt;
@@ -45,7 +46,6 @@ import edu.uci.ics.hyracks.imru.util.Rt;
  * @author Josh Rosen
  */
 public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
-
     private static final long serialVersionUID = 1L;
     private static final RecordDescriptor dummyRecordDescriptor = new RecordDescriptor(
             new ISerializerDeserializer[1]);
@@ -53,6 +53,7 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
     private final IIMRUJob2<?, ?> imruSpec;
     public boolean isLocal = false;
     public int level = 0;
+    ImruParameters parameters;
 
     /**
      * Create a new ReduceOperatorDescriptor.
@@ -63,10 +64,11 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
      *            The IMRU Job specification
      */
     public ReduceOperatorDescriptor(JobSpecification spec,
-            IIMRUJob2<?, ?> imruSpec, String name) {
+            IIMRUJob2<?, ?> imruSpec, String name, ImruParameters parameters) {
         super(spec, 1, 1, name, imruSpec);
         this.imruSpec = imruSpec;
         recordDescriptors[0] = dummyRecordDescriptor;
+        this.parameters = parameters;
     }
 
     @Override
@@ -76,8 +78,6 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
             int nPartitions) throws HyracksDataException {
         return new AbstractUnaryInputUnaryOutputOperatorNodePushable() {
             IMRUReduceContext imruContext;
-            //            private final ChunkFrameHelper chunkFrameHelper;
-            //            private final List<List<ByteBuffer>> bufferedChunks;
             Hashtable<Integer, LinkedList<ByteBuffer>> hash = new Hashtable<Integer, LinkedList<ByteBuffer>>();
             public String name;
             private ASyncIO<byte[]> io;
@@ -86,18 +86,12 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
             {
                 this.name = ReduceOperatorDescriptor.this.getDisplayName()
                         + partition;
-                //                this.chunkFrameHelper = new ChunkFrameHelper(ctx);
-                //                this.bufferedChunks = new ArrayList<List<ByteBuffer>>();
             }
 
             @Override
             public void open() throws HyracksDataException {
                 writer.open();
                 imruContext = new IMRUReduceContext(ctx, name, isLocal, level);
-                //                imruContext = new IMRUReduceContext(chunkFrameHelper
-                //                        .getContext(), name, isLocal, level);
-                //                writer = chunkFrameHelper.wrapWriter(writer, partition);
-
                 io = new ASyncIO<byte[]>(1);
                 future = IMRUSerialize.threadPool.submit(new Runnable() {
                     @Override
@@ -107,10 +101,10 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
                         try {
                             imruSpec.reduce(imruContext, input, out);
                             byte[] objectData = out.toByteArray();
-                            //                            Rt.p("reduce send "
-                            //                                    + MergedFrames.deserialize(objectData));
                             IMRUDebugger.sendDebugInfo(imruContext.getNodeId()
                                     + " reduce start " + partition);
+                            if (imruContext.getIterationNumber() >= parameters.compressIntermediateResultsAfterNIterations)
+                                objectData = IMRUSerialize.compress(objectData);
                             MergedFrames.serializeToFrames(imruContext, writer,
                                     objectData, partition, imruContext
                                             .getNodeId()
@@ -120,9 +114,7 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
                                             + imruContext.getOperatorName());
                             IMRUDebugger.sendDebugInfo(imruContext.getNodeId()
                                     + " reduce finish");
-                            //                            IMRUSerialize.serializeToFrames(imruContext,
-                            //                                    writer, objectData);
-                        } catch (HyracksDataException e) {
+                        } catch (Exception e) {
                             e.printStackTrace();
                             try {
                                 fail();
@@ -146,6 +138,8 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
                     if (frames != null) {
                         //                        Rt.p("reduce recv "
                         //                                + MergedFrames.deserialize(frames.data));
+                        if (imruContext.getIterationNumber() >= parameters.compressIntermediateResultsAfterNIterations)
+                            frames.data = IMRUSerialize.decompress(frames.data);
                         io.add(frames.data);
                     }
                     //                    ByteBuffer chunk = chunkFrameHelper

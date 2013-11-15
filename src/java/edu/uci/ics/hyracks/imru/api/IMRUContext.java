@@ -79,6 +79,20 @@ public class IMRUContext {
     }
 
     /**
+     * Get current iteration number.
+     * The first iteration is 0.
+     * 
+     * @return
+     */
+    public int getIterationNumber() {
+        INCApplicationContext appContext = getJobletContext()
+                .getApplicationContext();
+        IMRURuntimeContext context = (IMRURuntimeContext) appContext
+                .getApplicationObject();
+        return context.modelAge - 1;
+    }
+
+    /**
      * Set the model shared in each node controller
      */
     public void setModel(Serializable model) {

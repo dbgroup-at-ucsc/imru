@@ -119,8 +119,11 @@ public class Client<Model extends Serializable, Data extends Serializable> {
         @Option(name = "-cluster-conf", usage = "Path to Hyracks cluster configuration")
         public String clusterConfPath = "conf/cluster.conf";
 
-        @Option(name = "-cc-temp-path", usage = "Path on cluster controller to hold models")
+        @Option(name = "-cc-temp-path", usage = "Path on cluster controller for models")
         public String ccTempPath = "/tmp/imru-cc-models";
+
+        @Option(name = "-nc-temp-path", usage = "Path on each node for cached data")
+        public String ncTempPath = "/tmp/imru-nc-models";
 
         @Option(name = "-save-intermediate-models", usage = "If specified, save intermediate models to this directory.")
         public String localIntermediateModelPath;
@@ -149,6 +152,9 @@ public class Client<Model extends Serializable, Data extends Serializable> {
 
         @Option(name = "-frame-size", usage = "Hyracks frame size")
         public int frameSize = 0;
+
+        @Option(name = "-compress-after-iterations", usage = "Compress itermediate results after N iterations")
+        public int compressAfterNIterations = 10;
 
         //        @Option(name = "-num-rounds", usage = "The number of iterations to perform")
         //        public int numRounds = 5;
@@ -232,6 +238,7 @@ public class Client<Model extends Serializable, Data extends Serializable> {
      */
     public void connect() throws Exception {
         this.control = new IMRUJobControl<Model, Data>();
+        control.parameters.compressIntermediateResultsAfterNIterations = options.compressAfterNIterations;
         control.localIntermediateModelPath = options.localIntermediateModelPath;
         control.modelFileName = options.modelFileNameHDFS;
         control.memCache = options.memCache;
@@ -371,7 +378,7 @@ public class Client<Model extends Serializable, Data extends Serializable> {
         ncConfig1.datasetIPAddress = "127.0.0.1";
         ncConfig1.appNCMainClass = "edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUNCBootstrapImpl";
         ncConfig1.nodeId = NC1_ID;
-        File file = new File("/tmp/cache/tmp/" + NC1_ID);
+        File file = new File(options.ncTempPath + "/" + NC1_ID);
         file.mkdirs();
         ncConfig1.ioDevices = file.getAbsolutePath();
         NodeControllerService nc = new NodeControllerService(ncConfig1);
@@ -587,7 +594,7 @@ public class Client<Model extends Serializable, Data extends Serializable> {
                 System.err.println("Job failed; see CC and NC logs");
                 System.exit(-1);
             }
-            
+
             client.uninit();
             // System.out.println("Terminated after "
             // + client.control.getIterationCount() + " iterations");

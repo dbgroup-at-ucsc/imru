@@ -90,7 +90,7 @@ public class SKMeansJob implements
             result.centroids[rs.belong].add(dataPoint);
             result.distanceSum += rs.dis;
         }
-//        Rt.p(result.count());
+        //        Rt.p(result.count());
         return result;
     }
 
@@ -100,11 +100,13 @@ public class SKMeansJob implements
     @Override
     public FilledVectors reduce(IMRUContext ctx, Iterator<FilledVectors> input)
             throws IMRUDataException {
-        FilledVectors combined = new FilledVectors(k, dimensions);
+        FilledVectors combined = null;
         while (input.hasNext()) {
-            FilledVectors result=input.next();
-//            Rt.p(result.count());
-            combined.add(result);
+            FilledVectors result = input.next();
+            if (combined == null)
+                combined = result;//new FilledVectors(k, dimensions);
+            else
+                combined.add(result);
         }
         return combined;
     }
@@ -117,10 +119,10 @@ public class SKMeansJob implements
             SKMeansModel model) throws IMRUDataException {
         FilledVectors combined = reduce(ctx, input);
         boolean changed = model.set(combined);
-//        Rt.p(model.totalExamples);
+        //        Rt.p(model.totalExamples);
         model.roundsRemaining--;
-//        if (!changed)
-//            model.roundsRemaining = 0;
+        //        if (!changed)
+        //            model.roundsRemaining = 0;
         System.out.println("Total distances: " + combined.distanceSum
                 + " remaining=" + model.roundsRemaining);
         return model;
@@ -131,7 +133,7 @@ public class SKMeansJob implements
      */
     @Override
     public boolean shouldTerminate(SKMeansModel model) {
-//        Rt.p(model.totalExamples);
+        //        Rt.p(model.totalExamples);
         return model.roundsRemaining <= 0;
     }
 }

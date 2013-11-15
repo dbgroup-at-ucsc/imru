@@ -41,6 +41,7 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
     public boolean memCache = false;
     public boolean noDiskCache = false;
     public int frameSize;
+    public ImruParameters parameters = new ImruParameters();
 
     public void connect(String ccHost, int ccPort, int imruPort,
             String hadoopConfPath, String clusterConfPath) throws Exception {
@@ -66,7 +67,7 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
     public void selectNoAggregation(String examplePaths) throws IOException,
             InterruptedException {
         jobFactory = new IMRUJobFactory(imruConnection, examplePaths,
-                confFactory, IMRUJobFactory.AGGREGATION.NONE, 0, 0);
+                confFactory, IMRUJobFactory.AGGREGATION.NONE, 0, 0, parameters);
     }
 
     public void selectGenericAggregation(String examplePaths, int aggCount)
@@ -75,7 +76,8 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
             throw new IllegalArgumentException(
                     "Must specify a nonnegative aggregator count using the -agg-count option");
         jobFactory = new IMRUJobFactory(imruConnection, examplePaths,
-                confFactory, IMRUJobFactory.AGGREGATION.GENERIC, 0, aggCount);
+                confFactory, IMRUJobFactory.AGGREGATION.GENERIC, 0, aggCount,
+                parameters);
     }
 
     public void selectNAryAggregation(String examplePaths, int fanIn)
@@ -85,7 +87,8 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
                     "Must specify nonnegative -fan-in");
         }
         jobFactory = new IMRUJobFactory(imruConnection, examplePaths,
-                confFactory, IMRUJobFactory.AGGREGATION.NARY, fanIn, 0);
+                confFactory, IMRUJobFactory.AGGREGATION.NARY, fanIn, 0,
+                parameters);
     }
 
     /**

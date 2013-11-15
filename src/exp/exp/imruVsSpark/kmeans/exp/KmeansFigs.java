@@ -10,7 +10,7 @@ import exp.imruVsSpark.data.DataGenerator;
 import exp.test0.GnuPlot;
 
 public class KmeansFigs extends Hashtable<String, Double> {
-    public static File figsDir = new File("results");
+    public static File figsDir = new File("result");
     public static int ITERATIONS = 5;
     public String name;
     public int memory;
@@ -20,7 +20,7 @@ public class KmeansFigs extends Hashtable<String, Double> {
 
     public KmeansFigs(File resultDir) throws IOException {
         name = resultDir.getName();
-        Rt.p("reading " + name);
+        Rt.p("reading " + resultDir);
         memory = Integer.parseInt(name.substring(5, name.indexOf("M")));
         core = name.substring(name.indexOf("M") + 1, name.indexOf("core"));
         nodeCount = Integer.parseInt(name.substring(name.lastIndexOf("_", name
@@ -47,7 +47,7 @@ public class KmeansFigs extends Hashtable<String, Double> {
         if (imruDiskFile.exists())
             imruDisk = Rt.readFile(imruDiskFile).split("\n");
         else
-            Rt.p("imru disk failed");
+            Rt.p("imru disk failed " + imruDiskFile);
         if (imruMemFile.exists())
             imruMem = !imruMemFile.exists() ? null : Rt.readFile(imruMemFile)
                     .split("\n");
@@ -87,10 +87,12 @@ public class KmeansFigs extends Hashtable<String, Double> {
                 if (!ss2[0].equals(dataSizes[i]))
                     throw new Error(spark[i] + " " + imruDisk[i]);
                 double sparkTime = Double.parseDouble(ss2[1]);
-                this.put("spark" + dataSizeInt, sparkTime);
                 if (!ss2[2].equals(processed[i]))
-                    throw new Error(k + " " + name + " " + ss2[2] + " "
-                            + processed[i]);
+                    //                    throw new Error();
+                    Rt.p(k + " " + name + " " + ss2[2] + " " + processed[i]);
+                else
+                    this.put("spark" + dataSizeInt, sparkTime);
+
             }
 
             String[] ss3 = imruMem[i].split("\t");
@@ -158,7 +160,7 @@ public class KmeansFigs extends Hashtable<String, Double> {
     }
 
     public static void main(String[] args) throws Exception {
-        //        figsDir = new File("result1");
+        //                figsDir = new File("result1");
         DataPointsPerNode.plot();
         ModelSize.plot();
         NumberOfNodes.plot();

@@ -49,6 +49,7 @@ import edu.uci.ics.hyracks.hdfs.api.IKeyValueParserFactory;
 import edu.uci.ics.hyracks.hdfs.dataflow.HDFSReadOperatorDescriptor;
 import edu.uci.ics.hyracks.imru.api.IIMRUDataGenerator;
 import edu.uci.ics.hyracks.imru.api.IIMRUJob2;
+import edu.uci.ics.hyracks.imru.api.ImruParameters;
 import edu.uci.ics.hyracks.imru.api.TupleWriter;
 import edu.uci.ics.hyracks.imru.dataflow.DataGeneratorOperatorDescriptor;
 import edu.uci.ics.hyracks.imru.dataflow.DataLoadOperatorDescriptor;
@@ -93,12 +94,14 @@ public class IMRUJobFactory {
     private AGGREGATION aggType;
     UUID id = UUID.randomUUID();
     IMRUConnection imruConnection;
+    public ImruParameters parameters;
 
     public IMRUJobFactory(IMRUConnection imruConnection, String inputPaths,
             ConfigurationFactory confFactory, String type, int fanIn,
-            int reducerCount) throws IOException, InterruptedException {
+            int reducerCount, ImruParameters parameters) throws IOException,
+            InterruptedException {
         this(imruConnection, inputPaths, confFactory, aggType(type), fanIn,
-                reducerCount);
+                reducerCount, parameters);
     }
 
     public static AGGREGATION aggType(String type) {
@@ -130,10 +133,12 @@ public class IMRUJobFactory {
      */
     public IMRUJobFactory(IMRUConnection imruConnection, String inputPaths,
             ConfigurationFactory confFactory, AGGREGATION aggType, int fanIn,
-            int reducerCount) throws IOException, InterruptedException {
+            int reducerCount, ImruParameters parameters) throws IOException,
+            InterruptedException {
         this.imruConnection = imruConnection;
         this.confFactory = confFactory;
         this.inputPaths = inputPaths;
+        this.parameters = parameters;
         inputSplits = IMRUInputSplitProvider.getInputSplits(inputPaths,
                 confFactory);
         // For repeatability of the partition assignments, seed the
@@ -310,13 +315,13 @@ public class IMRUJobFactory {
         // IMRU Computation
         // We will have one Map operator per input file.
         IMRUOperatorDescriptor mapOperator = new MapOperatorDescriptor(spec,
-                model, inputSplits, roundNum, "map", noDiskCache);
+                model, inputSplits, roundNum, "map", noDiskCache, parameters);
         PartitionConstraintHelper.addAbsoluteLocationConstraint(spec,
                 mapOperator, mapOperatorLocations);
 
         // Environment updating
         IMRUOperatorDescriptor updateOperator = new UpdateOperatorDescriptor(
-                spec, model, modelName, imruConnection);
+                spec, model, modelName, imruConnection, parameters);
         PartitionConstraintHelper.addPartitionCountConstraint(spec,
                 updateOperator, 1);
         // Make sure update operator can get the model
@@ -331,7 +336,7 @@ public class IMRUJobFactory {
         } else if (aggType == AGGREGATION.GENERIC) {
             // One level of reducers (ala Hadoop)
             IOperatorDescriptor reduceOperator = new ReduceOperatorDescriptor(
-                    spec, model, "generic reducer");
+                    spec, model, "generic reducer", this.parameters);
             PartitionConstraintHelper.addPartitionCountConstraint(spec,
                     reduceOperator, reducerCount);
 
@@ -341,7 +346,7 @@ public class IMRUJobFactory {
                     new RangeLocalityMap(mapOperatorLocations.length));
             LocalReducerFactory.addLocalReducers(spec, mapOperator, 0,
                     mapOperatorLocations, reduceOperator, 0, mapReducerConn,
-                    model);
+                    model, parameters);
 
             // Connect things together
             IConnectorDescriptor reduceUpdateConn = new MToNReplicatingConnectorDescriptor(
@@ -355,7 +360,8 @@ public class IMRUJobFactory {
                     spec);
             ReduceAggregationTreeFactory.buildAggregationTree(spec,
                     mapOperator, 0, inputSplits.length, updateOperator, 0,
-                    reduceUpdateConn, fanIn, true, mapOperatorLocations, model);
+                    reduceUpdateConn, fanIn, true, mapOperatorLocations, model,
+                    parameters);
         }
 
         spec.addRoot(updateOperator);

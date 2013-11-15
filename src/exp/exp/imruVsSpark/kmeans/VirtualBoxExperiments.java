@@ -25,6 +25,7 @@ import edu.uci.ics.hyracks.imru.example.utils.ImruEC2;
 import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.ClusterMonitor;
 import exp.ImruDebugMonitor;
+import exp.ImruExperimentTimeoutException;
 import exp.imruVsSpark.LocalCluster;
 import exp.imruVsSpark.VirtualBox;
 import exp.imruVsSpark.data.DataGenerator;
@@ -531,29 +532,49 @@ public class VirtualBoxExperiments {
 
     public static String[] startNodes(int nodeCount, int memory, String cpu,
             int network) throws Exception {
-        if (lastNodeCount != nodeCount || lastMemory != memory
-                || !cpu.equals(lastCpu) || lastNetwork != network) {
-            if (VirtualBoxExperiments.monitor != null)
-                VirtualBoxExperiments.monitor.close();
-            VirtualBox.remove();
-            VirtualBox.setup(nodeCount, memory,
-                    (int) (Double.parseDouble(cpu) * 100), network);
-            Thread.sleep(2000 * nodeCount);
+        for (int id = 0; id < 5; id++) {
+            try {
+                if (lastNodeCount != nodeCount || lastMemory != memory
+                        || !cpu.equals(lastCpu) || lastNetwork != network) {
+                    if (VirtualBoxExperiments.monitor != null)
+                        VirtualBoxExperiments.monitor.close();
+                    VirtualBox.remove();
+                    VirtualBox.setup(nodeCount, memory, (int) (Double
+                            .parseDouble(cpu) * 100), network);
+                    Thread.sleep(2000 * nodeCount);
+                }
+                String[] nodes = new String[nodeCount];
+                if (VirtualBoxExperiments.monitor!=null) {
+                    VirtualBoxExperiments.monitor.close();
+                    Thread.sleep(500);
+                }
+                VirtualBoxExperiments.monitor = new ClusterMonitor();
+                VirtualBoxExperiments.monitor.waitIp(nodes.length,
+                        MAX_NODES_STARTUP_TIME);
+                for (int i = 0; i < nodes.length; i++) {
+                    nodes[i] = VirtualBoxExperiments.monitor.ip[i];
+                    System.out.println("NC" + i + ": " + nodes[i]);
+                }
+                lastNodeCount = nodeCount;
+                lastMemory = memory;
+                lastCpu = cpu;
+                lastNetwork = network;
+                return nodes;
+            } catch (ImruExperimentTimeoutException e) {
+                lastNodeCount=0;
+                e.printStackTrace();
+            } catch (Exception e) {
+                throw e;
+            }
         }
-        String[] nodes = new String[nodeCount];
-        VirtualBoxExperiments.monitor = new ClusterMonitor();
-        VirtualBoxExperiments.monitor.waitIp(nodes.length,
-                MAX_NODES_STARTUP_TIME);
-        for (int i = 0; i < nodes.length; i++) {
-            nodes[i] = VirtualBoxExperiments.monitor.ip[i];
-            System.out.println("NC" + i + ": " + nodes[i]);
-        }
-        return nodes;
+        throw new Error("Failed to start nodes after 5 times");
     }
 
     public static void stopNodes() throws Exception {
+        lastNodeCount = 0;
         VirtualBox.remove();
-        VirtualBoxExperiments.monitor.close();
+        if (VirtualBoxExperiments.monitor != null)
+            VirtualBoxExperiments.monitor.close();
     }
 
     public static void runExperiment(int nodeCount, int memory, int k,
@@ -645,7 +666,7 @@ public class VirtualBoxExperiments {
     }
 
     public static void main(String[] args) throws Exception {
-        testStratosphere();
+//        testStratosphere();
         VirtualBox.remove();
         System.exit(0);
         //        createTemplate("192.168.56.110", "ubuntu");

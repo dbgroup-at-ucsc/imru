@@ -177,7 +177,6 @@ public class SSH implements Runnable {
         this.cmd = cmd;
         long start = System.currentTimeMillis();
         lastOutputTime=System.currentTimeMillis();
-        Rt.p(new Date(lastOutputTime));
         while (result == null) {
             Rt.sleep(50);
             if (timeout > 0) {

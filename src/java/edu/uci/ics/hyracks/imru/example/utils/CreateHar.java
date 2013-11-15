@@ -246,6 +246,8 @@ public class CreateHar {
                         if (!(s.contains("jetty") && s.contains("6.1.14"))
                                 && !name.startsWith("scala-")
                                 && !name.startsWith("spark-")
+                                && !name.startsWith("nephele-")
+                                && !name.startsWith("pact-")
                                 && !name.startsWith("jsp-")
                                 && !name.startsWith("servlet-")) {
                             if (!existingEntries.contains("lib/" + name)) {
@@ -320,6 +322,8 @@ public class CreateHar {
                         if (!(s.contains("jetty") && s.contains("6.1.14"))
                                 && !name.startsWith("scala-")
                                 && !name.startsWith("spark-")
+                                && !name.startsWith("nephele-")
+                                && !name.startsWith("pact-")
                                 && !name.startsWith("jsp-")
                                 && !name.startsWith("servlet-")) {
                             if (!existingEntries.contains(name)) {
