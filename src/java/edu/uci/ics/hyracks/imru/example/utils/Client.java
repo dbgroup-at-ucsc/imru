@@ -257,7 +257,7 @@ public class Client<Model extends Serializable, Data extends Serializable> {
             if (mappers < 3)
                 control.selectNoAggregation(options.examplePaths);
             else
-                control.selectNAryAggregation(options.examplePaths, 2);
+                control.selectNAryAggregation(options.examplePaths, 3);
         } else if (options.aggTreeType.equals("none")) {
             control.selectNoAggregation(options.examplePaths);
         } else if (options.aggTreeType.equals("generic")) {

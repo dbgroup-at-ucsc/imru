@@ -20,12 +20,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Iterator;
+import java.util.List;
 
 import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.IIMRUJob;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
 import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
+import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
+import edu.uci.ics.hyracks.imru.api.RecoveryAction;
 import edu.uci.ics.hyracks.imru.example.utils.Client;
 
 /**
@@ -85,13 +89,26 @@ public class IMRUHdfsTest {
 
             @Override
             public String update(IMRUContext ctx, Iterator<String> input,
-                    String model) throws IMRUDataException {
+                    String model,
+                    ImruIterationInformation iterationInfo) throws IMRUDataException {
                 return reduce(ctx, input);
             }
 
             @Override
-            public boolean shouldTerminate(String model) {
+            public boolean shouldTerminate(String model,
+                    ImruIterationInformation iterationInfo) {
                 return true;
+            }
+             @Override
+            public String integrate(String model1, String model2) {
+                return model1;
+            }
+              @Override
+            public RecoveryAction onJobFailed(
+                    List<ImruSplitInfo> completedRanges, long dataSize,
+                    int optimalNodesForRerun, float rerunTime,
+                    int optimalNodesForPartiallyRerun, float partiallyRerunTime) {
+                return RecoveryAction.Accept;
             }
         }, "", args);
         System.out.println("FinalModel: " + finalModel);

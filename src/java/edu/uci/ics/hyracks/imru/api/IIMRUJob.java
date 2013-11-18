@@ -19,13 +19,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.util.Iterator;
-
+import java.util.List;
 
 /**
  * High level IMRU job interface. Data passed through are objects.
  * 
  * @author Rui Wang
- * 
  * @param <Model>
  *            data model
  * @param <Data>
@@ -43,26 +42,61 @@ public interface IIMRUJob<Model extends Serializable, Data extends Serializable,
     /**
      * Parse input data and output data objects
      */
-    public void parse(IMRUContext ctx, InputStream input, DataWriter<Data> output) throws IOException;
+    public void parse(IMRUContext ctx, InputStream input,
+            DataWriter<Data> output) throws IOException;
 
     /**
      * For a list of data objects, return one result
      */
-    public IntermediateResult map(IMRUContext ctx, Iterator<Data> input, Model model) throws IOException;
+    public IntermediateResult map(IMRUContext ctx, Iterator<Data> input,
+            Model model) throws IOException;
 
     /**
      * Combine multiple results to one result
      */
-    public IntermediateResult reduce(IMRUContext ctx, Iterator<IntermediateResult> input) throws IMRUDataException;
+    public IntermediateResult reduce(IMRUContext ctx,
+            Iterator<IntermediateResult> input) throws IMRUDataException;
 
     /**
      * update the model using combined result
      */
-    public Model update(IMRUContext ctx, Iterator<IntermediateResult> input, Model model) throws IMRUDataException;
+    public Model update(IMRUContext ctx, Iterator<IntermediateResult> input,
+            Model model, ImruIterationInformation iterationInfo)
+            throws IMRUDataException;
 
     /**
      * Return true to exit loop
      */
-    public boolean shouldTerminate(Model model);
+    public boolean shouldTerminate(Model model,
+            ImruIterationInformation iterationInfo);
 
+    /**
+     * Callback function when some nodes failed. User should decide what action to take
+     * 
+     * @param completedRanges
+     *            successfully processed ranges of the data
+     * @param dataSize
+     *            the total size of the data
+     * @param optimalNodesForRerun
+     *            optimal number of nodes to rerun the iteration
+     * @param rerunTime
+     *            the estimated time to rerun the iteration
+     * @param optimalNodesForPartiallyRerun
+     *            optimal number of nodes to rerun only the unprocessed data
+     * @param partiallyRerunTime
+     *            the estimated time to rerun only the unprocessed data
+     * @return action to take
+     */
+    RecoveryAction onJobFailed(List<ImruSplitInfo> completedRanges,
+            long dataSize, int optimalNodesForRerun, float rerunTime,
+            int optimalNodesForPartiallyRerun, float partiallyRerunTime);
+
+    /**
+     * Integrates two partially completed model to one model
+     * 
+     * @param model1
+     * @param model2
+     * @return
+     */
+    Model integrate(Model model1, Model model2);
 }

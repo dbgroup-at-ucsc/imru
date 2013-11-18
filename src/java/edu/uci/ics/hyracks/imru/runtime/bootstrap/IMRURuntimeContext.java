@@ -60,27 +60,42 @@ public class IMRURuntimeContext implements IWorkspaceFileFactory {
      * and the others use the shared copy.
      */
     public Serializable model = null;
-    
+
     /**
-     * Output writer shared in each node in the train-merge interface. 
+     * Output writer shared in each node in the train-merge interface.
      */
-    public Vector<IFrameWriter> writers=new Vector<IFrameWriter>();
-    
+    public Vector<IFrameWriter> writers = new Vector<IFrameWriter>();
+
     /**
      * The round that the current global model was loaded in.
      */
     public int modelAge = 0;
+
+    /**
+     * If an iteration failed and UDF ask to rerun only the failed
+     * partitions. This variable shows the current recoveryIteration.
+     * If this is not a recoveryIteration, the value is -1.
+     */
+    public int currentRecoveryIteration = -1;
+
+    /**
+     * Regular run: 0
+     * Rerun: > 0
+     */
+    public int rerunNum = 0;
 
     public Map<StateKey, IStateObject> getAppStateStore() {
         return appStateMap;
     }
 
     public static IMRURuntimeContext get(IHyracksTaskContext ctx) {
-        return (IMRURuntimeContext) ctx.getJobletContext().getApplicationContext().getApplicationObject();
+        return (IMRURuntimeContext) ctx.getJobletContext()
+                .getApplicationContext().getApplicationObject();
     }
 
     @Override
-    public FileReference createManagedWorkspaceFile(String prefix) throws HyracksDataException {
+    public FileReference createManagedWorkspaceFile(String prefix)
+            throws HyracksDataException {
         final FileReference fRef = ioManager.createWorkspaceFile(prefix);
         registry.registerDeallocatable(new IDeallocatable() {
             @Override
@@ -92,7 +107,8 @@ public class IMRURuntimeContext implements IWorkspaceFileFactory {
     }
 
     @Override
-    public FileReference createUnmanagedWorkspaceFile(String prefix) throws HyracksDataException {
+    public FileReference createUnmanagedWorkspaceFile(String prefix)
+            throws HyracksDataException {
         return ioManager.createWorkspaceFile(prefix);
     }
 }

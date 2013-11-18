@@ -44,6 +44,7 @@ import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.FrameWriter;
 import edu.uci.ics.hyracks.imru.api.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
+import edu.uci.ics.hyracks.imru.api.IMRUMapContext;
 import edu.uci.ics.hyracks.imru.api.ImruParameters;
 import edu.uci.ics.hyracks.imru.data.ChunkFrameHelper;
 import edu.uci.ics.hyracks.imru.data.MergedFrames;
@@ -75,6 +76,8 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
 
     //    private final String envInPath;
     private final int roundNum;
+    int recoverRoundNum;
+    int rerunNum;
     boolean useDiskCache;
     protected final IMRUFileSplit[] inputSplits;
     ImruParameters parameters;
@@ -95,11 +98,13 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
      */
     public MapOperatorDescriptor(JobSpecification spec,
             IIMRUJob2<Model, Data> imruSpec, IMRUFileSplit[] inputSplits,
-            int roundNum, String name, boolean noDiskCache,
-            ImruParameters parameters) {
+            int roundNum, int recoverRoundNum, int rerunNum, String name,
+            boolean noDiskCache, ImruParameters parameters) {
         super(spec, 0, 1, name, imruSpec);
         recordDescriptors[0] = dummyRecordDescriptor;
         this.roundNum = roundNum;
+        this.recoverRoundNum = recoverRoundNum;
+        this.rerunNum = rerunNum;
         this.useDiskCache = !noDiskCache;
         this.inputSplits = inputSplits;
         this.parameters = parameters;
@@ -136,6 +141,8 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                             .getApplicationContext();
                     IMRURuntimeContext context = (IMRURuntimeContext) appContext
                             .getApplicationObject();
+                    context.currentRecoveryIteration = recoverRoundNum;
+                    context.rerunNum = rerunNum;
                     //                final IMRUContext imruContext = new IMRUContext(ctx, name);
                     Model model = (Model) context.model;
                     if (model == null)
@@ -174,9 +181,12 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                     LOG.info("Reading cached input data in "
                             + (readInReverse ? "forwards" : "reverse")
                             + " direction");
+                    IMRUMapContext imruContext = new IMRUMapContext(ctx, name,
+                            inputSplits[partition].getPath());
                     if (useDiskCache) {
                         RunFileWriter runFileWriter = state.getRunFileWriter();
                         if (runFileWriter != null) {
+                            //Read from disk cache
                             Log.info("Cached example file size is "
                                     + runFileWriter.getFileSize() + " bytes");
                             final RunFileReader reader = new RunFileReader(
@@ -191,7 +201,6 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                             //                                    ctx);
                             //                            IMRUContext imruContext = new IMRUContext(
                             //                                    chunkFrameHelper.getContext(), name);
-                            IMRUContext imruContext = new IMRUContext(ctx, name);
                             {
                                 Iterator<ByteBuffer> input = new Iterator<ByteBuffer>() {
                                     boolean read = false;
@@ -239,6 +248,7 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                                 //                                        writer, objectData);
                             }
                         } else {
+                            //read from memory cache
                             Vector vector = state.getMemCache();
                             Log.info("Cached in memory examples "
                                     + vector.size());
@@ -247,7 +257,7 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                             //                                    ctx);
                             //                            IMRUContext imruContext = new IMRUContext(
                             //                                    chunkFrameHelper.getContext(), name);
-                            IMRUContext imruContext = new IMRUContext(ctx, name);
+                            //                            IMRUContext imruContext = new IMRUContext(ctx, name);
                             //                            writer = chunkFrameHelper.wrapWriter(writer,
                             //                                    partition);
 
@@ -277,6 +287,7 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                             //                                    writer, objectData);
                         }
                     } else {
+                        //parse raw data
                         final IMRUFileSplit split = inputSplits[partition];
                         Log.info("Parse examples " + split.getPath());
 
@@ -290,9 +301,10 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
 
                         ChunkFrameHelper chunkFrameHelper = new ChunkFrameHelper(
                                 ctx);
-                        final IMRUContext imruContext = new IMRUContext(
-                                chunkFrameHelper.getContext(), name);
-                        writer = chunkFrameHelper.wrapWriter(writer, partition);
+                        final IMRUMapContext parseContext = new IMRUMapContext(
+                                chunkFrameHelper.getContext(), name,
+                                inputSplits[partition].getPath());
+                        //                        writer = chunkFrameHelper.wrapWriter(writer, partition);
 
                         Future future = IMRUSerialize.threadPool
                                 .submit(new Runnable() {
@@ -301,7 +313,7 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                                         try {
                                             InputStream in = split
                                                     .getInputStream();
-                                            imruSpec.parse(imruContext,
+                                            imruSpec.parse(parseContext,
                                                     new BufferedInputStream(in,
                                                             1024 * 1024),
                                                     dataWriter);

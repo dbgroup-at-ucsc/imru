@@ -20,18 +20,23 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Iterator;
+import java.util.List;
 
 import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.IIMRUJob;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
+import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
+import edu.uci.ics.hyracks.imru.api.RecoveryAction;
 
 /**
  * Random select data examples as centroids
  * 
  * @author wangrui
  */
-public class RandomSelectJob implements IIMRUJob<KMeansModel, DataPoint, KMeansStartingPoints> {
+public class RandomSelectJob implements
+        IIMRUJob<KMeansModel, DataPoint, KMeansStartingPoints> {
     int k;
 
     public RandomSelectJob(int k) {
@@ -50,9 +55,11 @@ public class RandomSelectJob implements IIMRUJob<KMeansModel, DataPoint, KMeansS
      * Parse input data and output tuples
      */
     @Override
-    public void parse(IMRUContext ctx, InputStream input, DataWriter<DataPoint> output) throws IOException {
+    public void parse(IMRUContext ctx, InputStream input,
+            DataWriter<DataPoint> output) throws IOException {
         try {
-            BufferedReader reader = new BufferedReader(new InputStreamReader(input));
+            BufferedReader reader = new BufferedReader(new InputStreamReader(
+                    input));
             while (true) {
                 String line = reader.readLine();
                 if (line == null)
@@ -70,7 +77,8 @@ public class RandomSelectJob implements IIMRUJob<KMeansModel, DataPoint, KMeansS
     }
 
     @Override
-    public KMeansStartingPoints map(IMRUContext ctx, Iterator<DataPoint> input, KMeansModel model) throws IOException {
+    public KMeansStartingPoints map(IMRUContext ctx, Iterator<DataPoint> input,
+            KMeansModel model) throws IOException {
         KMeansStartingPoints startingPoints = new KMeansStartingPoints(k);
         while (input.hasNext()) {
             DataPoint dataPoint = input.next();
@@ -85,7 +93,8 @@ public class RandomSelectJob implements IIMRUJob<KMeansModel, DataPoint, KMeansS
      * Combine multiple results to one result
      */
     @Override
-    public KMeansStartingPoints reduce(IMRUContext ctx, Iterator<KMeansStartingPoints> input) throws IMRUDataException {
+    public KMeansStartingPoints reduce(IMRUContext ctx,
+            Iterator<KMeansStartingPoints> input) throws IMRUDataException {
         KMeansStartingPoints startingPoints = null;
         while (input.hasNext()) {
             KMeansStartingPoints result = input.next();
@@ -102,8 +111,9 @@ public class RandomSelectJob implements IIMRUJob<KMeansModel, DataPoint, KMeansS
      * update the model using combined result
      */
     @Override
-    public KMeansModel update(IMRUContext ctx, Iterator<KMeansStartingPoints> input, KMeansModel model)
-            throws IMRUDataException {
+    public KMeansModel update(IMRUContext ctx,
+            Iterator<KMeansStartingPoints> input, KMeansModel model,
+            ImruIterationInformation iterationInfo) throws IMRUDataException {
         KMeansStartingPoints obj = reduce(ctx, input);
         KMeansStartingPoints startingPoints = (KMeansStartingPoints) obj;
         for (int i = 0; i < k; i++)
@@ -116,7 +126,20 @@ public class RandomSelectJob implements IIMRUJob<KMeansModel, DataPoint, KMeansS
      * Return true to exit loop
      */
     @Override
-    public boolean shouldTerminate(KMeansModel model) {
+    public boolean shouldTerminate(KMeansModel model,
+            ImruIterationInformation iterationInfo) {
         return model.roundsRemaining <= 0;
+    }
+    
+     @Override
+    public KMeansModel integrate(KMeansModel model1, KMeansModel model2) {
+        return model1;
+    }
+     
+      @Override
+    public RecoveryAction onJobFailed(List<ImruSplitInfo> completedRanges,
+            long dataSize, int optimalNodesForRerun, float rerunTime,
+            int optimalNodesForPartiallyRerun, float partiallyRerunTime) {
+        return RecoveryAction.Accept;
     }
 }

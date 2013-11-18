@@ -39,6 +39,7 @@ import edu.uci.ics.hyracks.imru.api.ASyncIO;
 import edu.uci.ics.hyracks.imru.api.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.ImruParameters;
+import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
 import edu.uci.ics.hyracks.imru.data.ChunkFrameHelper;
 import edu.uci.ics.hyracks.imru.data.MergedFrames;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
@@ -103,6 +104,7 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
             private Model model;
             private final String name;
             IMRUContext imruContext;
+            ImruIterationInformation imruRuntimeInformation;
 
             private ASyncIO<byte[]> io;
             Future future;
@@ -112,6 +114,7 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
                 this.name = UpdateOperatorDescriptor.this.getDisplayName()
                         + partition;
                 imruContext = new IMRUContext(ctx, name);
+                imruRuntimeInformation = new ImruIterationInformation();
             }
 
             @SuppressWarnings("unchecked")
@@ -129,7 +132,7 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
                         Iterator<byte[]> input = io.getInput();
                         try {
                             updatedModel = imruSpec.update(imruContext, input,
-                                    model);
+                                    model, imruRuntimeInformation);
                         } catch (HyracksDataException e) {
                             e.printStackTrace();
                         }
@@ -170,10 +173,14 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
                         e.printStackTrace();
                     }
                     model = (Model) updatedModel;
-                    imruContext.setModel(model);
+//                    imruContext.setModel(model);
 
                     long start = System.currentTimeMillis();
-                    imruConnection.uploadModel(modelName, model);
+                    imruRuntimeInformation.object = model;
+                    imruRuntimeInformation.currentIteration = imruContext
+                            .getIterationNumber();
+                    imruConnection.uploadModel(modelName,
+                            imruRuntimeInformation);
                     long end = System.currentTimeMillis();
                     //                Rt.p(model);
                     LOG.info("uploaded model to CC " + (end - start)

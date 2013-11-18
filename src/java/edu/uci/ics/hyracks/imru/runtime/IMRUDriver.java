@@ -22,7 +22,10 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.Stack;
 import java.util.UUID;
+import java.util.Vector;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
@@ -30,14 +33,20 @@ import org.apache.hadoop.conf.Configuration;
 
 import edu.uci.ics.hyracks.api.client.HyracksConnection;
 import edu.uci.ics.hyracks.api.deployment.DeploymentId;
+import edu.uci.ics.hyracks.api.exceptions.HyracksException;
 import edu.uci.ics.hyracks.api.job.JobFlag;
 import edu.uci.ics.hyracks.api.job.JobId;
 import edu.uci.ics.hyracks.api.job.JobSpecification;
 import edu.uci.ics.hyracks.api.job.JobStatus;
 import edu.uci.ics.hyracks.imru.api.IIMRUDataGenerator;
 import edu.uci.ics.hyracks.imru.api.IIMRUJob2;
+import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
+import edu.uci.ics.hyracks.imru.api.RecoveryAction;
+import edu.uci.ics.hyracks.imru.file.IMRUFileSplit;
 import edu.uci.ics.hyracks.imru.jobgen.IMRUJobFactory;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
+import edu.uci.ics.hyracks.imru.util.Rt;
 
 /**
  * Schedules iterative map reduce update jobs.
@@ -66,6 +75,7 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
     public int frameSize;
     public String modelFileName;
     public String localIntermediateModelPath;
+    ImruIterationInformation iterationInfo = null;
 
     /**
      * Construct a new IMRUDriver.
@@ -154,6 +164,7 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
 
             LOGGER.info("Starting round " + iterationCount);
             long start = System.currentTimeMillis();
+            iterationInfo = null;
             JobStatus status = runIMRUIteration(getModelName(), iterationCount);
             long end = System.currentTimeMillis();
             LOGGER.info("Finished round " + iterationCount + " in "
@@ -163,7 +174,11 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
                 LOGGER.severe("Failed during iteration " + iterationCount);
                 return JobStatus.FAILURE;
             }
-            model = (Model) imruConnection.downloadModel(this.getModelName());
+            if (iterationInfo == null) {
+                iterationInfo = (ImruIterationInformation) imruConnection
+                        .downloadModel(this.getModelName());
+                model = (Model) iterationInfo.object;
+            }
             if (model == null)
                 throw new Exception("Can't download model");
             if (localIntermediateModelPath != null)
@@ -171,7 +186,7 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
                         getModelName() + "-iter" + iterationCount));
 
             // TODO: clean up temporary files
-        } while (!imruSpec.shouldTerminate(model));
+        } while (!imruSpec.shouldTerminate(model, iterationInfo));
         return JobStatus.TERMINATED;
     }
 
@@ -252,29 +267,144 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
             throws Exception {
         JobSpecification spreadjob = jobFactory.generateModelSpreadJob(
                 deploymentId, modelName, iterationNum);
-        //                byte[] bs=JavaSerializationUtils.serialize(spreadjob);
-        //              Rt.p("IMRU job size: "+bs.length);
         JobId spreadjobId = hcc.startJob(deploymentId, spreadjob, EnumSet
                 .of(JobFlag.PROFILE_RUNTIME));
-        //        JobId jobId = hcc.createJob(app, job);
-        //        hcc.start(jobId);
         hcc.waitForCompletion(spreadjobId);
         if (hcc.getJobStatus(spreadjobId) == JobStatus.FAILURE)
             return JobStatus.FAILURE;
 
+        int rerunCount = 0;
         JobSpecification job = jobFactory.generateJob(imruSpec, iterationNum,
-                modelName, noDiskCache);
+                -1, rerunCount, modelName, noDiskCache);
+        job.setMaxReattempts(0); //Let IMRU handle fault tolerance
         if (frameSize != 0)
             job.setFrameSize(frameSize);
         LOGGER.info("job frame size " + job.getFrameSize());
         //                byte[] bs=JavaSerializationUtils.serialize(job);
         //              Rt.p("IMRU job size: "+bs.length);
-        JobId jobId = hcc.startJob(deploymentId, job, EnumSet
-                .of(JobFlag.PROFILE_RUNTIME));
-        //        JobId jobId = hcc.createJob(app, job);
-        //        hcc.start(jobId);
-        hcc.waitForCompletion(jobId);
-        return hcc.getJobStatus(jobId);
+        JobId jobId;
+        rerun: while (true) {
+            try {
+                jobId = hcc.startJob(deploymentId, job, EnumSet
+                        .of(JobFlag.PROFILE_RUNTIME));
+                hcc.waitForCompletion(jobId);
+                iterationInfo = null;
+                return hcc.getJobStatus(jobId);
+            } catch (Exception e) {
+                e.printStackTrace();
+                iterationInfo = (ImruIterationInformation) imruConnection
+                        .downloadModel(this.getModelName());
+                RecoveryAction action = onJobFailed(iterationInfo);
+                switch (action) {
+                    case Accept:
+                        model = (Model) iterationInfo.object;
+                        return JobStatus.TERMINATED;
+                    case PartiallyRerun: {
+                        JobStatus pstatus = partialRerun(iterationInfo,
+                                iterationNum, modelName);
+                        if (pstatus == JobStatus.RUNNING)
+                            continue rerun;
+                        else {
+                            model = (Model) iterationInfo.object;
+                            return pstatus;
+                        }
+                    }
+                    case Rerun: {
+                        rerunCount++;
+                        job = jobFactory.generateJob(imruSpec, iterationNum,
+                                -1, rerunCount, modelName, noDiskCache);
+                        continue rerun;
+                    }
+                }
+            }
+        }
+    }
+
+    public RecoveryAction onJobFailed(ImruIterationInformation info) {
+        Vector<ImruSplitInfo> completedRanges = new Vector<ImruSplitInfo>();
+        long dataSize = 0;
+        int optimalNodesForRerun = 0;
+        float rerunTime = 0;
+        int optimalNodesForPartiallyRerun = 0;
+        float partiallyRerunTime = 0;
+        for (Object path : info.completedPaths) {
+            ImruSplitInfo splitInfo = new ImruSplitInfo();
+            splitInfo.path = (String) path;
+            completedRanges.add(splitInfo);
+        }
+        RecoveryAction action = imruSpec.onJobFailed(completedRanges, dataSize,
+                optimalNodesForRerun, rerunTime, optimalNodesForPartiallyRerun,
+                partiallyRerunTime);
+        return action;
+    }
+
+    public JobStatus partialRerun(ImruIterationInformation info,
+            int iterationNum, String modelName) throws Exception {
+        int finishedRecoveryIteration = 0;
+        Model partialModel = (Model) info.object;
+        partialRerun: while (true) {
+            HashSet<String> completedPaths = new HashSet<String>();
+            for (Object path : info.completedPaths) {
+                completedPaths.add((String) path);
+            }
+            StringBuilder incompletedPaths = new StringBuilder();
+            for (IMRUFileSplit split : jobFactory.getSplits()) {
+                if (completedPaths.contains(split.getPath())) {
+                    completedPaths.remove(split.getPath());
+                } else {
+                    if (incompletedPaths.length() > 0)
+                        incompletedPaths.append(",");
+                    incompletedPaths.append(split.getPath());
+                }
+            }
+            if (completedPaths.size() > 0) {
+                for (String s : completedPaths) {
+                    Rt.p(s);
+                }
+                throw new Error("Path conversion error");
+            }
+            Rt.p("recover job: " + incompletedPaths);
+            IMRUJobFactory recoverFactory = new IMRUJobFactory(jobFactory,
+                    incompletedPaths.toString(),
+                    IMRUJobFactory.AGGREGATION.AUTO);
+            JobSpecification job = recoverFactory
+                    .generateJob(imruSpec, iterationNum, 0,
+                            finishedRecoveryIteration, modelName, true);
+            job.setMaxReattempts(0); //Let IMRU handle fault tolerance
+            if (frameSize != 0)
+                job.setFrameSize(frameSize);
+            JobId jobId = null;
+            boolean failed = false;
+            try {
+                jobId = hcc.startJob(deploymentId, job, EnumSet
+                        .of(JobFlag.PROFILE_RUNTIME));
+                hcc.waitForCompletion(jobId);
+            } catch (Exception e) {
+                e.printStackTrace();
+                failed = true;
+            }
+            ImruIterationInformation pinfo = (ImruIterationInformation) imruConnection
+                    .downloadModel(this.getModelName());
+            Model newPartialModel = (Model) pinfo.object;
+            partialModel = imruSpec.integrate(partialModel, newPartialModel);
+            info.add(pinfo);
+            info.finishedRecoveryIteration = finishedRecoveryIteration;
+            if (failed) {
+                RecoveryAction action = onJobFailed(info);
+                switch (action) {
+                    case Accept:
+                        return JobStatus.TERMINATED;
+                    case PartiallyRerun:
+                        return partialRerun(info, iterationNum, modelName);
+                    case Rerun:
+                        return JobStatus.RUNNING;
+                }
+            } else {
+                iterationInfo = info;
+                model = partialModel;
+                return hcc.getJobStatus(jobId);
+            }
+        }
     }
 
     /**

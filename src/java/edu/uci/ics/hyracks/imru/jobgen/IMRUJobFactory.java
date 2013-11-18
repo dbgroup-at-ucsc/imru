@@ -79,7 +79,8 @@ public class IMRUJobFactory {
     public static enum AGGREGATION {
         NONE,
         GENERIC,
-        NARY
+        NARY,
+        AUTO,
     };
 
     public final ConfigurationFactory confFactory;
@@ -114,6 +115,12 @@ public class IMRUJobFactory {
         } else {
             throw new IllegalArgumentException("Invalid aggregation tree type");
         }
+    }
+
+    public IMRUJobFactory(IMRUJobFactory f, String incompletedPaths,
+            AGGREGATION aggType) throws IOException, InterruptedException {
+        this(f.imruConnection, incompletedPaths, f.confFactory, aggType,
+                f.fanIn, f.reducerCount, f.parameters);
     }
 
     /**
@@ -153,6 +160,12 @@ public class IMRUJobFactory {
         mapNodesLocations = hashSet.toArray(new String[0]);
         mapAndUpdateNodesLocations = hashSet.toArray(new String[0]);
         modelNode = mapNodesLocations[0];
+        if (aggType == AGGREGATION.AUTO) {
+            if (inputSplits.length < 3)
+                aggType = AGGREGATION.NONE;
+            else
+                aggType = AGGREGATION.NARY;
+        }
         this.aggType = aggType;
         this.fanIn = fanIn;
         this.reducerCount = reducerCount;
@@ -183,6 +196,10 @@ public class IMRUJobFactory {
                 .addResource(new Path(confFactory.hadoopConfPath
                         + "/hdfs-site.xml"));
         return conf;
+    }
+
+    public IMRUFileSplit[] getSplits() {
+        return inputSplits;
     }
 
     public InputSplit[] getInputSplits() throws IOException {
@@ -306,7 +323,8 @@ public class IMRUJobFactory {
      */
     @SuppressWarnings( { "rawtypes", "unchecked" })
     public JobSpecification generateJob(IIMRUJob2 model, int roundNum,
-            String modelName, boolean noDiskCache) throws HyracksException {
+            int recoverRoundNum, int rerunNum, String modelName,
+            boolean noDiskCache) throws HyracksException {
 
         JobSpecification spec = new JobSpecification();
         // Create operators
@@ -315,7 +333,8 @@ public class IMRUJobFactory {
         // IMRU Computation
         // We will have one Map operator per input file.
         IMRUOperatorDescriptor mapOperator = new MapOperatorDescriptor(spec,
-                model, inputSplits, roundNum, "map", noDiskCache, parameters);
+                model, inputSplits, roundNum, recoverRoundNum, rerunNum, "map",
+                noDiskCache, parameters);
         PartitionConstraintHelper.addAbsoluteLocationConstraint(spec,
                 mapOperator, mapOperatorLocations);
 

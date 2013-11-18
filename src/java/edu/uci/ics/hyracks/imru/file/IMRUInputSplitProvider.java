@@ -43,6 +43,7 @@ import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
  * This class is thread-safe.
  * 
  * @author Josh Rosen
+ * @author Rui Wang
  */
 public class IMRUInputSplitProvider implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -65,11 +66,13 @@ public class IMRUInputSplitProvider implements Serializable {
             ConfigurationFactory confFactory) throws InterruptedException {
         try {
             String[] ss = inputPaths.split(",");
-//            if (confFactory == null || !confFactory.useHDFS()) {
+            if (confFactory == null || !confFactory.useHDFS()) {
                 splits = IMRUFileSplit.get(ss);
-//            } else {
-//                splits = HDFSSplit.get(confFactory, ss);
-//            }
+            } else {
+                //disable file split to avoid record boundary
+                splits = HDFSSplit.get(confFactory, ss, Long.MAX_VALUE,
+                        Long.MAX_VALUE);
+            }
             numSplits = splits.size();
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             DataOutput output = new DataOutputStream(baos);

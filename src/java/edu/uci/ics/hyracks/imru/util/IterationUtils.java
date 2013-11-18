@@ -25,27 +25,37 @@ import edu.uci.ics.hyracks.imru.runtime.bootstrap.StateKey;
 
 public class IterationUtils {
 
-    public static void setIterationState(IHyracksTaskContext ctx, int partition, IStateObject state) {
-        INCApplicationContext appContext = ctx.getJobletContext().getApplicationContext();
-        IMRURuntimeContext context = (IMRURuntimeContext) appContext.getApplicationObject();
+    public static void setIterationState(IHyracksTaskContext ctx,
+            int partition, IStateObject state) {
+        INCApplicationContext appContext = ctx.getJobletContext()
+                .getApplicationContext();
+        IMRURuntimeContext context = (IMRURuntimeContext) appContext
+                .getApplicationObject();
         Map<StateKey, IStateObject> map = context.getAppStateStore();
-        map.put(new StateKey(ctx.getJobletContext().getJobId(), partition), state);
+        map.put(new StateKey(ctx.getJobletContext().getJobId(), partition),
+                state);
     }
 
-    public static IStateObject getIterationState(IHyracksTaskContext ctx, int partition) {
+    public static IStateObject getIterationState(IHyracksTaskContext ctx,
+            int partition) {
         JobId currentId = ctx.getJobletContext().getJobId();
-        JobId lastId = new JobId(currentId.getId() - 2);
-        INCApplicationContext appContext = ctx.getJobletContext().getApplicationContext();
-        IMRURuntimeContext context = (IMRURuntimeContext) appContext.getApplicationObject();
+        INCApplicationContext appContext = ctx.getJobletContext()
+                .getApplicationContext();
+        IMRURuntimeContext context = (IMRURuntimeContext) appContext
+                .getApplicationObject();
         Map<StateKey, IStateObject> map = context.getAppStateStore();
+        JobId lastId = new JobId(currentId.getId() - 2 - context.rerunNum);
         return map.get(new StateKey(lastId, partition));
     }
 
-    public static void removeIterationState(IHyracksTaskContext ctx, int partition) {
+    public static void removeIterationState(IHyracksTaskContext ctx,
+            int partition) {
         JobId currentId = ctx.getJobletContext().getJobId();
         JobId lastId = new JobId(currentId.getId() - 1);
-        INCApplicationContext appContext = ctx.getJobletContext().getApplicationContext();
-        IMRURuntimeContext context = (IMRURuntimeContext) appContext.getApplicationObject();
+        INCApplicationContext appContext = ctx.getJobletContext()
+                .getApplicationContext();
+        IMRURuntimeContext context = (IMRURuntimeContext) appContext
+                .getApplicationObject();
         Map<StateKey, IStateObject> map = context.getAppStateStore();
         map.remove(new StateKey(lastId, partition));
     }

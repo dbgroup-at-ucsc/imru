@@ -20,11 +20,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Iterator;
+import java.util.List;
 
 import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.IIMRUJob;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
+import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
+import edu.uci.ics.hyracks.imru.api.RecoveryAction;
 
 public class KMeansJob implements IIMRUJob<KMeansModel, DataPoint, KMeansCentroids> {
     int k;
@@ -106,7 +110,8 @@ public class KMeansJob implements IIMRUJob<KMeansModel, DataPoint, KMeansCentroi
      * update the model using combined result
      */
     @Override
-    public KMeansModel update(IMRUContext ctx, Iterator<KMeansCentroids> input, KMeansModel model) throws IMRUDataException {
+    public KMeansModel update(IMRUContext ctx, Iterator<KMeansCentroids> input, KMeansModel model,
+            ImruIterationInformation iterationInfo) throws IMRUDataException {
         KMeansCentroids combined = reduce(ctx, input);
         boolean changed = false;
         for (int i = 0; i < k; i++)
@@ -123,7 +128,20 @@ public class KMeansJob implements IIMRUJob<KMeansModel, DataPoint, KMeansCentroi
      * Return true to exit loop
      */
     @Override
-    public boolean shouldTerminate(KMeansModel model) {
+    public boolean shouldTerminate(KMeansModel model,
+            ImruIterationInformation iterationInfo) {
         return model.roundsRemaining <= 0;
+    }
+    
+     @Override
+    public KMeansModel integrate(KMeansModel model1, KMeansModel model2) {
+        return model1;
+    }
+     
+      @Override
+    public RecoveryAction onJobFailed(List<ImruSplitInfo> completedRanges,
+            long dataSize, int optimalNodesForRerun, float rerunTime,
+            int optimalNodesForPartiallyRerun, float partiallyRerunTime) {
+        return RecoveryAction.Accept;
     }
 }

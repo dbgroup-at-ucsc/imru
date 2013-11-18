@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-package edu.uci.ics.hyracks.imru.example.helloworld;
+package exp.test0.imruTest;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -30,12 +30,19 @@ import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
 import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
+import edu.uci.ics.hyracks.imru.util.Rt;
 
 /**
  * Core IMRU application specific code.
  * The dataflow is parse->map->reduce->update
  */
-public class HelloWorldJob implements IIMRUJob<String, String, String> {
+public class InfoJob implements IIMRUJob<String, String, String> {
+    int n = 5;
+
+    public InfoJob(int n) {
+        this.n = n;
+    }
+
     /**
      * Frame size must be large enough to store at least one data object
      */
@@ -66,6 +73,15 @@ public class HelloWorldJob implements IIMRUJob<String, String, String> {
     @Override
     public String map(IMRUContext ctx, Iterator<String> input, String model)
             throws IOException {
+        if (ctx.getNodeId().startsWith("NC0")) {
+            Rt.p(ctx.getIterationNumber() + " "
+                    + ctx.getRecoverIterationNumber());
+            if (ctx.getRecoverIterationNumber() < 0
+                    && ctx.getRerunCount() < 1) {
+                Rt.sleep(500);
+                throw new Error();
+            }
+        }
         String result = "";
         while (input.hasNext()) {
             String word = input.next();
@@ -82,6 +98,7 @@ public class HelloWorldJob implements IIMRUJob<String, String, String> {
     @Override
     public String reduce(IMRUContext ctx, Iterator<String> input)
             throws IMRUDataException {
+        Rt.sleep(2000);
         String combined = new String();
         StringBuilder sb = new StringBuilder();
         combined = "(";
@@ -103,12 +120,10 @@ public class HelloWorldJob implements IIMRUJob<String, String, String> {
         return combined;
     }
 
-    /**
-     * update the model using combined result
-     */
     @Override
     public String update(IMRUContext ctx, Iterator<String> input, String model,
-            ImruIterationInformation iterationInfo) throws IMRUDataException {
+            ImruIterationInformation runtimeInformation)
+            throws IMRUDataException {
         StringBuilder sb = new StringBuilder();
         sb.append("(" + model + ")");
         while (input.hasNext()) {
@@ -121,24 +136,29 @@ public class HelloWorldJob implements IIMRUJob<String, String, String> {
         return model;
     }
 
-    /**
-     * Return true to exit loop
-     */
     @Override
-    public boolean shouldTerminate(String model,
-            ImruIterationInformation iterationInfo) {
-        return true;
+    public boolean shouldTerminate(String model, ImruIterationInformation info) {
+        n--;
+        Rt.p("current iteration: " + info.currentIteration);
+        Rt.p("current recovery iteration: " + info.finishedRecoveryIteration);
+        Rt.p("left iterations: " + n);
+        Rt.p("map data size: " + info.mappedDataSize);
+        Rt.p("map records: " + info.mappedRecords);
+        return n <= 0;
     }
 
     @Override
     public String integrate(String model1, String model2) {
-        return model1;
+        return model1 + "+" + model2;
     }
 
     @Override
     public RecoveryAction onJobFailed(List<ImruSplitInfo> completedRanges,
             long dataSize, int optimalNodesForRerun, float rerunTime,
             int optimalNodesForPartiallyRerun, float partiallyRerunTime) {
-        return RecoveryAction.Accept;
+        Rt.p("job failed");
+        for (ImruSplitInfo split : completedRanges)
+            Rt.np("completed " + split.path);
+        return RecoveryAction.Rerun;
     }
 }

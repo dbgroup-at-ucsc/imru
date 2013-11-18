@@ -29,6 +29,7 @@ import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryInputSinkOperatorNodeP
 import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryInputUnaryOutputOperatorNodePushable;
 import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryOutputSourceOperatorNodePushable;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
+import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
 import edu.uci.ics.hyracks.imru.data.MergedFrames;
 import edu.uci.ics.hyracks.imru.jobgen.SpreadGraph;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
@@ -150,6 +151,8 @@ public class SpreadOD extends AbstractSingleActivityOperatorDescriptor {
                         .getJobSerializerDeserializerContainer()
                         .getJobSerializerDeerializer(deploymentId);
                 Serializable model = (Serializable) jobSerDe.deserialize(bs);
+                if (model instanceof ImruIterationInformation)
+                    model = (Serializable) ((ImruIterationInformation) model).object;
                 imruContext.setModel(model, roundNum);
             } else {
                 File file = new File(dataFilePath);

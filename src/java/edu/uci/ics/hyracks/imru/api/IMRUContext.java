@@ -93,6 +93,32 @@ public class IMRUContext {
     }
 
     /**
+     * Get current recovery iteration number.
+     * 
+     * @return
+     */
+    public int getRecoverIterationNumber() {
+        INCApplicationContext appContext = getJobletContext()
+                .getApplicationContext();
+        IMRURuntimeContext context = (IMRURuntimeContext) appContext
+                .getApplicationObject();
+        return context.currentRecoveryIteration;
+    }
+
+    /**
+     * Get current rerun iteration number.
+     * 
+     * @return
+     */
+    public int getRerunCount() {
+        INCApplicationContext appContext = getJobletContext()
+                .getApplicationContext();
+        IMRURuntimeContext context = (IMRURuntimeContext) appContext
+                .getApplicationObject();
+        return context.rerunNum;
+    }
+
+    /**
      * Set the model shared in each node controller
      */
     public void setModel(Serializable model) {

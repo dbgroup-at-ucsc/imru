@@ -21,6 +21,7 @@ import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
+import java.util.List;
 
 /**
  * Low level IMRU job interface. Data passed through
@@ -72,11 +73,43 @@ public interface IIMRUJob2<Model, Data extends Serializable> extends
      * update the model using combined binary data.
      * Return the same model object or return another object.
      */
-    public Model update(IMRUContext ctx, Iterator<byte[]> input, Model model)
+    public Model update(IMRUContext ctx, Iterator<byte[]> input, Model model,
+            final ImruIterationInformation runtimeInformation)
             throws IMRUDataException;
 
     /**
      * Return true to exit loop
      */
-    public boolean shouldTerminate(Model model);
+    public boolean shouldTerminate(Model model,
+            ImruIterationInformation runtimeInformation);
+
+    /**
+     * Callback function when some nodes failed. User should decide what action to take
+     * 
+     * @param completedRanges
+     *            successfully processed ranges of the data
+     * @param dataSize
+     *            the total size of the data
+     * @param optimalNodesForRerun
+     *            optimal number of nodes to rerun the iteration
+     * @param rerunTime
+     *            the estimated time to rerun the iteration
+     * @param optimalNodesForPartiallyRerun
+     *            optimal number of nodes to rerun only the unprocessed data
+     * @param partiallyRerunTime
+     *            the estimated time to rerun only the unprocessed data
+     * @return action to take
+     */
+    RecoveryAction onJobFailed(List<ImruSplitInfo> completedRanges, long dataSize,
+            int optimalNodesForRerun, float rerunTime,
+            int optimalNodesForPartiallyRerun, float partiallyRerunTime);
+
+    /**
+     * Integrates two partially completed model to one model
+     * 
+     * @param model1
+     * @param model2
+     * @return
+     */
+    Model integrate(Model model1, Model model2);
 }

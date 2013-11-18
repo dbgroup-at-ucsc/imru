@@ -20,12 +20,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Iterator;
+import java.util.List;
 import java.util.regex.Pattern;
 
 import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.IIMRUJob;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
+import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
+import edu.uci.ics.hyracks.imru.api.RecoveryAction;
 import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.imruVsSpark.kmeans.FilledVectors;
 import exp.imruVsSpark.kmeans.SKMeansModel;
@@ -116,7 +120,8 @@ public class SKMeansJob implements
      */
     @Override
     public SKMeansModel update(IMRUContext ctx, Iterator<FilledVectors> input,
-            SKMeansModel model) throws IMRUDataException {
+            SKMeansModel model, ImruIterationInformation iterationInformation)
+            throws IMRUDataException {
         FilledVectors combined = reduce(ctx, input);
         boolean changed = model.set(combined);
         //        Rt.p(model.totalExamples);
@@ -132,8 +137,21 @@ public class SKMeansJob implements
      * Return true to exit loop
      */
     @Override
-    public boolean shouldTerminate(SKMeansModel model) {
+    public boolean shouldTerminate(SKMeansModel model,
+            ImruIterationInformation iterationInformation) {
         //        Rt.p(model.totalExamples);
         return model.roundsRemaining <= 0;
+    }
+
+    @Override
+    public SKMeansModel integrate(SKMeansModel model1, SKMeansModel model2) {
+        return model1;
+    }
+
+    @Override
+    public RecoveryAction onJobFailed(List<ImruSplitInfo> completedRanges,
+            long dataSize, int optimalNodesForRerun, float rerunTime,
+            int optimalNodesForPartiallyRerun, float partiallyRerunTime) {
+        return RecoveryAction.Accept;
     }
 }

@@ -20,11 +20,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Iterator;
+import java.util.List;
 
 import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.IIMRUJob;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
+import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
+import edu.uci.ics.hyracks.imru.api.RecoveryAction;
 
 public class BGDJob implements IIMRUJob<Model, Data, Gradient> {
     int features;
@@ -94,8 +98,8 @@ public class BGDJob implements IIMRUJob<Model, Data, Gradient> {
     }
 
     @Override
-    public Model update(IMRUContext ctx, Iterator<Gradient> input, Model model)
-            throws IMRUDataException {
+    public Model update(IMRUContext ctx, Iterator<Gradient> input, Model model,
+            ImruIterationInformation iterationInfo) throws IMRUDataException {
         Gradient g = reduce(ctx, input);
         model.error = 100f * (g.total - g.correct) / g.total;
         for (int i = 0; i < model.weights.length; i++)
@@ -110,7 +114,20 @@ public class BGDJob implements IIMRUJob<Model, Data, Gradient> {
     }
 
     @Override
-    public boolean shouldTerminate(Model model) {
+    public boolean shouldTerminate(Model model,
+            ImruIterationInformation iterationInfo) {
         return model.roundsRemaining <= 0;
+    }
+
+    @Override
+    public Model integrate(Model model1, Model model2) {
+        return model1;
+    }
+
+    @Override
+    public RecoveryAction onJobFailed(List<ImruSplitInfo> completedRanges,
+            long dataSize, int optimalNodesForRerun, float rerunTime,
+            int optimalNodesForPartiallyRerun, float partiallyRerunTime) {
+        return RecoveryAction.Accept;
     }
 }

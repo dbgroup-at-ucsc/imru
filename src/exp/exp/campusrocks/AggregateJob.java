@@ -18,11 +18,15 @@ package exp.campusrocks;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
+import java.util.List;
 
 import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.IIMRUJob;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
+import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
+import edu.uci.ics.hyracks.imru.api.RecoveryAction;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 /**
@@ -77,7 +81,8 @@ public class AggregateJob implements IIMRUJob<byte[], byte[], byte[]> {
      * update the model using combined result
      */
     @Override
-    public byte[] update(IMRUContext ctx, Iterator<byte[]> input, byte[] model)
+    public byte[] update(IMRUContext ctx, Iterator<byte[]> input, byte[] model,
+            ImruIterationInformation iterationInformation)
             throws IMRUDataException {
         while (input.hasNext())
             input.next();
@@ -88,7 +93,20 @@ public class AggregateJob implements IIMRUJob<byte[], byte[], byte[]> {
      * Return true to exit loop
      */
     @Override
-    public boolean shouldTerminate(byte[] model) {
+    public boolean shouldTerminate(byte[] model,
+            ImruIterationInformation iterationInformation) {
         return true;
+    }
+
+    @Override
+    public byte[] integrate(byte[] model1, byte[] model2) {
+        return model1;
+    }
+
+    @Override
+    public RecoveryAction onJobFailed(List<ImruSplitInfo> completedRanges,
+            long dataSize, int optimalNodesForRerun, float rerunTime,
+            int optimalNodesForPartiallyRerun, float partiallyRerunTime) {
+        return RecoveryAction.Accept;
     }
 }
