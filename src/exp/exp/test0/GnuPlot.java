@@ -137,7 +137,9 @@ public class GnuPlot {
 
     public boolean colored = false;
     public int startPointType = 0;
+    public int[] pointTypes;
     public int pointSize = 0;
+    public int lineColorGroupSize = 1;
     public static String[] lineColors = { "red", "green", "blue", //
             "black",//
             "#808000", "#800080", "#008080",//
@@ -155,15 +157,18 @@ public class GnuPlot {
             sb.append("with " + style.name());
             if (style != Style.dots) {
                 sb.append(" lw 4");
-                sb.append(String.format(" pt %d",
-                        pointSize > 0 ? startPointType + i : 0));
+                int t = pointSize > 0 ? startPointType + i : 0;
+                if (pointTypes != null)
+                    t = pointTypes[i % pointTypes.length];
+                sb.append(String.format(" pt %d", t));
                 sb.append(String.format(" ps %d", pointSize));
             } else {
                 sb.append(String.format(" lw %d", plots * 5 - i * 5));
                 sb.append(String.format(" title \"%s\"", plotNames[i]));
             }
             if (colored)
-                sb.append(String.format(" lc rgb \"%s\"", lineColors[i]));
+                sb.append(String.format(" lc rgb \"%s\"", lineColors[i
+                        / lineColorGroupSize]));
             return sb.toString();
         } else
             return String.format("with " + style.name() + " fill solid %.1f",

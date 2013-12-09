@@ -87,6 +87,7 @@ public class SKMeansJob implements
     @Override
     public FilledVectors map(IMRUContext ctx, Iterator<SparseVector> input,
             SKMeansModel model) throws IOException {
+        Rt.sleep(Integer.parseInt(ctx.getNodeId().substring(2)) * 10000);
         FilledVectors result = new FilledVectors(k, dimensions);
         while (input.hasNext()) {
             SparseVector dataPoint = input.next();

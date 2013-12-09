@@ -78,6 +78,22 @@ public class IMRUContext {
         return context.model;
     }
 
+    public void setUserObject(String key, Object value) {
+        INCApplicationContext appContext = getJobletContext()
+                .getApplicationContext();
+        IMRURuntimeContext context = (IMRURuntimeContext) appContext
+                .getApplicationObject();
+        context.userObjects.put(key, value);
+    }
+
+    public Object getUserObject(String key) {
+        INCApplicationContext appContext = getJobletContext()
+                .getApplicationContext();
+        IMRURuntimeContext context = (IMRURuntimeContext) appContext
+                .getApplicationObject();
+        return context.userObjects.get(key);
+    }
+
     /**
      * Get current iteration number.
      * The first iteration is 0.

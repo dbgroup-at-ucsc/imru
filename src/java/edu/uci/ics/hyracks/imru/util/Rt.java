@@ -24,6 +24,7 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.Stack;
 import java.util.Vector;
 import java.util.logging.Handler;
@@ -341,5 +342,12 @@ public class Rt {
             public void close() throws SecurityException {
             }
         });
+    }
+
+    public static int[] intArray(List<Integer> list) {
+        int[] is = new int[list.size()];
+        for (int i = 0; i < is.length; i++)
+            is[i] = list.get(i);
+        return is;
     }
 }

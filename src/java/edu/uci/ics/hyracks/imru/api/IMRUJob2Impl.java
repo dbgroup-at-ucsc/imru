@@ -42,6 +42,7 @@ import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class IMRUJob2Impl<Model extends Serializable, Data extends Serializable, T extends Serializable>
         implements IIMRUJob2<Model, Data> {
+    public static final long serialVersionUID=1;
     int fieldCount = 1;
     DeploymentId deploymentId;
     IIMRUJob<Model, Data, T> job;

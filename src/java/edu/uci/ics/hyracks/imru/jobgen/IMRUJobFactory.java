@@ -62,6 +62,9 @@ import edu.uci.ics.hyracks.imru.dataflow.ReduceOperatorDescriptor;
 import edu.uci.ics.hyracks.imru.dataflow.SpreadConnectorDescriptor;
 import edu.uci.ics.hyracks.imru.dataflow.SpreadOD;
 import edu.uci.ics.hyracks.imru.dataflow.UpdateOperatorDescriptor;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.ImruRecvOD;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.SRTest;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.ImruSendOD;
 import edu.uci.ics.hyracks.imru.file.ConfigurationFactory;
 import edu.uci.ics.hyracks.imru.file.IMRUInputSplitProvider;
 import edu.uci.ics.hyracks.imru.file.IMRUFileSplit;
@@ -74,6 +77,7 @@ import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
  * assigned to random NC's by the Hyracks scheduler.
  * 
  * @author Josh Rosen
+ * @author Rui Wang
  */
 public class IMRUJobFactory {
     public static enum AGGREGATION {
@@ -96,13 +100,14 @@ public class IMRUJobFactory {
     UUID id = UUID.randomUUID();
     IMRUConnection imruConnection;
     public ImruParameters parameters;
+    boolean dynamicAggr;
 
     public IMRUJobFactory(IMRUConnection imruConnection, String inputPaths,
             ConfigurationFactory confFactory, String type, int fanIn,
-            int reducerCount, ImruParameters parameters) throws IOException,
-            InterruptedException {
+            int reducerCount, ImruParameters parameters, boolean dynamicAggr)
+            throws IOException, InterruptedException {
         this(imruConnection, inputPaths, confFactory, aggType(type), fanIn,
-                reducerCount, parameters);
+                reducerCount, parameters, dynamicAggr);
     }
 
     public static AGGREGATION aggType(String type) {
@@ -118,9 +123,10 @@ public class IMRUJobFactory {
     }
 
     public IMRUJobFactory(IMRUJobFactory f, String incompletedPaths,
-            AGGREGATION aggType) throws IOException, InterruptedException {
+            AGGREGATION aggType, boolean dynamicAggr) throws IOException,
+            InterruptedException {
         this(f.imruConnection, incompletedPaths, f.confFactory, aggType,
-                f.fanIn, f.reducerCount, f.parameters);
+                f.fanIn, f.reducerCount, f.parameters, dynamicAggr);
     }
 
     /**
@@ -140,12 +146,13 @@ public class IMRUJobFactory {
      */
     public IMRUJobFactory(IMRUConnection imruConnection, String inputPaths,
             ConfigurationFactory confFactory, AGGREGATION aggType, int fanIn,
-            int reducerCount, ImruParameters parameters) throws IOException,
-            InterruptedException {
+            int reducerCount, ImruParameters parameters, boolean dynamicAggr)
+            throws IOException, InterruptedException {
         this.imruConnection = imruConnection;
         this.confFactory = confFactory;
         this.inputPaths = inputPaths;
         this.parameters = parameters;
+        this.dynamicAggr = dynamicAggr;
         inputSplits = IMRUInputSplitProvider.getInputSplits(inputPaths,
                 confFactory);
         // For repeatability of the partition assignments, seed the
@@ -338,6 +345,26 @@ public class IMRUJobFactory {
         PartitionConstraintHelper.addAbsoluteLocationConstraint(spec,
                 mapOperator, mapOperatorLocations);
 
+        if (aggType == AGGREGATION.NARY && dynamicAggr) {
+            int[] targets = SRTest.getAggregationTree(
+                    mapOperatorLocations.length, this.fanIn);
+            ImruSendOD send = new ImruSendOD(spec, targets, model, "send",
+                    parameters, modelName, imruConnection);
+            ImruRecvOD recv = new ImruRecvOD(spec, targets);
+            spec.connect(new SpreadConnectorDescriptor(spec, null, null), send,
+                    0, recv, 0);
+            PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, send,
+                    mapOperatorLocations);
+            PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, recv,
+                    mapOperatorLocations);
+            LocalReducerFactory.addLocalReducers(spec, mapOperator, 0,
+                    mapOperatorLocations, send, 0,
+                    new OneToOneConnectorDescriptor(spec), model, parameters,
+                    dynamicAggr);
+            spec.addRoot(recv);
+            return spec;
+        }
+
         // Environment updating
         IMRUOperatorDescriptor updateOperator = new UpdateOperatorDescriptor(
                 spec, model, modelName, imruConnection, parameters);
@@ -365,7 +392,7 @@ public class IMRUJobFactory {
                     new RangeLocalityMap(mapOperatorLocations.length));
             LocalReducerFactory.addLocalReducers(spec, mapOperator, 0,
                     mapOperatorLocations, reduceOperator, 0, mapReducerConn,
-                    model, parameters);
+                    model, parameters, dynamicAggr);
 
             // Connect things together
             IConnectorDescriptor reduceUpdateConn = new MToNReplicatingConnectorDescriptor(
@@ -379,8 +406,8 @@ public class IMRUJobFactory {
                     spec);
             ReduceAggregationTreeFactory.buildAggregationTree(spec,
                     mapOperator, 0, inputSplits.length, updateOperator, 0,
-                    reduceUpdateConn, fanIn, true, mapOperatorLocations, model,
-                    parameters);
+                    reduceUpdateConn, fanIn, true, dynamicAggr,
+                    mapOperatorLocations, model, parameters);
         }
 
         spec.addRoot(updateOperator);

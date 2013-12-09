@@ -29,6 +29,7 @@ import edu.uci.ics.hyracks.imru.api.IMRUDataException;
 import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
+import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class BGDJob implements IIMRUJob<Model, Data, Gradient> {
     int features;
@@ -39,7 +40,7 @@ public class BGDJob implements IIMRUJob<Model, Data, Gradient> {
 
     @Override
     public int getCachedDataFrameSize() {
-        return 1024;
+        return 10240;
     }
 
     @Override
@@ -110,6 +111,7 @@ public class BGDJob implements IIMRUJob<Model, Data, Gradient> {
         else
             model.roundsRemaining--;
         model.roundsCompleted++;
+        Rt.p(model.error);
         return model;
     }
 

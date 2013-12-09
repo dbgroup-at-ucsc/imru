@@ -26,6 +26,10 @@ import edu.uci.ics.hyracks.dataflow.std.connectors.LocalityAwareMToNPartitioning
 import edu.uci.ics.hyracks.imru.api.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.api.ImruParameters;
 import edu.uci.ics.hyracks.imru.dataflow.ReduceOperatorDescriptor;
+import edu.uci.ics.hyracks.imru.dataflow.SpreadConnectorDescriptor;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.ImruRecvOD;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.SRTest;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.ImruSendOD;
 
 /**
  * Constructs aggregation trees between the Map and Update operators.
@@ -67,8 +71,9 @@ public class ReduceAggregationTreeFactory {
             IOperatorDescriptor producerOp, int producerPort,
             int producerOpCount, IOperatorDescriptor consumerOp,
             int consumerPort, IConnectorDescriptor consumerConn, int fanIn,
-            boolean useLocalCombiners, String[] producerOpLocations,
-            IIMRUJob2 imruSpec, ImruParameters parameters) {
+            boolean useLocalCombiners, boolean dynamicAggr,
+            String[] producerOpLocations, IIMRUJob2 imruSpec,
+            ImruParameters parameters) {
         if (useLocalCombiners) {
             producerOpCount = LocalReducerFactory
                     .getReducerCount(producerOpLocations);
@@ -103,7 +108,7 @@ public class ReduceAggregationTreeFactory {
             LocalReducerFactory.addLocalReducers(spec, producerOp,
                     producerPort, producerOpLocations,
                     aggregatorOperators[numLevels - 1], 0, producerConn,
-                    imruSpec, parameters);
+                    imruSpec, parameters, dynamicAggr);
         } else {
             spec.connect(producerConn, producerOp, producerPort,
                     aggregatorOperators[numLevels - 1], 0);

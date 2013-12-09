@@ -38,6 +38,7 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
     IMRUDriver<Model, Data> driver;
     public String localIntermediateModelPath;
     public String modelFileName;
+    public boolean dynamicAggr = false;
     public boolean memCache = false;
     public boolean noDiskCache = false;
     public int frameSize;
@@ -67,7 +68,8 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
     public void selectNoAggregation(String examplePaths) throws IOException,
             InterruptedException {
         jobFactory = new IMRUJobFactory(imruConnection, examplePaths,
-                confFactory, IMRUJobFactory.AGGREGATION.NONE, 0, 0, parameters);
+                confFactory, IMRUJobFactory.AGGREGATION.NONE, 0, 0, parameters,
+                dynamicAggr);
     }
 
     public void selectGenericAggregation(String examplePaths, int aggCount)
@@ -77,7 +79,7 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
                     "Must specify a nonnegative aggregator count using the -agg-count option");
         jobFactory = new IMRUJobFactory(imruConnection, examplePaths,
                 confFactory, IMRUJobFactory.AGGREGATION.GENERIC, 0, aggCount,
-                parameters);
+                parameters, dynamicAggr);
     }
 
     public void selectNAryAggregation(String examplePaths, int fanIn)
@@ -88,7 +90,7 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
         }
         jobFactory = new IMRUJobFactory(imruConnection, examplePaths,
                 confFactory, IMRUJobFactory.AGGREGATION.NARY, fanIn, 0,
-                parameters);
+                parameters, dynamicAggr);
     }
 
     /**
@@ -119,6 +121,7 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
             IIMRUDataGenerator generator, String app) throws Exception {
         driver = new IMRUDriver<Model, Data>(hcc, deploymentId, imruConnection,
                 null, null, jobFactory, confFactory.createConfiguration(), app);
+        driver.dynamicAggr = dynamicAggr;
         driver.memCache = memCache;
         driver.noDiskCache = noDiskCache;
         driver.modelFileName = modelFileName;

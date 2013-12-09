@@ -68,6 +68,7 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
     private final Configuration conf;
     private final String app;
     private final UUID id;
+    public boolean dynamicAggr;
 
     private int iterationCount;
     public boolean memCache = false;
@@ -366,7 +367,7 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
             Rt.p("recover job: " + incompletedPaths);
             IMRUJobFactory recoverFactory = new IMRUJobFactory(jobFactory,
                     incompletedPaths.toString(),
-                    IMRUJobFactory.AGGREGATION.AUTO);
+                    IMRUJobFactory.AGGREGATION.AUTO,dynamicAggr);
             JobSpecification job = recoverFactory
                     .generateJob(imruSpec, iterationNum, 0,
                             finishedRecoveryIteration, modelName, true);

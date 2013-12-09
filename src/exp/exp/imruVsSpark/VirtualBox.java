@@ -51,6 +51,7 @@ public class VirtualBox {
                 VBoxManage(true, cmd);
             }
         }
+        Rt.p("removed");
     }
 
     public static void setup(int nodes, int memory, int cpuCap, int networkMB)
@@ -94,6 +95,15 @@ public class VirtualBox {
                 String cmd = "startvm " + machine + " --type headless";
                 VBoxManage(true, cmd);
             }
+        }
+    }
+
+    public static void startTemplate() throws IOException {
+        String machine = "imru_template";
+        if (!running(machine)) {
+            Rt.p("starting " + machine);
+            String cmd = "startvm " + machine;
+            VBoxManage(true, cmd);
         }
     }
 

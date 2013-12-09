@@ -36,6 +36,7 @@ public class BGD {
 
             String exampleData = System.getProperty("user.home")
                     + "/hyracks/imru/imru-example/data/bgd/bgd.txt";
+            exampleData="/tmp/cache/bgd_data.txt";
             cmdline += " -example-paths " + exampleData;
 
             System.out.println("Using command line: " + cmdline);
@@ -43,13 +44,13 @@ public class BGD {
         }
 
         int numRounds = 15;
-        int features = 3;
+        int features = 1000000;
         Model model = Client.run(new BGDJob(features), new Model(features,
                 numRounds), args);
         System.out.println("Rounds: " + model.roundsCompleted);
-        System.out.println("Model:");
-        for (int i = 0; i < model.weights.length; i++)
-            System.out.println(i + ":\t" + model.weights[i]);
+//        System.out.println("Model:");
+//        for (int i = 0; i < model.weights.length; i++)
+//            System.out.println(i + ":\t" + model.weights[i]);
         System.out.println("Error: " + model.error + "%");
         System.exit(0);
     }

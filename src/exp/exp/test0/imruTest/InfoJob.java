@@ -82,6 +82,7 @@ public class InfoJob implements IIMRUJob<String, String, String> {
                 throw new Error();
             }
         }
+        Rt.sleep(1000);
         String result = "";
         while (input.hasNext()) {
             String word = input.next();
@@ -159,6 +160,6 @@ public class InfoJob implements IIMRUJob<String, String, String> {
         Rt.p("job failed");
         for (ImruSplitInfo split : completedRanges)
             Rt.np("completed " + split.path);
-        return RecoveryAction.Rerun;
+        return RecoveryAction.Accept;
     }
 }

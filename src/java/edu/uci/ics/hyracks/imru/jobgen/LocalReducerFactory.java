@@ -67,7 +67,7 @@ public class LocalReducerFactory {
             IOperatorDescriptor producerOp, int producerPort,
             String[] producerLocations, IOperatorDescriptor consumerOp,
             int consumerPort, IConnectorDescriptor consumerConn,
-            IIMRUJob2 imruSpec, ImruParameters parameters) {
+            IIMRUJob2 imruSpec, ImruParameters parameters,boolean dynamicAggr) {
         ReduceOperatorDescriptor localReducer = new ReduceOperatorDescriptor(
                 spec, imruSpec, "localReducer", parameters);
         localReducer.level = -1;

@@ -40,12 +40,19 @@ public class SpreadConnectorDescriptor extends AbstractMToNConnectorDescriptor {
     private static final long serialVersionUID = 1L;
     SpreadGraph.Level from;
     SpreadGraph.Level to;
+    int[] targets;
 
     public SpreadConnectorDescriptor(IConnectorDescriptorRegistry spec,
             SpreadGraph.Level from, SpreadGraph.Level to) {
+        this(spec, from, to, null);
+    }
+
+    public SpreadConnectorDescriptor(IConnectorDescriptorRegistry spec,
+            SpreadGraph.Level from, SpreadGraph.Level to, int[] targets) {
         super(spec);
         this.from = from;
         this.to = to;
+        this.targets = targets;
     }
 
     @Override
@@ -56,22 +63,39 @@ public class SpreadConnectorDescriptor extends AbstractMToNConnectorDescriptor {
             final int consumerPartitionCount) throws HyracksDataException {
         return new IFrameWriter() {
             private final IFrameWriter[] pWriters;
+            boolean closed = false;
 
             {
                 pWriters = new IFrameWriter[consumerPartitionCount];
-                for (int i = 0; i < consumerPartitionCount; ++i) {
-                    try {
-                        pWriters[i] = edwFactory.createFrameWriter(i);
-                    } catch (IOException e) {
-                        throw new HyracksDataException(e);
+                if (targets != null) {
+                    int i = targets[senderPartition];
+                    if (i >= 0) {
+                        try {
+                            pWriters[i] = edwFactory.createFrameWriter(i);
+                        } catch (IOException e) {
+                            throw new HyracksDataException(e);
+                        }
+                    }
+                } else {
+                    for (int i = 0; i < consumerPartitionCount; ++i) {
+                        try {
+                            pWriters[i] = edwFactory.createFrameWriter(i);
+                        } catch (IOException e) {
+                            throw new HyracksDataException(e);
+                        }
                     }
                 }
             }
 
             @Override
             public void close() throws HyracksDataException {
+                closed = true;
                 for (int i = 0; i < pWriters.length; ++i) {
-                    pWriters[i].close();
+                    if (pWriters[i] != null) {
+                        pWriters[i].close();
+                        pWriters[i] = null;
+                        //                        Rt.p("Close " + senderPartition + " " + i);
+                    }
                 }
             }
 
@@ -85,14 +109,30 @@ public class SpreadConnectorDescriptor extends AbstractMToNConnectorDescriptor {
             @Override
             public void open() throws HyracksDataException {
                 for (int i = 0; i < pWriters.length; ++i) {
-                    pWriters[i].open();
+                    if (pWriters[i] != null)
+                        pWriters[i].open();
                 }
             }
 
             @Override
             public void nextFrame(ByteBuffer buffer)
                     throws HyracksDataException {
+                if (closed)
+                    return;
                 int targetPartition = buffer.getInt(MergedFrames.TARGET_OFFSET);
+                if (targetPartition < 0 || targetPartition >= pWriters.length)
+                    throw new Error(targetPartition + " " + pWriters.length);
+                if (pWriters[targetPartition] == null) {
+                    try {
+                        Rt.p("Open " + senderPartition + " " + targetPartition);
+                        pWriters[targetPartition] = edwFactory
+                                .createFrameWriter(targetPartition);
+                        pWriters[targetPartition].open();
+                    } catch (IOException e) {
+                        throw new HyracksDataException(e);
+                    }
+                }
+                //Rt.p("next frame "+targetPartition);
                 flushFrame(buffer, pWriters[targetPartition]);
                 //                if (from != null)
                 //                    Rt.p("Level " + from.level + "->" + to.level + ": " + senderPartition + " "
@@ -104,7 +144,8 @@ public class SpreadConnectorDescriptor extends AbstractMToNConnectorDescriptor {
             @Override
             public void fail() throws HyracksDataException {
                 for (int i = 0; i < pWriters.length; ++i) {
-                    pWriters[i].fail();
+                    if (pWriters[i] != null)
+                        pWriters[i].fail();
                 }
             }
         };

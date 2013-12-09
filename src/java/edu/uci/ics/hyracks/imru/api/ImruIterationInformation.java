@@ -31,4 +31,11 @@ public class ImruIterationInformation<T> implements Serializable {
             }
         }
     }
+
+    @Override
+    public String toString() {
+        if (object != null)
+            return object.toString();
+        return super.toString();
+    }
 }

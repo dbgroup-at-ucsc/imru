@@ -55,6 +55,7 @@ import edu.uci.ics.hyracks.imru.util.Rt;
  * 
  * @param <Model>
  *            Josh Rosen
+ *            Rui Wang
  */
 public class UpdateOperatorDescriptor<Model extends Serializable, Data extends Serializable>
         extends IMRUOperatorDescriptor<Model, Data> {
@@ -147,10 +148,15 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
                         encapsulatedChunk, hash, imruContext.getNodeId()
                                 + " recv " + partition + " "
                                 + imruContext.getOperatorName());
-                if (frames != null) {
+                if (frames.data != null) {
                     try {
                         if (imruContext.getIterationNumber() >= parameters.compressIntermediateResultsAfterNIterations)
                             frames.data = IMRUSerialize.decompress(frames.data);
+                        if (false) {
+                            byte[] bs = IMRUSerialize.compress(frames.data);
+                            Rt.p("compression ratio: %.2f%%", bs.length * 100.0
+                                    / frames.data.length);
+                        }
                     } catch (IOException e) {
                         e.printStackTrace();
                         throw new HyracksDataException(e);
@@ -173,7 +179,7 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
                         e.printStackTrace();
                     }
                     model = (Model) updatedModel;
-//                    imruContext.setModel(model);
+                    //                    imruContext.setModel(model);
 
                     long start = System.currentTimeMillis();
                     imruRuntimeInformation.object = model;

@@ -1,8 +1,11 @@
 package edu.uci.ics.hyracks.imru.data;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Hashtable;
 import java.util.LinkedList;
@@ -11,6 +14,7 @@ import edu.uci.ics.hyracks.api.comm.FrameHelper;
 import edu.uci.ics.hyracks.api.comm.IFrameWriter;
 import edu.uci.ics.hyracks.api.context.IHyracksTaskContext;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
+import edu.uci.ics.hyracks.api.util.JavaSerializationUtils;
 import edu.uci.ics.hyracks.dataflow.common.comm.util.FrameUtils;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.dataflow.IMRUDebugger;
@@ -39,6 +43,8 @@ public class MergedFrames {
     public int sourceParition;
     public int targetParition;
     public int replyPartition;
+    public int receivedSize;
+    public int totalSize;
     public byte[] data;
 
     public static MergedFrames nextFrame(IHyracksTaskContext ctx,
@@ -69,17 +75,19 @@ public class MergedFrames {
         //            Rt.p(position + "/" + size);
         if (debugInfo != null)
             IMRUDebugger.sendDebugInfo("recv " + debugInfo + " " + position);
-
-        if (position + frameSize - HEADER - TAIL < size)
-            return null;
-        hash.remove(queue);
-        byte[] bs = deserializeFromChunks(ctx.getFrameSize(), queue);
-        //        Rt.p("recv " + bs.length + " " + deserialize(bs));
         MergedFrames merge = new MergedFrames();
-        merge.data = bs;
         merge.sourceParition = sourcePartition;
         merge.targetParition = buffer.getInt(TARGET_OFFSET);
         merge.replyPartition = buffer.getInt(REPLY_OFFSET);
+        merge.receivedSize = position + frameSize - HEADER - TAIL;
+        merge.totalSize = size;
+
+        if (position + frameSize - HEADER - TAIL >= size) {
+            hash.remove(sourcePartition);
+            byte[] bs = deserializeFromChunks(ctx.getFrameSize(), queue);
+            //        Rt.p("recv " + bs.length + " " + deserialize(bs));
+            merge.data = bs;
+        }
         return merge;
     }
 
@@ -130,6 +138,18 @@ public class MergedFrames {
         return null;
     }
 
+    public static byte[] serialize(Serializable object) {
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            ObjectOutputStream ois = new ObjectOutputStream(out);
+            ois.writeObject(object);
+            return out.toByteArray();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     private static void setUpFrame(IMRUContext ctx, ByteBuffer encapsulatedChunk) {
         // Set up the proper tuple structure in the frame:
         // Tuple count
@@ -146,6 +166,14 @@ public class MergedFrames {
         encapsulatedChunk.putInt(FrameHelper.getTupleCountOffset(ctx
                 .getFrameSize()) - 4);
         encapsulatedChunk.position(0);
+    }
+
+    public static void serializeToFrames(ByteBuffer frame, int frameSize,
+            IFrameWriter writer, Serializable object, int sourcePartition,
+            int targetPartition) throws IOException {
+        byte[] bs = JavaSerializationUtils.serialize(object);
+        serializeToFrames(null, frame, frameSize, writer, bs, sourcePartition,
+                targetPartition, sourcePartition, null);
     }
 
     public static void serializeToFrames(IMRUContext ctx, ByteBuffer frame,

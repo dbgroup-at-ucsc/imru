@@ -55,6 +55,7 @@ public class VirtualBoxExperiments {
     public static boolean MONITOR_MEMORY_USAGE = true;
     public static int MAX_NODES_STARTUP_TIME = 5 * 60 * 1000;
     public static int MAX_EXPERIMENT_FREEZE_TIME = 30 * 60 * 1000;
+    public static boolean dynamicAggr = false;
 
     public VirtualBoxExperiments(LocalCluster cluster, String name, int k,
             int iterations, int batchStart, int batchStep, int batchEnd,
@@ -74,7 +75,7 @@ public class VirtualBoxExperiments {
             resultDir = new File("result/k" + k + "i" + iterations + "b"
                     + batchStart + "s" + batchStep + "e" + batchEnd + "b"
                     + batchSize + "/" + name + "_" + nodes.length + "nodes_"
-                    + aggType + "_" + aggArg);
+                    + aggType + "_" + aggArg + (dynamicAggr ? "_d" : ""));
             resultDir.mkdirs();
         }
         figDir = new File(resultDir, "rawData");
@@ -226,6 +227,8 @@ public class VirtualBoxExperiments {
         arg += " -agg-tree-type " + aggType;
         arg += " -agg-count " + aggArg;
         arg += " -fan-in " + aggArg;
+        if (dynamicAggr)
+            arg += " -dynamic";
         ssh.maxFreezeTime = MAX_EXPERIMENT_FREEZE_TIME;
         try {
             ssh.execute("sh st.sh exp.imruVsSpark.kmeans.KmeansExperiment "
@@ -544,7 +547,7 @@ public class VirtualBoxExperiments {
                     Thread.sleep(2000 * nodeCount);
                 }
                 String[] nodes = new String[nodeCount];
-                if (VirtualBoxExperiments.monitor!=null) {
+                if (VirtualBoxExperiments.monitor != null) {
                     VirtualBoxExperiments.monitor.close();
                     Thread.sleep(500);
                 }
@@ -561,7 +564,7 @@ public class VirtualBoxExperiments {
                 lastNetwork = network;
                 return nodes;
             } catch (ImruExperimentTimeoutException e) {
-                lastNodeCount=0;
+                lastNodeCount = 0;
                 e.printStackTrace();
             } catch (Exception e) {
                 throw e;
@@ -622,7 +625,7 @@ public class VirtualBoxExperiments {
         //        stopNodes();
     }
 
-    static void createTemplate(String ip, String userName) throws Exception {
+    public static void createTemplate(String ip, String userName) throws Exception {
         File home = new File(System.getProperty("user.home"));
         String[] nodes = new String[] { ip };
         String cc = nodes[0];
@@ -666,7 +669,7 @@ public class VirtualBoxExperiments {
     }
 
     public static void main(String[] args) throws Exception {
-//        testStratosphere();
+        //        testStratosphere();
         VirtualBox.remove();
         System.exit(0);
         //        createTemplate("192.168.56.110", "ubuntu");

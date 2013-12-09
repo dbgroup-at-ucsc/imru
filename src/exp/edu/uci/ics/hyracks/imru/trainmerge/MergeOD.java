@@ -142,7 +142,7 @@ public class MergeOD<Model extends Serializable> extends
             Hashtable<Integer, LinkedList<ByteBuffer>> hash, int nPartitions)
             throws HyracksDataException {
         MergedFrames frames = MergedFrames.nextFrame(ctx, buffer, hash);
-        if (frames == null)
+        if (frames.data == null)
             return;
         try {
             TrainMergeContext context = new TrainMergeContext(ctx, "merge",

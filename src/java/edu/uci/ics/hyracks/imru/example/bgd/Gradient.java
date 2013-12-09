@@ -18,9 +18,9 @@ package edu.uci.ics.hyracks.imru.example.bgd;
 import java.io.Serializable;
 
 public class Gradient implements Serializable {
-    int correct=0;
-    int total=0;
-    float[] gradient;
+    public int correct = 0;
+    public int total = 0;
+    public float[] gradient;
 
     public Gradient(int numFeatures) {
         gradient = new float[numFeatures];

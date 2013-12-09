@@ -131,7 +131,7 @@ public class SpreadOD extends AbstractSingleActivityOperatorDescriptor {
             throws HyracksDataException {
         int frameSize = ctx.getFrameSize();
         MergedFrames frames = MergedFrames.nextFrame(ctx, buffer, hash);
-        if (!first && frames == null)
+        if (!first && frames.data == null)
             return;
         if (!last)
             writer.open();

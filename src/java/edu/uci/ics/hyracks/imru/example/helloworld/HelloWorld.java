@@ -16,6 +16,7 @@
 package edu.uci.ics.hyracks.imru.example.helloworld;
 
 import edu.uci.ics.hyracks.imru.example.utils.Client;
+import edu.uci.ics.hyracks.imru.util.Rt;
 
 /**
  * This example demonstrate how data flows through IMRU.
@@ -70,6 +71,7 @@ public class HelloWorld {
             String finalModel = Client.run(new HelloWorldJob(), "", args);
             System.out.println("FinalModel: " + finalModel);
         } catch (Throwable e) {
+            Rt.p("failed");
             e.printStackTrace();
             System.exit(0);
         }

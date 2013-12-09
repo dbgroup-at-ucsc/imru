@@ -22,7 +22,7 @@ public class Model implements Serializable {
     public float[] weights;
     public float error;
     public float stepSize = 1.0f;
-    public int roundsCompleted;
+    public int roundsCompleted=0;
     public int roundsRemaining;
 
     public Model(int numFeatures, int numRounds) {

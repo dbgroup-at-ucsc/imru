@@ -107,6 +107,9 @@ public class Client<Model extends Serializable, Data extends Serializable> {
         @Option(name = "-mem-cache", usage = "Load all data into memory")
         public boolean memCache = false;
 
+        @Option(name = "-dynamic", usage = "Dynamically alter aggregation tree")
+        public boolean dynamicAggr = false;
+
         @Option(name = "-no-disk-cache", usage = "Don't cache data on local disk (only works with local data)")
         public boolean noDiskCache = false;
 
@@ -241,6 +244,7 @@ public class Client<Model extends Serializable, Data extends Serializable> {
         control.parameters.compressIntermediateResultsAfterNIterations = options.compressAfterNIterations;
         control.localIntermediateModelPath = options.localIntermediateModelPath;
         control.modelFileName = options.modelFileNameHDFS;
+        control.dynamicAggr = options.dynamicAggr;
         control.memCache = options.memCache;
         control.noDiskCache = options.noDiskCache;
         control.frameSize = options.frameSize;
@@ -514,7 +518,7 @@ public class Client<Model extends Serializable, Data extends Serializable> {
         timer.cancel();
         for (String s : tmpjars) {
             Rt.p("remove jar " + s);
-            new File(s).delete();
+//            new File(s).delete();
         }
         return deploymentId;
     }

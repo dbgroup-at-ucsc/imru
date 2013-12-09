@@ -16,6 +16,7 @@
 package edu.uci.ics.hyracks.imru.runtime.bootstrap;
 
 import java.io.Serializable;
+import java.util.Hashtable;
 import java.util.Map;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
@@ -83,6 +84,8 @@ public class IMRURuntimeContext implements IWorkspaceFileFactory {
      * Rerun: > 0
      */
     public int rerunNum = 0;
+
+    public Hashtable<String, Object> userObjects = new Hashtable<String, Object>();
 
     public Map<StateKey, IStateObject> getAppStateStore() {
         return appStateMap;

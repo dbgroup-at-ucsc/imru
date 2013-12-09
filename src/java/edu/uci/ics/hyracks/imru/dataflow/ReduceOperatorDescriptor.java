@@ -44,6 +44,7 @@ import edu.uci.ics.hyracks.imru.util.Rt;
  * Evaluates the reduce function in an iterative map reduce update job.
  * 
  * @author Josh Rosen
+ * @author Rui Wang
  */
 public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
     private static final long serialVersionUID = 1L;
@@ -130,31 +131,15 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
             public void nextFrame(ByteBuffer encapsulatedChunk)
                     throws HyracksDataException {
                 try {
-                    //                    Rt.p("reduce frame");
                     MergedFrames frames = MergedFrames.nextFrame(ctx,
                             encapsulatedChunk, hash, imruContext.getNodeId()
                                     + " recv " + partition + " "
                                     + imruContext.getOperatorName());
-                    if (frames != null) {
-                        //                        Rt.p("reduce recv "
-                        //                                + MergedFrames.deserialize(frames.data));
+                    if (frames.data != null) {
                         if (imruContext.getIterationNumber() >= parameters.compressIntermediateResultsAfterNIterations)
                             frames.data = IMRUSerialize.decompress(frames.data);
                         io.add(frames.data);
                     }
-                    //                    ByteBuffer chunk = chunkFrameHelper
-                    //                            .extractChunk(encapsulatedChunk);
-                    //                    int senderPartition = chunkFrameHelper
-                    //                            .getPartition(encapsulatedChunk);
-                    //                    boolean isLastChunk = chunkFrameHelper
-                    //                            .isLastChunk(encapsulatedChunk);
-                    //                    enqueueChunk(chunk, senderPartition);
-                    //                    if (isLastChunk) {
-                    //                        byte[] data = IMRUSerialize.deserializeFromChunks(
-                    //                                imruContext, bufferedChunks
-                    //                                        .remove(senderPartition));
-                    //                        io.add(data);
-                    //                    }
                 } catch (HyracksDataException e) {
                     fail();
                     throw e;
