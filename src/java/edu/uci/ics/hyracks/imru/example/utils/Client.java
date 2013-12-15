@@ -55,6 +55,7 @@ import edu.uci.ics.hyracks.imru.api.IIMRUJob;
 import edu.uci.ics.hyracks.imru.api.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.api.IMRUJobControl;
 import edu.uci.ics.hyracks.imru.data.DataSpreadDriver;
+import edu.uci.ics.hyracks.imru.util.CreateDeployment;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 /**
@@ -112,9 +113,6 @@ public class Client<Model extends Serializable, Data extends Serializable> {
 
         @Option(name = "-no-disk-cache", usage = "Don't cache data on local disk (only works with local data)")
         public boolean noDiskCache = false;
-
-        @Option(name = "-app", usage = "Hyracks Application name")
-        public String app = "imru-examples";
 
         @Option(name = "-hadoop-conf", usage = "Path to Hadoop configuration")
         public String hadoopConfPath;
@@ -302,7 +300,7 @@ public class Client<Model extends Serializable, Data extends Serializable> {
      */
     public <T extends Serializable> JobStatus run(IIMRUJob<Model, Data, T> job,
             Model initialModel) throws Exception {
-        return control.run(deploymentId, job, initialModel, options.app);
+        return control.run(deploymentId, job, initialModel);
     }
 
     /**
@@ -312,12 +310,12 @@ public class Client<Model extends Serializable, Data extends Serializable> {
      */
     public JobStatus run(IIMRUJob2<Model, Data> job, Model initialModel)
             throws Exception {
-        return control.run(deploymentId, job, initialModel, options.app);
+        return control.run(deploymentId, job, initialModel);
     }
 
     public JobStatus generateData(IIMRUDataGenerator generator)
             throws Exception {
-        return control.generateData(deploymentId, generator, options.app);
+        return control.generateData(deploymentId, generator);
     }
 
     /**
@@ -462,66 +460,10 @@ public class Client<Model extends Serializable, Data extends Serializable> {
      * @throws Exception
      */
     public DeploymentId uploadApp() throws Exception {
-        return uploadApp(hcc, options.app, options.hadoopConfPath != null,
-                options.imruPort, options.ccTempPath, options.debug);
+        return CreateDeployment.uploadApp(hcc, options.hadoopConfPath != null, options.imruPort,
+                options.ccTempPath, options.debug);
     }
 
-    public static DeploymentId uploadApp(HyracksConnection hcc, String appName,
-            boolean includeHadoop, int imruPort, String tempDir)
-            throws Exception {
-        return uploadApp(hcc, appName, includeHadoop, imruPort, tempDir, false);
-    }
-
-    public static DeploymentId uploadApp(HyracksConnection hcc, String appName,
-            boolean includeHadoop, int imruPort, String tempDir, boolean debug)
-            throws Exception {
-        DeploymentId deploymentId = null;
-        Timer timer = new Timer();
-        //        File harFile = null;
-        Vector<String> jars = new Vector<String>();
-        Vector<String> tmpjars = new Vector<String>();
-        final long length = CreateHar.createJars(includeHadoop, imruPort,
-                tempDir, jars, tmpjars);
-        if (!debug) {
-            //            harFile = File.createTempFile("imru_app", ".zip");
-            //            FileOutputStream out = new FileOutputStream(harFile);
-            //            CreateHar.createHar(harFile, includeHadoop, imruPort, tempDir);
-            //            out.close();
-            //            final File harFile2 = harFile;
-            timer.schedule(new TimerTask() {
-                @Override
-                public void run() {
-                    Rt.p("Uploading jar files (%.2f MB). "
-                            + "If there isn't any response for a long time, "
-                            + "please check nc logs, "
-                            + "there might be ClassNotFoundException.",
-                            length / 1024.0 / 1024.0);
-                }
-            }, 2000);
-        }
-        try {
-            for (String s : jars)
-                System.out.println("uploading jar: " + s);
-            deploymentId = hcc.deployBinary(jars);
-            //            hcc.createApplication(appName, harFile);
-        } catch (Exception e) {
-            e.printStackTrace();
-            try {
-                Rt.p("Remove application " + appName);
-                hcc.unDeployBinary(deploymentId);
-            } catch (Exception e1) {
-                e1.printStackTrace();
-            }
-            Rt.p("Upload application " + appName);
-            hcc.deployBinary(jars);
-        }
-        timer.cancel();
-        for (String s : tmpjars) {
-            Rt.p("remove jar " + s);
-//            new File(s).delete();
-        }
-        return deploymentId;
-    }
 
     /**
      * @return The most recent model.
@@ -573,23 +515,10 @@ public class Client<Model extends Serializable, Data extends Serializable> {
     public static <M extends Serializable, D extends Serializable, R extends Serializable> M run(
             IIMRUJob<M, D, R> job, M initialModel, String[] args)
             throws Exception {
-        return run(job, initialModel, args, null);
-    }
-
-    /**
-     * run job
-     * 
-     * @throws Exception
-     */
-    public static <M extends Serializable, D extends Serializable, R extends Serializable> M run(
-            IIMRUJob<M, D, R> job, M initialModel, String[] args,
-            String overrideAppName) throws Exception {
         // create a client object, which handles everything
         Client<M, D> client = new Client<M, D>(args);
         try {
 
-            if (overrideAppName != null)
-                client.options.app = overrideAppName;
             client.init();
 
             // run job
@@ -648,8 +577,8 @@ public class Client<Model extends Serializable, Data extends Serializable> {
 
         for (int i = 0; i < src.length; i++) {
             DataSpreadDriver driver = new DataSpreadDriver(client.hcc,
-                    deploymentId, client.control.imruConnection,
-                    client.options.app, src[i], targetNodes, dest[i]);
+                    deploymentId, client.control.imruConnection, src[i],
+                    targetNodes, dest[i]);
             JobStatus status = driver.run();
             if (status == JobStatus.FAILURE) {
                 System.err.println("Job failed; see CC and NC logs");

@@ -2,12 +2,12 @@ package edu.uci.ics.hyracks.imru.example.helloworld;
 
 import java.io.File;
 
-import edu.uci.ics.hyracks.imru.example.utils.CreateHar;
 import edu.uci.ics.hyracks.imru.example.utils.ImruEC2;
+import edu.uci.ics.hyracks.imru.util.CreateDeployment;
 
 public class HelloWorldEC2 {
     public static void main(String[] args) throws Exception {
-        CreateHar.uploadJarFiles=false;
+        CreateDeployment.uploadJarFiles=false;
         File home = new File(System.getProperty("user.home"));
         File credentialsFile = new File(home, "AwsCredentials.properties");
         File privateKey = new File(home, "ruiwang.pem");

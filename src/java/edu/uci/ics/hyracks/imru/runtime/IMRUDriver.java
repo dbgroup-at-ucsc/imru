@@ -66,7 +66,6 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
     private final IMRUConnection imruConnection;
     private final IMRUJobFactory jobFactory;
     private final Configuration conf;
-    private final String app;
     private final UUID id;
     public boolean dynamicAggr;
 
@@ -99,8 +98,7 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
      */
     public IMRUDriver(HyracksConnection hcc, DeploymentId deploymentId,
             IMRUConnection imruConnection, IIMRUJob2<Model, Data> imruSpec,
-            Model initialModel, IMRUJobFactory jobFactory, Configuration conf,
-            String app) {
+            Model initialModel, IMRUJobFactory jobFactory, Configuration conf) {
         this.imruSpec = imruSpec;
         this.model = initialModel;
         this.hcc = hcc;
@@ -108,7 +106,6 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
         this.imruConnection = imruConnection;
         this.jobFactory = jobFactory;
         this.conf = conf;
-        this.app = app;
         id = jobFactory.getId();
         iterationCount = 0;
     }
@@ -275,8 +272,8 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
             return JobStatus.FAILURE;
 
         int rerunCount = 0;
-        JobSpecification job = jobFactory.generateJob(imruSpec, iterationNum,
-                -1, rerunCount, modelName, noDiskCache);
+        JobSpecification job = jobFactory.generateJob(imruSpec, deploymentId,
+                iterationNum, -1, rerunCount, modelName, noDiskCache);
         job.setMaxReattempts(0); //Let IMRU handle fault tolerance
         if (frameSize != 0)
             job.setFrameSize(frameSize);
@@ -312,8 +309,9 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
                     }
                     case Rerun: {
                         rerunCount++;
-                        job = jobFactory.generateJob(imruSpec, iterationNum,
-                                -1, rerunCount, modelName, noDiskCache);
+                        job = jobFactory.generateJob(imruSpec, deploymentId,
+                                iterationNum, -1, rerunCount, modelName,
+                                noDiskCache);
                         continue rerun;
                     }
                 }
@@ -367,10 +365,10 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
             Rt.p("recover job: " + incompletedPaths);
             IMRUJobFactory recoverFactory = new IMRUJobFactory(jobFactory,
                     incompletedPaths.toString(),
-                    IMRUJobFactory.AGGREGATION.AUTO,dynamicAggr);
-            JobSpecification job = recoverFactory
-                    .generateJob(imruSpec, iterationNum, 0,
-                            finishedRecoveryIteration, modelName, true);
+                    IMRUJobFactory.AGGREGATION.AUTO, dynamicAggr);
+            JobSpecification job = recoverFactory.generateJob(imruSpec,
+                    deploymentId, iterationNum, 0, finishedRecoveryIteration,
+                    modelName, true);
             job.setMaxReattempts(0); //Let IMRU handle fault tolerance
             if (frameSize != 0)
                 job.setFrameSize(frameSize);

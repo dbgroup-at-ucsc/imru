@@ -74,7 +74,7 @@ public class MergeOD<Model extends Serializable> extends
             @Override
             public void close() throws HyracksDataException {
                 if (partition == 0) {
-                    IMRUContext imruContext = new IMRUContext(ctx, "merge");
+                    IMRUContext imruContext = new IMRUContext(ctx, "merge",partition);
                     long start = System.currentTimeMillis();
                     Model model = (Model) imruContext.getModel();
                     try {

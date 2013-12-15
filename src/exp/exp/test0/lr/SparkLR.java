@@ -14,7 +14,7 @@ import java.util.Random;
 import java.util.zip.ZipOutputStream;
 
 import edu.uci.ics.hyracks.imru.example.utils.Client;
-import edu.uci.ics.hyracks.imru.example.utils.CreateHar;
+import edu.uci.ics.hyracks.imru.util.CreateDeployment;
 import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.test0.lr.ImruLR.Job;
 import exp.test0.lr.ImruLR.Model;
@@ -26,7 +26,7 @@ public class SparkLR {
     static void run() throws Exception {
         ByteArrayOutputStream memory = new ByteArrayOutputStream();
         ZipOutputStream zip2 = new ZipOutputStream(memory);
-        CreateHar.add("", new File("bin"), zip2);
+        CreateDeployment.add("", new File("bin"), zip2);
         zip2.finish();
         Rt.write(new File("tmp/simple-project-1.0.jar"), memory.toByteArray());
 

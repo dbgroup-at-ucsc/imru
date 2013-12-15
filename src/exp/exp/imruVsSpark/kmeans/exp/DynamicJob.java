@@ -3,31 +3,41 @@ package exp.imruVsSpark.kmeans.exp;
 import java.util.EnumSet;
 
 import edu.uci.ics.hyracks.api.client.HyracksConnection;
+import edu.uci.ics.hyracks.api.deployment.DeploymentId;
 import edu.uci.ics.hyracks.api.job.JobFlag;
 import edu.uci.ics.hyracks.api.job.JobId;
 import edu.uci.ics.hyracks.api.job.JobSpecification;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.DynamicAggregationStressTest;
 import edu.uci.ics.hyracks.imru.example.utils.Client;
+import edu.uci.ics.hyracks.imru.util.CreateDeployment;
 import edu.uci.ics.hyracks.imru.util.Rt;
-import exp.imruVsSpark.kmeans.exp.dynamic.SRTest;
 
 public class DynamicJob {
     public static void main(String[] args) throws Exception {
+        if (args.length == 0)
+            args = new String[] { "192.168.56.102" };
+        //        args = new String[] { "localhost" };
         //connect to hyracks
         HyracksConnection hcc = new HyracksConnection(args[0], 3099);
         String[] nodes = hcc.getNodeControllerInfos().keySet().toArray(
                 new String[0]);
         for (String s : nodes) {
-            Rt.p(s);
+            byte[] bs = hcc.getNodeControllerInfos().get(s).getNetworkAddress()
+                    .getIpAddress();
+            Rt.p(s + " " + (bs[0] & 0xFF) + "." + (bs[1] & 0xFF) + "."
+                    + (bs[2] & 0xFF) + "." + (bs[3] & 0xFF));
         }
 
-        Client.uploadApp(hcc, null, false, 0, "/tmp/cache");
+        DeploymentId did = CreateDeployment.uploadApp(hcc);
         //update application
         //        hcc.deployBinary(null);
 
         try {
-            JobSpecification job = SRTest.createJob(nodes);
-            JobId jobId = hcc.startJob(job, EnumSet.noneOf(JobFlag.class));
+            JobSpecification job = DynamicAggregationStressTest.createJob(did,
+                    nodes, null, null);
+            JobId jobId = hcc.startJob(did, job, EnumSet.noneOf(JobFlag.class));
             hcc.waitForCompletion(jobId);
+            Rt.p("finished");
         } catch (Throwable e) {
             e.printStackTrace();
         } finally {

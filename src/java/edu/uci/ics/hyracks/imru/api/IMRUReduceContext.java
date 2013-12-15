@@ -6,8 +6,9 @@ public class IMRUReduceContext extends IMRUContext {
     private int level;
     private boolean isLocal;
 
-    public IMRUReduceContext(IHyracksTaskContext ctx, String operatorName, boolean isLocal, int level) {
-        super(ctx, operatorName);
+    public IMRUReduceContext(IHyracksTaskContext ctx, String operatorName,
+            boolean isLocal, int level, int partition) {
+        super(ctx, operatorName, partition);
         this.isLocal = isLocal;
         this.level = level;
     }

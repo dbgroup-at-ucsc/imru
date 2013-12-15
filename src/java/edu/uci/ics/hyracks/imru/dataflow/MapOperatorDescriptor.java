@@ -151,8 +151,8 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                         if (context.modelAge < roundNum)
                             throw new HyracksDataException(
                                     "Model was not spread to "
-                                            + new IMRUContext(ctx, name)
-                                                    .getNodeId());
+                                            + new IMRUContext(ctx, name,
+                                                    partition).getNodeId());
                     }
 
                     // Load the examples.
@@ -182,7 +182,7 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                             + (readInReverse ? "forwards" : "reverse")
                             + " direction");
                     IMRUMapContext imruContext = new IMRUMapContext(ctx, name,
-                            inputSplits[partition].getPath());
+                            inputSplits[partition].getPath(), partition);
                     if (useDiskCache) {
                         RunFileWriter runFileWriter = state.getRunFileWriter();
                         if (runFileWriter != null) {
@@ -303,7 +303,7 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                                 ctx);
                         final IMRUMapContext parseContext = new IMRUMapContext(
                                 chunkFrameHelper.getContext(), name,
-                                inputSplits[partition].getPath());
+                                inputSplits[partition].getPath(), partition);
                         //                        writer = chunkFrameHelper.wrapWriter(writer, partition);
 
                         Future future = IMRUSerialize.threadPool

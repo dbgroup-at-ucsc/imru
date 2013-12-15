@@ -10,6 +10,7 @@ import edu.uci.ics.hyracks.api.job.JobId;
 import edu.uci.ics.hyracks.api.job.JobSpecification;
 import edu.uci.ics.hyracks.ec2.HyracksEC2Cluster;
 import edu.uci.ics.hyracks.imru.example.utils.Client;
+import edu.uci.ics.hyracks.imru.util.CreateDeployment;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class WordCountEC2 {
@@ -23,7 +24,7 @@ public class WordCountEC2 {
         HyracksConnection hcc = cluster.getHyracksConnection();
 
         //update application
-        Client.uploadApp(hcc, "text", false, 3288, "/tmp/imruModels");
+        CreateDeployment.uploadApp(hcc, "/tmp/imruModels");
 
         try {
             cluster.write(0, "/tmp/a.txt", "0a 1b 1c".getBytes());

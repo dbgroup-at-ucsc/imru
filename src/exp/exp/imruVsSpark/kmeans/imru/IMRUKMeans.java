@@ -26,7 +26,7 @@ import java.util.Random;
 import edu.uci.ics.hyracks.imru.api.IIMRUDataGenerator;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.example.utils.Client;
-import edu.uci.ics.hyracks.imru.example.utils.CreateHar;
+import edu.uci.ics.hyracks.imru.util.CreateDeployment;
 import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.imruVsSpark.data.DataGenerator;
 import exp.imruVsSpark.data.Distribution;
@@ -76,7 +76,7 @@ public class IMRUKMeans {
     public static int runEc2(String cc, int nodes, int size, String path,
             boolean memCache, boolean noDiskCache, int k, int iterations,
             String aggType, int aggArg,boolean dynamic) throws Exception {
-        CreateHar.uploadJarFiles = false;
+        CreateDeployment.uploadJarFiles = false;
         DataGenerator.TEMPLATE = "/home/ubuntu/test/exp_data/product_name";
         if (!new File(DataGenerator.TEMPLATE).exists())
             DataGenerator.TEMPLATE = "/home/wangrui/test/exp_data/product_name";
@@ -128,7 +128,7 @@ public class IMRUKMeans {
         System.out.println("Starting hyracks cluster");
         //        }
 
-        CreateHar.uploadJarFiles = false;
+        CreateDeployment.uploadJarFiles = false;
         cmdline += " -example-paths ";
         for (int i = 0; i < splits; i++) {
             if (i > 0)

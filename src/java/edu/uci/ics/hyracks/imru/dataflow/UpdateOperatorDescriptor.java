@@ -114,7 +114,7 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
             {
                 this.name = UpdateOperatorDescriptor.this.getDisplayName()
                         + partition;
-                imruContext = new IMRUContext(ctx, name);
+                imruContext = new IMRUContext(ctx, name,partition);
                 imruRuntimeInformation = new ImruIterationInformation();
             }
 

@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.Serializable;
 import java.util.Iterator;
 
-import edu.uci.ics.hyracks.imru.example.utils.CreateHar;
+import edu.uci.ics.hyracks.imru.util.CreateDeployment;
 import eu.stratosphere.pact.client.PlanExecutor;
 import eu.stratosphere.pact.client.RemoteExecutor;
 import eu.stratosphere.pact.common.contract.FileDataSink;
@@ -151,7 +151,7 @@ public class WordCount implements PlanAssembler, PlanAssemblerDescription {
         // that the JobManager is running on the local machine on the default
         // port. Change this according to your configuration.
         File tmpJar = new File("tmp/stratosphere_wordcount.jar");
-        CreateHar.createJar(new File("bin"), tmpJar);
+        CreateDeployment.createJar(new File("bin"), tmpJar);
         PlanExecutor ex = new RemoteExecutor("localhost", 6123, tmpJar
                 .getAbsolutePath());
         ex.executePlan(plan);

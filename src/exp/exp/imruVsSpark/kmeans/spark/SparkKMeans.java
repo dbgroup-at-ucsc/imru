@@ -18,7 +18,7 @@ import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFunction;
 import edu.uci.ics.hyracks.api.util.JavaSerializationUtils;
-import edu.uci.ics.hyracks.imru.example.utils.CreateHar;
+import edu.uci.ics.hyracks.imru.util.CreateDeployment;
 import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.imruVsSpark.data.DataGenerator;
 import exp.imruVsSpark.kmeans.FilledVectors;
@@ -56,7 +56,7 @@ public class SparkKMeans {
 
         ByteArrayOutputStream memory = new ByteArrayOutputStream();
         ZipOutputStream zip2 = new ZipOutputStream(memory);
-        CreateHar.add("", new File("bin"), zip2);
+        CreateDeployment.add("", new File("bin"), zip2);
         zip2.finish();
         Rt.write(new File("/tmp/simple-project-1.0.jar"), memory.toByteArray());
 

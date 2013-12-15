@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import edu.uci.ics.hyracks.imru.example.utils.CreateHar;
+import edu.uci.ics.hyracks.imru.util.CreateDeployment;
 import edu.uci.ics.hyracks.imru.util.Rt;
 import org.apache.spark.api.java.*;
 import org.apache.spark.api.java.function.Function;
@@ -15,7 +15,7 @@ public class SparkTest {
     public static void main(String[] args) throws IOException {
         ByteArrayOutputStream memory = new ByteArrayOutputStream();
         ZipOutputStream zip2 = new ZipOutputStream(memory);
-        CreateHar.add("", new File("bin"), zip2);
+        CreateDeployment.add("", new File("bin"), zip2);
         zip2.finish();
         Rt.write(new File("tmp/simple-project-1.0.jar"), memory.toByteArray());
 

@@ -20,14 +20,18 @@ public class IMRUContext {
 
     private String nodeId;
     protected IHyracksTaskContext ctx;
+    int partition;
 
-    public IMRUContext(IHyracksTaskContext ctx) {
-        this(ctx, null);
+    public IMRUContext(IHyracksTaskContext ctx, int partition) {
+        this(ctx, null, partition);
     }
 
-    public IMRUContext(IHyracksTaskContext ctx, String operatorName) {
+    public IMRUContext(IHyracksTaskContext ctx, String operatorName,
+            int partition) {
         this.ctx = ctx;
         this.operatorName = operatorName;
+        this.partition = partition;
+
         IHyracksJobletContext jobletContext = ctx.getJobletContext();
         if (jobletContext instanceof Joblet) {
             this.nodeController = ((Joblet) jobletContext).getNodeController();
@@ -37,6 +41,10 @@ public class IMRUContext {
 
     public String getNodeId() {
         return nodeId;
+    }
+
+    public int getPartition() {
+        return partition;
     }
 
     public NodeControllerService getNodeController() {

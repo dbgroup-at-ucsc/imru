@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-package edu.uci.ics.hyracks.imru.example.utils;
+package edu.uci.ics.hyracks.imru.util;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -23,14 +23,19 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashSet;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.Vector;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import edu.uci.ics.hyracks.imru.util.Rt;
+import edu.uci.ics.hyracks.api.client.HyracksConnection;
+import edu.uci.ics.hyracks.api.deployment.DeploymentId;
 
-public class CreateHar {
+public class CreateDeployment {
     public static void copy(InputStream in, OutputStream out)
             throws IOException {
         byte[] bs = new byte[1024];
@@ -99,20 +104,20 @@ public class CreateHar {
                 "hyracks-control-cc-0.2.3-SNAPSHOT.jar",
                 "hyracks-control-nc-0.2.3-SNAPSHOT.jar",
                 "hyracks-ipc-0.2.3-SNAPSHOT.jar",
-                "hyracks-api-0.2.10-SNAPSHOT.jar",
-                "hyracks-control-cc-0.2.10-SNAPSHOT.jar",
-                "hyracks-control-common-0.2.10-SNAPSHOT.jar",
-                "hyracks-control-nc-0.2.10-SNAPSHOT.jar",
-                "hyracks-data-std-0.2.10-SNAPSHOT.jar",
-                "hyracks-dataflow-common-0.2.10-SNAPSHOT.jar",
-                "hyracks-dataflow-std-0.2.10-SNAPSHOT.jar",
-                "hyracks-ec2-0.2.10-SNAPSHOT.jar",
-                "hyracks-hdfs-core-0.2.10-SNAPSHOT.jar",
-                "hyracks-ipc-0.2.10-SNAPSHOT.jar",
-                "hyracks-net-0.2.10-SNAPSHOT.jar",
-                "hyracks-server-0.2.10-SNAPSHOT.jar",
-                "hyracks-storage-am-btree-0.2.10-SNAPSHOT.jar",
-                "hyracks-storage-am-common-0.2.10-SNAPSHOT.jar",
+                "hyracks-api-0.2.11-SNAPSHOT.jar",
+                "hyracks-control-cc-0.2.11-SNAPSHOT.jar",
+                "hyracks-control-common-0.2.11-SNAPSHOT.jar",
+                "hyracks-control-nc-0.2.11-SNAPSHOT.jar",
+                "hyracks-data-std-0.2.11-SNAPSHOT.jar",
+                "hyracks-dataflow-common-0.2.11-SNAPSHOT.jar",
+                "hyracks-dataflow-std-0.2.11-SNAPSHOT.jar",
+                "hyracks-ec2-0.2.11-SNAPSHOT.jar",
+                "hyracks-hdfs-core-0.2.11-SNAPSHOT.jar",
+                "hyracks-ipc-0.2.11-SNAPSHOT.jar",
+                "hyracks-net-0.2.11-SNAPSHOT.jar",
+                "hyracks-server-0.2.11-SNAPSHOT.jar",
+                "hyracks-storage-am-btree-0.2.11-SNAPSHOT.jar",
+                "hyracks-storage-am-common-0.2.11-SNAPSHOT.jar",
                 "junit-4.8.1.jar",
                 "json-20090211.jar",
                 "httpclient-4.1-alpha2.jar",
@@ -186,7 +191,9 @@ public class CreateHar {
                 "twitter4j-core-3.0.3.jar", "twitter4j-stream-3.0.3.jar",
                 "velocity-1.7.jar", "zeromq-scala-binding_2.9.1-0.0.6.jar",
                 "zkclient-0.1.jar", "zookeeper-3.3.3.jar",
-                "httpclient-4.1.jar", "hyracks-comm-0.2.10-SNAPSHOT.jar", };
+                "httpclient-4.1.jar", "hyracks-comm-0.2.11-SNAPSHOT.jar",
+                "hyracks-hdfs-0.20.2-0.2.11-SNAPSHOT.jar",
+                "hyracks-storage-common-0.2.11-SNAPSHOT.jar", };
         for (String s : ss)
             ignoredJars.add(s);
     }
@@ -197,7 +204,8 @@ public class CreateHar {
             int imruPort, String tempDir) throws IOException {
         ZipOutputStream zip = new ZipOutputStream(new FileOutputStream(harFile));
         HashSet<String> existingEntries = new HashSet<String>();
-        String p = CreateHar.class.getName().replace('.', '/') + ".class";
+        String p = CreateDeployment.class.getName().replace('.', '/')
+                + ".class";
         String string = System.getProperty("java.class.path");
         int userCodeId = 0;
         if (string != null) {
@@ -338,5 +346,96 @@ public class CreateHar {
             }
         }
         return length;
+    }
+
+    public static DeploymentId uploadApp(HyracksConnection hcc)
+            throws Exception {
+        return uploadApp(hcc, "/tmp");
+    }
+
+    public static DeploymentId uploadApp(HyracksConnection hcc, String tempDir)
+            throws Exception {
+        return uploadApp(hcc, false, 3288, tempDir);
+    }
+
+    public static DeploymentId uploadApp(HyracksConnection hcc,
+            boolean includeHadoop, int imruPort, String tempDir)
+            throws Exception {
+        return uploadApp(hcc, includeHadoop, imruPort, tempDir, false);
+    }
+
+    public static DeploymentId uploadApp(HyracksConnection hcc,
+            boolean includeHadoop, int imruPort, String tempDir, boolean debug)
+            throws Exception {
+        DeploymentId deploymentId = null;
+        Timer timer = new Timer();
+        //        File harFile = null;
+        Vector<String> jars = new Vector<String>();
+        Vector<String> tmpjars = new Vector<String>();
+        final long length = CreateDeployment.createJars(includeHadoop,
+                imruPort, tempDir, jars, tmpjars);
+        if (!debug) {
+            //            harFile = File.createTempFile("imru_app", ".zip");
+            //            FileOutputStream out = new FileOutputStream(harFile);
+            //            CreateHar.createHar(harFile, includeHadoop, imruPort, tempDir);
+            //            out.close();
+            //            final File harFile2 = harFile;
+            timer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    Rt.p("Uploading jar files (%.2f MB). "
+                            + "If there isn't any response for a long time, "
+                            + "please check nc logs, "
+                            + "there might be ClassNotFoundException.",
+                            length / 1024.0 / 1024.0);
+                }
+            }, 2000);
+        }
+        try {
+            for (String s : jars)
+                System.out.println("uploading jar: " + s);
+            deploymentId = hcc.deployBinary(jars);
+            //            hcc.createApplication(appName, harFile);
+        } catch (Exception e) {
+            e.printStackTrace();
+            try {
+                Rt.p("Remove application");
+                hcc.unDeployBinary(deploymentId);
+            } catch (Exception e1) {
+                e1.printStackTrace();
+            }
+            Rt.p("Upload application");
+            hcc.deployBinary(jars);
+        }
+        timer.cancel();
+        for (String s : tmpjars) {
+            Rt.p("remove jar " + s);
+            new File(s).delete();
+        }
+        return deploymentId;
+    }
+
+    public static String[] listNodes(HyracksConnection hcc) throws Exception {
+        String[] nodes = hcc.getNodeControllerInfos().keySet().toArray(
+                new String[0]);
+        Arrays.sort(nodes, new Comparator<String>() {
+            @Override
+            public int compare(String o1, String o2) {
+                return o1.compareTo(o2);
+            }
+        });
+        return nodes;
+    }
+
+    public static String[] listIp(HyracksConnection hcc, String[] nodes)
+            throws Exception {
+        String[] ip = new String[nodes.length];
+        for (int i = 0; i < nodes.length; i++) {
+            byte[] bs = hcc.getNodeControllerInfos().get(nodes[i])
+                    .getNetworkAddress().getIpAddress();
+            ip[i] = ((bs[0] & 0xFF) + "." + (bs[1] & 0xFF) + "."
+                    + (bs[2] & 0xFF) + "." + (bs[3] & 0xFF));
+        }
+        return ip;
     }
 }

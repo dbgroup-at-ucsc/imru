@@ -28,8 +28,8 @@ import edu.uci.ics.hyracks.imru.api.ImruParameters;
 import edu.uci.ics.hyracks.imru.dataflow.ReduceOperatorDescriptor;
 import edu.uci.ics.hyracks.imru.dataflow.SpreadConnectorDescriptor;
 import edu.uci.ics.hyracks.imru.dataflow.dynamic.ImruRecvOD;
-import edu.uci.ics.hyracks.imru.dataflow.dynamic.SRTest;
 import edu.uci.ics.hyracks.imru.dataflow.dynamic.ImruSendOD;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.DynamicAggregationStressTest;
 
 /**
  * Constructs aggregation trees between the Map and Update operators.

@@ -63,8 +63,8 @@ import edu.uci.ics.hyracks.imru.dataflow.SpreadConnectorDescriptor;
 import edu.uci.ics.hyracks.imru.dataflow.SpreadOD;
 import edu.uci.ics.hyracks.imru.dataflow.UpdateOperatorDescriptor;
 import edu.uci.ics.hyracks.imru.dataflow.dynamic.ImruRecvOD;
-import edu.uci.ics.hyracks.imru.dataflow.dynamic.SRTest;
 import edu.uci.ics.hyracks.imru.dataflow.dynamic.ImruSendOD;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.DynamicAggregationStressTest;
 import edu.uci.ics.hyracks.imru.file.ConfigurationFactory;
 import edu.uci.ics.hyracks.imru.file.IMRUInputSplitProvider;
 import edu.uci.ics.hyracks.imru.file.IMRUFileSplit;
@@ -329,9 +329,10 @@ public class IMRUJobFactory {
      * @throws HyracksException
      */
     @SuppressWarnings( { "rawtypes", "unchecked" })
-    public JobSpecification generateJob(IIMRUJob2 model, int roundNum,
-            int recoverRoundNum, int rerunNum, String modelName,
-            boolean noDiskCache) throws HyracksException {
+    public JobSpecification generateJob(IIMRUJob2 model,
+            DeploymentId deploymentId, int roundNum, int recoverRoundNum,
+            int rerunNum, String modelName, boolean noDiskCache)
+            throws HyracksException {
 
         JobSpecification spec = new JobSpecification();
         // Create operators
@@ -346,11 +347,11 @@ public class IMRUJobFactory {
                 mapOperator, mapOperatorLocations);
 
         if (aggType == AGGREGATION.NARY && dynamicAggr) {
-            int[] targets = SRTest.getAggregationTree(
+            int[] targets = DynamicAggregationStressTest.getAggregationTree(
                     mapOperatorLocations.length, this.fanIn);
             ImruSendOD send = new ImruSendOD(spec, targets, model, "send",
                     parameters, modelName, imruConnection);
-            ImruRecvOD recv = new ImruRecvOD(spec, targets);
+            ImruRecvOD recv = new ImruRecvOD(spec, deploymentId, targets);
             spec.connect(new SpreadConnectorDescriptor(spec, null, null), send,
                     0, recv, 0);
             PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, send,

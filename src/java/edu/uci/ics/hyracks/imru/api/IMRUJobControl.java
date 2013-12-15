@@ -103,12 +103,12 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
      * @throws Exception
      */
     public JobStatus run(DeploymentId deploymentId,
-            IIMRUJob2<Model, Data> job2, Model initialModel, String app)
+            IIMRUJob2<Model, Data> job2, Model initialModel)
             throws Exception {
         //        Model initialModel = job2.initModel();
         driver = new IMRUDriver<Model, Data>(hcc, deploymentId, imruConnection,
                 job2, initialModel, jobFactory, confFactory
-                        .createConfiguration(), app);
+                        .createConfiguration());
         driver.memCache = memCache;
         driver.noDiskCache = noDiskCache;
         driver.modelFileName = modelFileName;
@@ -118,9 +118,9 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
     }
 
     public JobStatus generateData(DeploymentId deploymentId,
-            IIMRUDataGenerator generator, String app) throws Exception {
+            IIMRUDataGenerator generator) throws Exception {
         driver = new IMRUDriver<Model, Data>(hcc, deploymentId, imruConnection,
-                null, null, jobFactory, confFactory.createConfiguration(), app);
+                null, null, jobFactory, confFactory.createConfiguration());
         driver.dynamicAggr = dynamicAggr;
         driver.memCache = memCache;
         driver.noDiskCache = noDiskCache;
@@ -139,10 +139,10 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
      * @throws Exception
      */
     public <T extends Serializable> JobStatus run(DeploymentId deploymentId,
-            IIMRUJob<Model, Data, T> job, Model initialModel, String app)
+            IIMRUJob<Model, Data, T> job, Model initialModel)
             throws Exception {
         return run(deploymentId, new IMRUJob2Impl<Model, Data, T>(deploymentId,
-                job), initialModel, app);
+                job), initialModel);
     }
 
     /**

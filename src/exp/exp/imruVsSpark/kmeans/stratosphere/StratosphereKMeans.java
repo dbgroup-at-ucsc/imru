@@ -6,7 +6,7 @@ import java.util.Iterator;
 import java.util.Random;
 
 import edu.uci.ics.hyracks.api.util.JavaSerializationUtils;
-import edu.uci.ics.hyracks.imru.example.utils.CreateHar;
+import edu.uci.ics.hyracks.imru.util.CreateDeployment;
 import edu.uci.ics.hyracks.imru.util.Rt;
 import eu.stratosphere.pact.client.PlanExecutor;
 import eu.stratosphere.pact.client.RemoteExecutor;
@@ -231,7 +231,7 @@ public class StratosphereKMeans implements PlanAssembler,
                 "file://" + resultFile.getAbsolutePath(),//
                 "" + iterations, "" + dataGenerator.dims, "" + k);
         File tmpJar = new File("/tmp/stratosphere_kmeans.jar");
-        CreateHar.createJar(new File("bin"), tmpJar);
+        CreateDeployment.createJar(new File("bin"), tmpJar);
         PlanExecutor ex = new RemoteExecutor(host, 6123, tmpJar
                 .getAbsolutePath());
         ex.executePlan(plan);
@@ -250,7 +250,7 @@ public class StratosphereKMeans implements PlanAssembler,
                 "file://" + new File("tmp/result.txt").getAbsolutePath(),//
                 "5", "2", "2");
         File tmpJar = new File("tmp/stratosphere_kmeans.jar");
-        CreateHar.createJar(new File("bin"), tmpJar);
+        CreateDeployment.createJar(new File("bin"), tmpJar);
         PlanExecutor ex = new RemoteExecutor("localhost", 6123, tmpJar
                 .getAbsolutePath());
         ex.executePlan(plan);

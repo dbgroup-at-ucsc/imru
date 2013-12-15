@@ -153,7 +153,7 @@ public class DataLoadOperatorDescriptor extends
                     dataWriter = new DataWriter<Serializable>(vector);
                 }
 
-                imruContext = new IMRUContext(fileCtx, name);
+                imruContext = new IMRUContext(fileCtx, name,partition);
                 if (!hdfsLoad) {
                     final IMRUFileSplit split = inputSplits[partition];
                     try {

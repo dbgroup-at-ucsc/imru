@@ -34,6 +34,7 @@ import edu.uci.ics.hyracks.api.dataflow.IOperatorNodePushable;
 import edu.uci.ics.hyracks.api.dataflow.value.IRecordDescriptorProvider;
 import edu.uci.ics.hyracks.api.dataflow.value.ISerializerDeserializer;
 import edu.uci.ics.hyracks.api.dataflow.value.RecordDescriptor;
+import edu.uci.ics.hyracks.api.deployment.DeploymentId;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.api.job.JobFlag;
 import edu.uci.ics.hyracks.api.job.JobId;
@@ -60,12 +61,17 @@ import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
 import edu.uci.ics.hyracks.imru.api.ImruParameters;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
-import edu.uci.ics.hyracks.imru.api.TupleWriter;
 import edu.uci.ics.hyracks.imru.data.MergedFrames;
 import edu.uci.ics.hyracks.imru.dataflow.SpreadConnectorDescriptor;
+import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
+import edu.uci.ics.hyracks.imru.util.CreateDeployment;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
-public class SRTest {
+public class DynamicAggregationStressTest {
+    public static int interval = 5000;
+    public static int modelSize = 10;
+    public static Object sync = new Object();
+
     public static int[] getAggregationTree(int nodeCount, int arity) {
         if (arity < 2)
             throw new Error();
@@ -78,118 +84,135 @@ public class SRTest {
         return targets;
     }
 
-    public static JobSpecification createJob(String[] mapOperatorLocations)
-            throws InterruptedException, IOException {
-        final IIMRUJob<String, String, String> imruSpec = new IIMRUJob<String, String, String>() {
-            @Override
-            public String update(IMRUContext ctx, Iterator<String> input,
-                    String model, ImruIterationInformation iterationInfo)
-                    throws IMRUDataException {
-                return null;
-            }
+    static class Job implements IIMRUJob<String, String, String> {
+        @Override
+        public String update(IMRUContext ctx, Iterator<String> input,
+                String model, ImruIterationInformation iterationInfo)
+                throws IMRUDataException {
+            return null;
+        }
 
-            @Override
-            public boolean shouldTerminate(String model,
-                    ImruIterationInformation iterationInfo) {
-                return false;
-            }
+        @Override
+        public boolean shouldTerminate(String model,
+                ImruIterationInformation iterationInfo) {
+            return false;
+        }
 
-            @Override
-            public String reduce(IMRUContext ctx, Iterator<String> input)
-                    throws IMRUDataException {
-                //                StringBuilder sb = new StringBuilder();
-                //                while (input.hasNext()) {
-                //                    sb.append(input.next() + ",");
-                //                }
-                //                return sb.toString();
-                char[] cs = new char[5 * 1024 * 1024];
-                return new String(cs);
+        @Override
+        public String reduce(IMRUContext ctx, Iterator<String> input)
+                throws IMRUDataException {
+            StringBuilder sb = new StringBuilder();
+            while (input.hasNext()) {
+                //                input.next();
+                sb.append(input.next() + ",");
             }
+            return sb.toString();
+            //            char[] cs = new char[modelSize / 2];
+            //            return new String(cs);
+        }
 
-            @Override
-            public void parse(IMRUContext ctx, InputStream input,
-                    DataWriter<String> output) throws IOException {
-            }
+        @Override
+        public void parse(IMRUContext ctx, InputStream input,
+                DataWriter<String> output) throws IOException {
+        }
 
-            @Override
-            public RecoveryAction onJobFailed(
-                    List<ImruSplitInfo> completedRanges, long dataSize,
-                    int optimalNodesForRerun, float rerunTime,
-                    int optimalNodesForPartiallyRerun, float partiallyRerunTime) {
-                return null;
-            }
+        @Override
+        public RecoveryAction onJobFailed(List<ImruSplitInfo> completedRanges,
+                long dataSize, int optimalNodesForRerun, float rerunTime,
+                int optimalNodesForPartiallyRerun, float partiallyRerunTime) {
+            return null;
+        }
 
-            @Override
-            public String map(IMRUContext ctx, Iterator<String> input,
-                    String model) throws IOException {
-                Rt.sleep(Integer.parseInt(ctx.getNodeId().substring(2)) * 1000);
-                //                Rt.p("send " + ctx.getNodeId());
-                return ctx.getNodeId();
+        @Override
+        public String map(IMRUContext ctx, Iterator<String> input, String model)
+                throws IOException {
+            //            Rt.sleep(1000);
+            try {
+                synchronized (sync) {
+                    sync.wait();
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
+            //            Rt.sleep(Integer.parseInt(ctx.getNodeId().substring(2)) * interval);
+            //                Rt.p("send " + ctx.getNodeId());
+            return "" + ctx.getPartition();
+        }
 
-            @Override
-            public String integrate(String model1, String model2) {
-                return null;
-            }
+        @Override
+        public String integrate(String model1, String model2) {
+            return null;
+        }
 
-            @Override
-            public int getCachedDataFrameSize() {
-                return 0;
-            }
-        };
+        @Override
+        public int getCachedDataFrameSize() {
+            return 0;
+        }
+    };
+
+    static class Read extends AbstractSingleActivityOperatorDescriptor {
+        IMRUJob2Impl imru;
+
+        public Read(JobSpecification job, IMRUJob2Impl imru) {
+            super(job, 0, 1);
+            this.imru = imru;
+            recordDescriptors[0] = new RecordDescriptor(
+                    new ISerializerDeserializer[1]);
+        }
+
+        @Override
+        public IOperatorNodePushable createPushRuntime(
+                final IHyracksTaskContext ctx,
+                IRecordDescriptorProvider recordDescProvider,
+                final int partition, int nPartitions) {
+            return new AbstractUnaryOutputSourceOperatorNodePushable() {
+                @Override
+                public void initialize() throws HyracksDataException {
+                    writer.open();
+                    try {
+                        ByteBuffer frame = ctx.allocateFrame();
+                        ByteArrayOutputStream out = new ByteArrayOutputStream();
+                        IMRUMapContext context = new IMRUMapContext(ctx, "",
+                                "", partition);
+                        imru.map(context, null, "", out, 1024);
+                        byte[] data = out.toByteArray();
+                        //                            Rt.p("send " + MergedFrames.deserialize(data)
+                        //                                    + " to " + partition);
+                        MergedFrames.serializeToFrames(context, frame, ctx
+                                .getFrameSize(), writer, data, partition,
+                                partition, partition, "");
+                    } catch (Exception e) {
+                        writer.fail();
+                        throw new HyracksDataException(e);
+                    } finally {
+                        writer.close();
+                    }
+                }
+            };
+        }
+    }
+
+    public static JobSpecification createJob(DeploymentId deploymentId,
+            String[] mapOperatorLocations, String modelName,
+            IMRUConnection imruConnection) throws InterruptedException,
+            IOException {
+        final IIMRUJob<String, String, String> imruSpec = new Job();
         final IMRUJob2Impl imru = new IMRUJob2Impl(null, imruSpec);
         int[] targets = getAggregationTree(mapOperatorLocations.length, 2);
 
         JobSpecification job = new JobSpecification();
-        IOperatorDescriptor reader = new AbstractSingleActivityOperatorDescriptor(
-                job, 0, 1) {
-            {
-                recordDescriptors[0] = new RecordDescriptor(
-                        new ISerializerDeserializer[1]);
-            }
-
-            @Override
-            public IOperatorNodePushable createPushRuntime(
-                    final IHyracksTaskContext ctx,
-                    IRecordDescriptorProvider recordDescProvider,
-                    final int partition, int nPartitions) {
-                return new AbstractUnaryOutputSourceOperatorNodePushable() {
-                    @Override
-                    public void initialize() throws HyracksDataException {
-                        writer.open();
-                        try {
-                            ByteBuffer frame = ctx.allocateFrame();
-                            ByteArrayOutputStream out = new ByteArrayOutputStream();
-                            IMRUMapContext context = new IMRUMapContext(ctx,
-                                    "", "");
-                            imru.map(context, null, "", out, 1024);
-                            byte[] data = out.toByteArray();
-                            //                            Rt.p("send " + MergedFrames.deserialize(data)
-                            //                                    + " to " + partition);
-                            MergedFrames.serializeToFrames(context, frame, ctx
-                                    .getFrameSize(), writer, data, partition,
-                                    partition, partition, "");
-                        } catch (Exception e) {
-                            writer.fail();
-                            throw new HyracksDataException(e);
-                        } finally {
-                            writer.close();
-                        }
-                    }
-                };
-            }
-        };
+        IOperatorDescriptor reader = new Read(job, imru);
         ImruParameters parameters = new ImruParameters();
         PartitionConstraintHelper.addAbsoluteLocationConstraint(job, reader,
                 mapOperatorLocations);
         ImruSendOD send = new ImruSendOD(job, targets, imru, "abc", parameters,
-                null, null);
+                modelName, imruConnection);
         //        job.connect(new MToNReplicatingConnectorDescriptor(job), reader, 0,
         //                send, 0);
         job.connect(new OneToOneConnectorDescriptor(job), reader, 0, send, 0);
         //        job.connect(new SpreadConnectorDescriptor(job, null, null), reader, 0,
         //                send, 0);
-        ImruRecvOD recv = new ImruRecvOD(job, targets);
+        ImruRecvOD recv = new ImruRecvOD(job, deploymentId, targets);
         job.connect(new SpreadConnectorDescriptor(job, null, null), send, 0,
                 recv, 0);
         PartitionConstraintHelper.addAbsoluteLocationConstraint(job, send,
@@ -224,7 +247,7 @@ public class SRTest {
         });
     }
 
-    public static void main(String[] args) throws Exception {
+    public static String[] start(int nodeCount) throws Exception {
         Rt.showTime = false;
         //        SendOperator.fixedTree=true;
         disableLogging();
@@ -242,7 +265,7 @@ public class SRTest {
         ClusterControllerService cc = new ClusterControllerService(ccConfig);
         cc.start();
 
-        String[] nodes = new String[5];
+        String[] nodes = new String[nodeCount];
         for (int i = 0; i < nodes.length; i++) {
             NCConfig config = new NCConfig();
             config.ccHost = "127.0.0.1";
@@ -255,20 +278,53 @@ public class SRTest {
             NodeControllerService nc = new NodeControllerService(config);
             nc.start();
         }
+        return nodes;
+    }
 
-        //connect to hyracks
-        IHyracksClientConnection hcc = new HyracksConnection("localhost", 3099);
-
-        //update application
-        hcc.deployBinary(null);
-
+    public static void main(String[] args) throws Exception {
+        int nodeCount = 16;
+//        ImruSendOperator.debug = true;
+        ImruSendOperator.nodeCount = nodeCount;
+        ImruSendOperator.maxWaitTimeBeforeSwap = 0;
+        start(nodeCount);
+        HyracksConnection hcc = new HyracksConnection("localhost", 3099);
+        //        DeploymentId did = CreateDeployment.uploadApp(hcc);
+        DeploymentId did = hcc.deployBinary(null);
+        String[] nodes = CreateDeployment.listNodes(hcc);
         try {
-
-            JobSpecification job = createJob(nodes);
-
-            JobId jobId = hcc.startJob(job, EnumSet.noneOf(JobFlag.class));
-            hcc.waitForCompletion(jobId);
-
+            IMRUConnection imruConnection = new IMRUConnection("localhost",
+                    3288);
+            for (int i = 0; i < 10; i++) {
+                JobSpecification job = createJob(did, nodes, "model",
+                        imruConnection);
+                JobId jobId = hcc.startJob(did, job, EnumSet
+                        .noneOf(JobFlag.class));
+                new Thread() {
+                    public void run() {
+                        try {
+                            Thread.sleep(500);
+                            synchronized (sync) {
+                                sync.notifyAll();
+                            }
+                            while (true) {
+                                if (System.in.available() > 0) {
+                                    while (System.in.available() > 0)
+                                        System.in.read();
+                                    ImruSendOperator.printAggrTree();
+                                }
+                                Thread.sleep(500);
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    };
+                }.start();
+                hcc.waitForCompletion(jobId);
+                String s = (String) imruConnection.downloadModel("model");
+                Rt.p(s);
+                if (!s.startsWith(nodeCount + " "))
+                    throw new Error();
+            }
         } catch (Throwable e) {
             e.printStackTrace();
         } finally {

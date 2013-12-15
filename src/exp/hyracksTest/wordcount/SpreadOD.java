@@ -156,7 +156,7 @@ public class SpreadOD extends AbstractSingleActivityOperatorDescriptor {
         try {
             if (first != (queue == null))
                 throw new Error();
-            IMRUContext imruContext = new IMRUContext(ctx);
+            IMRUContext imruContext = new IMRUContext(ctx,partition);
             String nodeId = imruContext.getNodeId();
             byte[] bs = null;
             if (first) {

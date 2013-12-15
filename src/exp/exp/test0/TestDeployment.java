@@ -40,6 +40,7 @@ import edu.uci.ics.hyracks.api.dataflow.value.ISerializerDeserializer;
 import edu.uci.ics.hyracks.api.dataflow.value.ITuplePartitionComputer;
 import edu.uci.ics.hyracks.api.dataflow.value.ITuplePartitionComputerFactory;
 import edu.uci.ics.hyracks.api.dataflow.value.RecordDescriptor;
+import edu.uci.ics.hyracks.api.deployment.DeploymentId;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.api.io.FileReference;
 import edu.uci.ics.hyracks.api.job.JobFlag;
@@ -61,6 +62,7 @@ import edu.uci.ics.hyracks.dataflow.std.file.FileSplit;
 import edu.uci.ics.hyracks.imru.api.TupleReader;
 import edu.uci.ics.hyracks.imru.api.TupleWriter;
 import edu.uci.ics.hyracks.imru.example.utils.Client;
+import edu.uci.ics.hyracks.imru.util.CreateDeployment;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 /**
@@ -388,7 +390,7 @@ public class TestDeployment {
         HyracksConnection hcc = new HyracksConnection("localhost", 3099);
 
         //update application
-        Client.uploadApp(hcc, "text", false, 3288, "/tmp/imruModels");
+        DeploymentId did = CreateDeployment.uploadApp(hcc);
 
         try {
             Rt.write(new File("/tmp/a.txt"), "0a 1b 1c".getBytes());
@@ -398,7 +400,7 @@ public class TestDeployment {
                     parseFileSplits("NC0:/tmp/a.txt,NC1:/tmp/b.txt"),
                     parseFileSplits("NC0:/tmp/out0.txt,NC1:/tmp/out1.txt"));
 
-            JobId jobId = hcc.startJob(job, EnumSet.noneOf(JobFlag.class));
+            JobId jobId = hcc.startJob(did, job, EnumSet.noneOf(JobFlag.class));
             hcc.waitForCompletion(jobId);
 
             Rt.np("Output 0:");

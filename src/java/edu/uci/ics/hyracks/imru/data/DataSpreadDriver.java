@@ -26,19 +26,17 @@ public class DataSpreadDriver {
     private final HyracksConnection hcc;
     DeploymentId deploymentId;
     private final IMRUConnection imruConnection;
-    private final String app;
 
     File file;
     public String[] targetNodes;
     String targetPath;
 
     public DataSpreadDriver(HyracksConnection hcc, DeploymentId deploymentId,
-            IMRUConnection imruConnection, String app, File file,
+            IMRUConnection imruConnection, File file,
             String[] targetNodes, String targetPath) {
         this.hcc = hcc;
         this.deploymentId = deploymentId;
         this.imruConnection = imruConnection;
-        this.app = app;
         this.file = file;
         this.targetNodes = targetNodes;
         this.targetPath = targetPath;

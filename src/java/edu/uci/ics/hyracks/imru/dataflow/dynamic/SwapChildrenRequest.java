@@ -6,6 +6,11 @@ public class SwapChildrenRequest extends SwapCommand {
     int removePartition;
     int addPartition;
 
+    public SwapChildrenRequest(int remove, int add) {
+        this.removePartition = remove;
+        this.addPartition = add;
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();

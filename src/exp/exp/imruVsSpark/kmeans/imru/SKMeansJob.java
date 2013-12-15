@@ -87,7 +87,6 @@ public class SKMeansJob implements
     @Override
     public FilledVectors map(IMRUContext ctx, Iterator<SparseVector> input,
             SKMeansModel model) throws IOException {
-        Rt.sleep(Integer.parseInt(ctx.getNodeId().substring(2)) * 10000);
         FilledVectors result = new FilledVectors(k, dimensions);
         while (input.hasNext()) {
             SparseVector dataPoint = input.next();
@@ -95,6 +94,8 @@ public class SKMeansJob implements
             result.centroids[rs.belong].add(dataPoint);
             result.distanceSum += rs.dis;
         }
+        if (ctx.getPartition() == 7)
+            Rt.sleep(30000);
         //        Rt.p(result.count());
         return result;
     }

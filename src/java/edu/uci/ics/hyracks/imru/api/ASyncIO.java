@@ -19,6 +19,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
+import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class ASyncIO<Data> {
     private int size = 32;

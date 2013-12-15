@@ -92,7 +92,8 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
             @Override
             public void open() throws HyracksDataException {
                 writer.open();
-                imruContext = new IMRUReduceContext(ctx, name, isLocal, level);
+                imruContext = new IMRUReduceContext(ctx, name, isLocal, level,
+                        partition);
                 io = new ASyncIO<byte[]>(1);
                 future = IMRUSerialize.threadPool.submit(new Runnable() {
                     @Override

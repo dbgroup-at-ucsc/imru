@@ -384,35 +384,36 @@ public class WordCountAllInOneExample {
     }
 
     public static void main(String[] args) throws Exception {
-        //start cluster controller
-        CCConfig ccConfig = new CCConfig();
-        ccConfig.clientNetIpAddress = "127.0.0.1";
-        ccConfig.clusterNetIpAddress = "127.0.0.1";
-        ccConfig.clusterNetPort = 1099;
-        ccConfig.clientNetPort = 3099;
-        ccConfig.defaultMaxJobAttempts = 0;
-        ccConfig.jobHistorySize = 10;
+        if (false) {
+            //start cluster controller
+            CCConfig ccConfig = new CCConfig();
+            ccConfig.clientNetIpAddress = "127.0.0.1";
+            ccConfig.clusterNetIpAddress = "127.0.0.1";
+            ccConfig.clusterNetPort = 1099;
+            ccConfig.clientNetPort = 3099;
+            ccConfig.defaultMaxJobAttempts = 0;
+            ccConfig.jobHistorySize = 10;
 
-        //start node controller
-        ClusterControllerService cc = new ClusterControllerService(ccConfig);
-        cc.start();
+            //start node controller
+            ClusterControllerService cc = new ClusterControllerService(ccConfig);
+            cc.start();
 
-        for (int i = 0; i < 2; i++) {
-            NCConfig config = new NCConfig();
-            config.ccHost = "127.0.0.1";
-            config.ccPort = 1099;
-            config.clusterNetIPAddress = "127.0.0.1";
-            config.dataIPAddress = "127.0.0.1";
-            config.datasetIPAddress = "127.0.0.1";
-            config.nodeId = "NC" + i;
-            NodeControllerService nc = new NodeControllerService(config);
-            nc.start();
+            for (int i = 0; i < 2; i++) {
+                NCConfig config = new NCConfig();
+                config.ccHost = "127.0.0.1";
+                config.ccPort = 1099;
+                config.clusterNetIPAddress = "127.0.0.1";
+                config.dataIPAddress = "127.0.0.1";
+                config.datasetIPAddress = "127.0.0.1";
+                config.nodeId = "NC" + i;
+                NodeControllerService nc = new NodeControllerService(config);
+                nc.start();
+            }
+            Client.disableLogging();
         }
 
-        Client.disableLogging();
-
         //connect to hyracks
-        IHyracksClientConnection hcc = new HyracksConnection("localhost", 3099);
+        IHyracksClientConnection hcc = new HyracksConnection("192.168.56.102", 3099);
 
         //update application
         hcc.deployBinary(null);

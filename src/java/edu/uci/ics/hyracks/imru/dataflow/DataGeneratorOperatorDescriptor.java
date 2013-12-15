@@ -63,7 +63,7 @@ public class DataGeneratorOperatorDescriptor extends
                 initialized = true;
                 startTime = System.currentTimeMillis();
 
-                imruContext = new IMRUContext(ctx, name);
+                imruContext = new IMRUContext(ctx, name,partition);
                 final IMRUFileSplit split = inputSplits[partition];
                 try {
                     BufferedOutputStream output = new BufferedOutputStream(

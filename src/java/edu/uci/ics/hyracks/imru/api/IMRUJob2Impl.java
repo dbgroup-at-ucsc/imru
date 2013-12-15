@@ -116,7 +116,7 @@ public class IMRUJob2Impl<Model extends Serializable, Data extends Serializable,
                         .getJobletContext().getApplicationContext();
                 IJobSerializerDeserializer jobSerDe = appContext
                         .getJobSerializerDeserializerContainer()
-                        .getJobSerializerDeerializer(deploymentId);
+                        .getJobSerializerDeserializer(deploymentId);
                 Data data = (Data) jobSerDe.deserialize(bs);
                 r.mappedDataSize += bs.length;
                 return data;
@@ -178,13 +178,13 @@ public class IMRUJob2Impl<Model extends Serializable, Data extends Serializable,
                         .getJobletContext().getApplicationContext();
                 IJobSerializerDeserializer jobSerDe = appContext
                         .getJobSerializerDeserializerContainer()
-                        .getJobSerializerDeerializer(deploymentId);
+                        .getJobSerializerDeserializer(deploymentId);
                 try {
                     ImruIterationInformation<T> r2 = (ImruIterationInformation) jobSerDe
                             .deserialize(objectData);
                     r.add(r2);
                     return r2.object;
-                } catch (Exception e) {
+                } catch (Throwable e) {
                     e.printStackTrace();
                 }
                 return null;
@@ -229,7 +229,7 @@ public class IMRUJob2Impl<Model extends Serializable, Data extends Serializable,
                         .getJobletContext().getApplicationContext();
                 IJobSerializerDeserializer jobSerDe = appContext
                         .getJobSerializerDeserializerContainer()
-                        .getJobSerializerDeerializer(deploymentId);
+                        .getJobSerializerDeserializer(deploymentId);
                 try {
                     ImruIterationInformation<T> r2 = (ImruIterationInformation) jobSerDe
                             .deserialize(objectData);

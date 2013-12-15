@@ -136,7 +136,7 @@ public class SpreadOD extends AbstractSingleActivityOperatorDescriptor {
         if (!last)
             writer.open();
         try {
-            IMRUContext imruContext = new IMRUContext(ctx);
+            IMRUContext imruContext = new IMRUContext(ctx,partition);
             String nodeId = imruContext.getNodeId();
             byte[] bs;
             if (first) {
@@ -149,7 +149,7 @@ public class SpreadOD extends AbstractSingleActivityOperatorDescriptor {
                 IJobSerializerDeserializer jobSerDe = ctx.getJobletContext()
                         .getApplicationContext()
                         .getJobSerializerDeserializerContainer()
-                        .getJobSerializerDeerializer(deploymentId);
+                        .getJobSerializerDeserializer(deploymentId);
                 Serializable model = (Serializable) jobSerDe.deserialize(bs);
                 if (model instanceof ImruIterationInformation)
                     model = (Serializable) ((ImruIterationInformation) model).object;

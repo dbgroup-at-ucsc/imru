@@ -99,27 +99,15 @@ public class ClientTrainMerge<Model extends Serializable> extends Client {
     public static <Model extends Serializable> Model run(
             TrainMergeJob<Model> job, Model initialModel, String[] args)
             throws Exception {
-        return run(job, initialModel, args, null);
-    }
-
-    /**
-     * run job
-     * 
-     * @throws Exception
-     */
-    public static <Model extends Serializable> Model run(
-            TrainMergeJob<Model> job, Model initialModel, String[] args,
-            String overrideAppName) throws Exception {
         // create a client object, which handles everything
         ClientTrainMerge<Model> client = new ClientTrainMerge<Model>(args);
 
-        if (overrideAppName != null)
-            client.options.app = overrideAppName;
         client.init();
 
         TrainMergeDriver<Model> driver = new TrainMergeDriver<Model>(
-                client.hcc, client.deploymentId,client.control.imruConnection, job, initialModel,
-                client.options.examplePaths, client.control.confFactory);
+                client.hcc, client.deploymentId, client.control.imruConnection,
+                job, initialModel, client.options.examplePaths,
+                client.control.confFactory);
         driver.modelFileName = client.options.modelFilename;
         JobStatus status = driver.run();
 

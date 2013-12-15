@@ -6,8 +6,8 @@ public class IMRUMapContext extends IMRUContext {
     private String dataPath;
 
     public IMRUMapContext(IHyracksTaskContext ctx, String operatorName,
-            String dataPath) {
-        super(ctx, operatorName);
+            String dataPath,int partition) {
+        super(ctx, operatorName,partition);
         this.dataPath = dataPath;
     }
 

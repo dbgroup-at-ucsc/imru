@@ -632,7 +632,6 @@ public class VirtualBoxExperiments {
         LocalCluster cluster = new LocalCluster(new HyracksCluster(cc, nodes,
                 userName, new File(home, ".ssh/id_rsa")), userName);
         uploadExperimentCode(cluster, true);
-        System.exit(0);
     }
 
     static void testStratosphere() throws Exception {
