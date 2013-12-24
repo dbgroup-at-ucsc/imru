@@ -42,10 +42,11 @@ import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryOutputSourceOperatorNo
 import edu.uci.ics.hyracks.imru.api.ASyncIO;
 import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.FrameWriter;
-import edu.uci.ics.hyracks.imru.api.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUMapContext;
 import edu.uci.ics.hyracks.imru.api.ImruParameters;
+import edu.uci.ics.hyracks.imru.api.ImruStream;
+import edu.uci.ics.hyracks.imru.api.old.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.data.ChunkFrameHelper;
 import edu.uci.ics.hyracks.imru.data.MergedFrames;
 import edu.uci.ics.hyracks.imru.data.RunFileContext;
@@ -97,7 +98,7 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
      *            The round number.
      */
     public MapOperatorDescriptor(JobSpecification spec,
-            IIMRUJob2<Model, Data> imruSpec, IMRUFileSplit[] inputSplits,
+            ImruStream<Model, Data> imruSpec, IMRUFileSplit[] inputSplits,
             int roundNum, int recoverRoundNum, int rerunNum, String name,
             boolean noDiskCache, ImruParameters parameters) {
         super(spec, 0, 1, name, imruSpec);

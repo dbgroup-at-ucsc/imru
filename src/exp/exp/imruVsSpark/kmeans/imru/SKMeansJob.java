@@ -24,19 +24,20 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import edu.uci.ics.hyracks.imru.api.DataWriter;
-import edu.uci.ics.hyracks.imru.api.IIMRUJob;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
 import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruObject;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
+import edu.uci.ics.hyracks.imru.api.old.IIMRUJob;
 import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.imruVsSpark.kmeans.FilledVectors;
 import exp.imruVsSpark.kmeans.SKMeansModel;
 import exp.imruVsSpark.kmeans.SparseVector;
 
-public class SKMeansJob implements
-        IIMRUJob<SKMeansModel, SparseVector, FilledVectors> {
+public class SKMeansJob extends
+        ImruObject<SKMeansModel, SparseVector, FilledVectors> {
     int k;
     int dimensions;
 
@@ -94,8 +95,8 @@ public class SKMeansJob implements
             result.centroids[rs.belong].add(dataPoint);
             result.distanceSum += rs.dis;
         }
-        if (ctx.getPartition() == 7)
-            Rt.sleep(30000);
+        //        if (ctx.getPartition() == 7)
+        //            Rt.sleep(60000);
         //        Rt.p(result.count());
         return result;
     }

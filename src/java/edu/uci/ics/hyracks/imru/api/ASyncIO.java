@@ -35,14 +35,14 @@ public class ASyncIO<Data> {
         this.size = size;
     }
 
-    public void close() throws HyracksDataException {
+    public void close() throws IMRUDataException {
         more = false;
         synchronized (queue) {
             queue.notifyAll();
         }
     }
 
-    public void add(Data data) throws HyracksDataException {
+    public void add(Data data) throws IMRUDataException {
         if (queue.size() > size) {
             synchronized (fullSync) {
                 if (queue.size() > size) {

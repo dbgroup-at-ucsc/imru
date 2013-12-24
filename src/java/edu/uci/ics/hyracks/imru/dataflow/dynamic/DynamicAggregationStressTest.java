@@ -50,17 +50,19 @@ import edu.uci.ics.hyracks.dataflow.std.connectors.OneToOneConnectorDescriptor;
 import edu.uci.ics.hyracks.dataflow.std.file.FileSplit;
 import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.FrameWriter;
-import edu.uci.ics.hyracks.imru.api.IIMRUJob;
-import edu.uci.ics.hyracks.imru.api.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
-import edu.uci.ics.hyracks.imru.api.IMRUJob2Impl;
 import edu.uci.ics.hyracks.imru.api.IMRUMapContext;
 import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
+import edu.uci.ics.hyracks.imru.api.ImruFrames;
 import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruObject;
 import edu.uci.ics.hyracks.imru.api.ImruParameters;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
+import edu.uci.ics.hyracks.imru.api.old.IIMRUJob;
+import edu.uci.ics.hyracks.imru.api.old.IIMRUJob2;
+import edu.uci.ics.hyracks.imru.api.old.IMRUJob2Impl;
 import edu.uci.ics.hyracks.imru.data.MergedFrames;
 import edu.uci.ics.hyracks.imru.dataflow.SpreadConnectorDescriptor;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
@@ -84,7 +86,7 @@ public class DynamicAggregationStressTest {
         return targets;
     }
 
-    static class Job implements IIMRUJob<String, String, String> {
+    static class Job extends ImruObject<String, String, String> {
         @Override
         public String update(IMRUContext ctx, Iterator<String> input,
                 String model, ImruIterationInformation iterationInfo)
@@ -151,9 +153,9 @@ public class DynamicAggregationStressTest {
     };
 
     static class Read extends AbstractSingleActivityOperatorDescriptor {
-        IMRUJob2Impl imru;
+        ImruObject imru;
 
-        public Read(JobSpecification job, IMRUJob2Impl imru) {
+        public Read(JobSpecification job, ImruObject imru) {
             super(job, 0, 1);
             this.imru = imru;
             recordDescriptors[0] = new RecordDescriptor(
@@ -194,19 +196,18 @@ public class DynamicAggregationStressTest {
 
     public static JobSpecification createJob(DeploymentId deploymentId,
             String[] mapOperatorLocations, String modelName,
-            IMRUConnection imruConnection) throws InterruptedException,
-            IOException {
-        final IIMRUJob<String, String, String> imruSpec = new Job();
-        final IMRUJob2Impl imru = new IMRUJob2Impl(null, imruSpec);
+            IMRUConnection imruConnection, boolean disableSwapping)
+            throws InterruptedException, IOException {
+        final ImruObject<String, String, String> imruSpec = new Job();
         int[] targets = getAggregationTree(mapOperatorLocations.length, 2);
 
         JobSpecification job = new JobSpecification();
-        IOperatorDescriptor reader = new Read(job, imru);
+        IOperatorDescriptor reader = new Read(job, imruSpec);
         ImruParameters parameters = new ImruParameters();
         PartitionConstraintHelper.addAbsoluteLocationConstraint(job, reader,
                 mapOperatorLocations);
-        ImruSendOD send = new ImruSendOD(job, targets, imru, "abc", parameters,
-                modelName, imruConnection);
+        ImruSendOD send = new ImruSendOD(job, targets, imruSpec, "abc", parameters,
+                modelName, imruConnection, disableSwapping, 0);
         //        job.connect(new MToNReplicatingConnectorDescriptor(job), reader, 0,
         //                send, 0);
         job.connect(new OneToOneConnectorDescriptor(job), reader, 0, send, 0);
@@ -283,9 +284,8 @@ public class DynamicAggregationStressTest {
 
     public static void main(String[] args) throws Exception {
         int nodeCount = 16;
-//        ImruSendOperator.debug = true;
-        ImruSendOperator.nodeCount = nodeCount;
-        ImruSendOperator.maxWaitTimeBeforeSwap = 0;
+        //        ImruSendOperator.debug = true;
+        ImruSendOperator.debugNodeCount = nodeCount;
         start(nodeCount);
         HyracksConnection hcc = new HyracksConnection("localhost", 3099);
         //        DeploymentId did = CreateDeployment.uploadApp(hcc);
@@ -296,7 +296,7 @@ public class DynamicAggregationStressTest {
                     3288);
             for (int i = 0; i < 10; i++) {
                 JobSpecification job = createJob(did, nodes, "model",
-                        imruConnection);
+                        imruConnection, false);
                 JobId jobId = hcc.startJob(did, job, EnumSet
                         .noneOf(JobFlag.class));
                 new Thread() {

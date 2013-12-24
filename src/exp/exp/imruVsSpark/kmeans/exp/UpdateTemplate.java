@@ -16,7 +16,7 @@ public class UpdateTemplate {
         VirtualBox.startTemplate();
         Rt.sleep(5000);
         Rt.runAndShowCommand("mvn package -DskipTests=true", new File(
-                "/data/a/imru/hyracks10/hyracks/imru"));
+                "/data/a/imru/hyracks10/hyracks"));
         VirtualBoxExperiments.createTemplate(ip, "ubuntu");
         SSH ssh = new SSH("ubuntu", ip, 22, new File(
                 "/home/wangrui/.ssh/id_rsa"));

@@ -23,20 +23,21 @@ import java.util.Iterator;
 import java.util.List;
 
 import edu.uci.ics.hyracks.imru.api.DataWriter;
-import edu.uci.ics.hyracks.imru.api.IIMRUJob;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
 import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruObject;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
+import edu.uci.ics.hyracks.imru.api.old.IIMRUJob;
 
 /**
  * Random select data examples as centroids
  * 
  * @author wangrui
  */
-public class RandomSelectJob implements
-        IIMRUJob<KMeansModel, DataPoint, KMeansStartingPoints> {
+public class RandomSelectJob extends
+        ImruObject<KMeansModel, DataPoint, KMeansStartingPoints> {
     int k;
 
     public RandomSelectJob(int k) {
@@ -130,13 +131,13 @@ public class RandomSelectJob implements
             ImruIterationInformation iterationInfo) {
         return model.roundsRemaining <= 0;
     }
-    
-     @Override
+
+    @Override
     public KMeansModel integrate(KMeansModel model1, KMeansModel model2) {
         return model1;
     }
-     
-      @Override
+
+    @Override
     public RecoveryAction onJobFailed(List<ImruSplitInfo> completedRanges,
             long dataSize, int optimalNodesForRerun, float rerunTime,
             int optimalNodesForPartiallyRerun, float partiallyRerunTime) {

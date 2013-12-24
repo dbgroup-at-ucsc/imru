@@ -28,8 +28,8 @@ public class KmeansExperiment {
 
     public static void exp(String master, int nodeCount, String type, int k,
             int iterations, int startBatch, int stepBatch, int stopBatch,
-            int batchSize, String aggType, int aggArg, boolean dynamic)
-            throws Exception {
+            int batchSize, String aggType, int aggArg, boolean dynamic,
+            boolean dynamicDisable) throws Exception {
         String user = "ubuntu";
         //        Client.disableLogging();
         DataGenerator.TEMPLATE = "/home/ubuntu/test/exp_data/product_name";
@@ -79,7 +79,7 @@ public class KmeansExperiment {
                 String path = getImruDataPath(sizePerNode, nodeCount, "%d");
                 int processed2 = IMRUKMeans.runEc2(master, nodeCount, dataSize,
                         path, false, false, k, iterations, aggType, aggArg,
-                        dynamic);
+                        dynamic,dynamicDisable);
                 long imruDiskTime = System.currentTimeMillis() - start;
                 plot.startNewX(pointPerNode / 100000);
                 //                plot.addY(dataTime / 1000.0);
@@ -91,7 +91,7 @@ public class KmeansExperiment {
                 String path = getImruDataPath(sizePerNode, nodeCount, "%d");
                 int processed1 = IMRUKMeans.runEc2(master, nodeCount, dataSize,
                         path, true, false, k, iterations, aggType, aggArg,
-                        dynamic);
+                        dynamic,dynamicDisable);
                 long imruMemTime = System.currentTimeMillis() - start;
 
                 //            start = System.currentTimeMillis();
@@ -160,6 +160,9 @@ public class KmeansExperiment {
         public int fanIn = -1;
         @Option(name = "-dynamic")
         public boolean dynamic;
+
+        @Option(name = "-dynamic-disable")
+        public boolean dynamicDisable;
     }
 
     public static void main(String[] args) throws Exception {
@@ -174,6 +177,7 @@ public class KmeansExperiment {
                 options.iterations, options.batchStart, options.batchStep,
                 options.batchEnd, options.batchSize, options.aggTreeType,
                 "generic".equals(options.aggTreeType) ? options.aggCount
-                        : options.fanIn, options.dynamic);
+                        : options.fanIn, options.dynamic,
+                options.dynamicDisable);
     }
 }

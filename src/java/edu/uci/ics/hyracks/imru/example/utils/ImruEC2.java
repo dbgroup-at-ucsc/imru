@@ -2,16 +2,10 @@ package edu.uci.ics.hyracks.imru.example.utils;
 
 import java.io.File;
 import java.io.Serializable;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Random;
 
 import edu.uci.ics.hyracks.api.deployment.DeploymentId;
 import edu.uci.ics.hyracks.ec2.HyracksEC2Cluster;
-import edu.uci.ics.hyracks.imru.api.IIMRUJob;
-import edu.uci.ics.hyracks.imru.file.IMRUFileSplit;
-import edu.uci.ics.hyracks.imru.file.IMRUInputSplitProvider;
-import edu.uci.ics.hyracks.imru.jobgen.ClusterConfig;
+import edu.uci.ics.hyracks.imru.api.ImruObject;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class ImruEC2 {
@@ -108,7 +102,7 @@ public class ImruEC2 {
     }
 
     public <M extends Serializable, D extends Serializable, R extends Serializable> M run(
-            IIMRUJob<M, D, R> job, M initialModel, String appName, String paths)
+            ImruObject<M, D, R> job, M initialModel, String appName, String paths)
             throws Exception {
         //        cluster.printLogs(-1);
         init();

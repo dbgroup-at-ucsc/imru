@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-package edu.uci.ics.hyracks.imru.api;
+package edu.uci.ics.hyracks.imru.api.old;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,12 +37,23 @@ import edu.uci.ics.hyracks.api.util.JavaSerializationUtils;
 import edu.uci.ics.hyracks.control.nc.application.NCApplicationContext;
 import edu.uci.ics.hyracks.dataflow.common.comm.io.FrameTupleAccessor;
 import edu.uci.ics.hyracks.dataflow.common.comm.util.ByteBufferInputStream;
+import edu.uci.ics.hyracks.imru.api.DataWriter;
+import edu.uci.ics.hyracks.imru.api.FrameWriter;
+import edu.uci.ics.hyracks.imru.api.IMRUContext;
+import edu.uci.ics.hyracks.imru.api.IMRUDataException;
+import edu.uci.ics.hyracks.imru.api.IMRUMapContext;
+import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
+import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
+import edu.uci.ics.hyracks.imru.api.RecoveryAction;
+import edu.uci.ics.hyracks.imru.api.TupleReader;
+import edu.uci.ics.hyracks.imru.api.TupleWriter;
 import edu.uci.ics.hyracks.imru.dataflow.IMRUSerialize;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class IMRUJob2Impl<Model extends Serializable, Data extends Serializable, T extends Serializable>
         implements IIMRUJob2<Model, Data> {
-    public static final long serialVersionUID=1;
+    public static final long serialVersionUID = 1;
     int fieldCount = 1;
     DeploymentId deploymentId;
     IIMRUJob<Model, Data, T> job;

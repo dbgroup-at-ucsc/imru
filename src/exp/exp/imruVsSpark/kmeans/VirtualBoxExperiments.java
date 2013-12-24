@@ -56,6 +56,7 @@ public class VirtualBoxExperiments {
     public static int MAX_NODES_STARTUP_TIME = 5 * 60 * 1000;
     public static int MAX_EXPERIMENT_FREEZE_TIME = 30 * 60 * 1000;
     public static boolean dynamicAggr = false;
+    public static boolean disableSwapping = false;
 
     public VirtualBoxExperiments(LocalCluster cluster, String name, int k,
             int iterations, int batchStart, int batchStep, int batchEnd,
@@ -75,7 +76,8 @@ public class VirtualBoxExperiments {
             resultDir = new File("result/k" + k + "i" + iterations + "b"
                     + batchStart + "s" + batchStep + "e" + batchEnd + "b"
                     + batchSize + "/" + name + "_" + nodes.length + "nodes_"
-                    + aggType + "_" + aggArg + (dynamicAggr ? "_d" : ""));
+                    + aggType + "_" + aggArg
+                    + (dynamicAggr ? "_d" + (disableSwapping ? "s" : "") : ""));
             resultDir.mkdirs();
         }
         figDir = new File(resultDir, "rawData");
@@ -229,6 +231,8 @@ public class VirtualBoxExperiments {
         arg += " -fan-in " + aggArg;
         if (dynamicAggr)
             arg += " -dynamic";
+        if (disableSwapping)
+            arg += " -dynamic-disable";
         ssh.maxFreezeTime = MAX_EXPERIMENT_FREEZE_TIME;
         try {
             ssh.execute("sh st.sh exp.imruVsSpark.kmeans.KmeansExperiment "
@@ -625,7 +629,8 @@ public class VirtualBoxExperiments {
         //        stopNodes();
     }
 
-    public static void createTemplate(String ip, String userName) throws Exception {
+    public static void createTemplate(String ip, String userName)
+            throws Exception {
         File home = new File(System.getProperty("user.home"));
         String[] nodes = new String[] { ip };
         String cc = nodes[0];

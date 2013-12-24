@@ -44,9 +44,10 @@ import edu.uci.ics.hyracks.imru.api.ASyncIO;
 import edu.uci.ics.hyracks.imru.api.ASyncInputStream;
 import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.FrameWriter;
-import edu.uci.ics.hyracks.imru.api.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
+import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.api.TupleReader;
+import edu.uci.ics.hyracks.imru.api.old.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.data.RunFileContext;
 import edu.uci.ics.hyracks.imru.file.ConfigurationFactory;
 import edu.uci.ics.hyracks.imru.file.IMRUFileSplit;
@@ -87,7 +88,7 @@ public class DataLoadOperatorDescriptor extends
      *            A Hadoop configuration, used for HDFS.
      */
     public DataLoadOperatorDescriptor(JobSpecification spec,
-            IIMRUJob2<Serializable, Serializable> imruSpec,
+            ImruStream<Serializable, Serializable> imruSpec,
             IMRUFileSplit[] inputSplits, ConfigurationFactory confFactory,
             boolean hdfsLoad, boolean memCache) {
         super(spec, hdfsLoad ? 1 : 0, 0, "parse", imruSpec);

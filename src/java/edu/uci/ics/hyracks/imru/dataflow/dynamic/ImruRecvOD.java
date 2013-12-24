@@ -75,9 +75,9 @@ public class ImruRecvOD<Model extends Serializable> extends
                     return;
                 }
                 try {
-                    if (ImruSendOperator.networkSpeed > 0) {
+                    if (ImruSendOperator.debugNetworkSpeed > 0) {
                         Thread
-                                .sleep(1 + (int) (frames.data.length / ImruSendOperator.networkSpeed));
+                                .sleep(1 + (int) (frames.data.length / ImruSendOperator.debugNetworkSpeed));
                     }
                     NCApplicationContext appContext = (NCApplicationContext) ctx
                             .getJobletContext().getApplicationContext();

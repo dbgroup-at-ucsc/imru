@@ -51,9 +51,9 @@ import edu.uci.ics.hyracks.control.common.controllers.CCConfig;
 import edu.uci.ics.hyracks.control.common.controllers.NCConfig;
 import edu.uci.ics.hyracks.control.nc.NodeControllerService;
 import edu.uci.ics.hyracks.imru.api.IIMRUDataGenerator;
-import edu.uci.ics.hyracks.imru.api.IIMRUJob;
-import edu.uci.ics.hyracks.imru.api.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.api.IMRUJobControl;
+import edu.uci.ics.hyracks.imru.api.ImruObject;
+import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.data.DataSpreadDriver;
 import edu.uci.ics.hyracks.imru.util.CreateDeployment;
 import edu.uci.ics.hyracks.imru.util.Rt;
@@ -110,6 +110,12 @@ public class Client<Model extends Serializable, Data extends Serializable> {
 
         @Option(name = "-dynamic", usage = "Dynamically alter aggregation tree")
         public boolean dynamicAggr = false;
+
+        @Option(name = "-dynamic-disable", usage = "Use the dynamically mechanism only")
+        public boolean dynamicDisable = false;
+
+        @Option(name = "-dynamic-swap-time", usage = "Swap nodes after freezed for this time")
+        public int dynamicSwapTime = 1000;
 
         @Option(name = "-no-disk-cache", usage = "Don't cache data on local disk (only works with local data)")
         public boolean noDiskCache = false;
@@ -279,6 +285,8 @@ public class Client<Model extends Serializable, Data extends Serializable> {
         } else {
             throw new IllegalArgumentException("Invalid aggregation tree type");
         }
+        control.jobFactory.disableSwapping = options.dynamicDisable;
+        control.jobFactory.maxWaitTimeBeforeSwap = options.dynamicSwapTime;
         // hyracks connection
     }
 
@@ -298,8 +306,9 @@ public class Client<Model extends Serializable, Data extends Serializable> {
      * 
      * @throws Exception
      */
-    public <T extends Serializable> JobStatus run(IIMRUJob<Model, Data, T> job,
+    public <T extends Serializable> JobStatus run(ImruObject<Model, Data, T> job,
             Model initialModel) throws Exception {
+        job.setDeploymentId(deploymentId);
         return control.run(deploymentId, job, initialModel);
     }
 
@@ -308,8 +317,9 @@ public class Client<Model extends Serializable, Data extends Serializable> {
      * 
      * @throws Exception
      */
-    public JobStatus run(IIMRUJob2<Model, Data> job, Model initialModel)
+    public JobStatus run(ImruStream<Model, Data> job, Model initialModel)
             throws Exception {
+        job.setDeploymentId(deploymentId);
         return control.run(deploymentId, job, initialModel);
     }
 
@@ -460,10 +470,9 @@ public class Client<Model extends Serializable, Data extends Serializable> {
      * @throws Exception
      */
     public DeploymentId uploadApp() throws Exception {
-        return CreateDeployment.uploadApp(hcc, options.hadoopConfPath != null, options.imruPort,
-                options.ccTempPath, options.debug);
+        return CreateDeployment.uploadApp(hcc, options.hadoopConfPath != null,
+                options.imruPort, options.ccTempPath, options.debug);
     }
-
 
     /**
      * @return The most recent model.
@@ -513,7 +522,7 @@ public class Client<Model extends Serializable, Data extends Serializable> {
      * @throws Exception
      */
     public static <M extends Serializable, D extends Serializable, R extends Serializable> M run(
-            IIMRUJob<M, D, R> job, M initialModel, String[] args)
+            ImruObject<M, D, R> job, M initialModel, String[] args)
             throws Exception {
         // create a client object, which handles everything
         Client<M, D> client = new Client<M, D>(args);

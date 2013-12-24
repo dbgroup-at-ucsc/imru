@@ -48,7 +48,7 @@ public class Dynamic {
 
     public static void runExp() throws Exception {
         try {
-            VirtualBox.remove();
+            //            VirtualBox.remove();
             int nodeCount = 8;
             int memory = 2000;
             int k = 3;
@@ -62,9 +62,10 @@ public class Dynamic {
             int fanIn = 2;
 
             VirtualBoxExperiments.IMRU_ONLY = true;
-            for (k = 3; k <= 7; k++) {
-                for (int i = 0; i < 2; i++) {
-                    VirtualBoxExperiments.dynamicAggr = (i == 1);
+            for (k = 2; k <= 20; k += 2) {
+                for (int i = 0; i < 3; i++) {
+                    VirtualBoxExperiments.dynamicAggr = i < 2;
+                    VirtualBoxExperiments.disableSwapping = (i == 0);
                     VirtualBoxExperiments.runExperiment(nodeCount, memory, k,
                             iterations, batchStart, batchStep, batchEnd,
                             batchSize, network, cpu, fanIn);
@@ -105,7 +106,6 @@ public class Dynamic {
             String[] nodes = VirtualBoxExperiments.startNodes(nodeCount,
                     memory, cpu, network);
             for (int i = 0; i < 2; i++) {
-                ImruSendOperator.fixedTree = (i == 1);
                 for (k = 3; k <= 3; k++) {
                     LocalCluster cluster = new LocalCluster(new HyracksCluster(
                             nodes[0], nodes, userName, new File(home,
@@ -115,7 +115,7 @@ public class Dynamic {
                     cluster.cluster.startHyrackCluster();
                     Thread.sleep(5000);
                     cluster.checkHyracks();
-                    DynamicJob.main(new String[] { nodes[0] });
+                    DynamicJob.run(nodes[0], (i == 1));
                     System.exit(0);
                 }
             }
@@ -148,18 +148,17 @@ public class Dynamic {
                 plot.pointSize = 2;
                 plot.startPointType = 1;
                 plot.scale = false;
-                ImruSendOperator.networkSpeed = 10 * 1024 * 1024;
+                ImruSendOperator.debugNetworkSpeed = 10 * 1024 * 1024;
                 for (int k = 10; k <= 50; k *= 2) {
                     plot.startNewX(k);
                     for (int i = 0; i < 2; i++) {
-                        ImruSendOperator.fixedTree = (i == 0);
                         DynamicAggregationStressTest.modelSize = k * 1024 * 1024;
                         DynamicAggregationStressTest.interval = interval;
-                        Rt.p(ImruSendOperator.fixedTree + " " + k + " "
-                                + interval);
+                        //                        Rt.p(ImruSendOperator.diableSwapping + " " + k + " "
+                        //                                + interval);
                         long start = System.currentTimeMillis();
                         JobSpecification job = DynamicAggregationStressTest
-                                .createJob(did, nodes, null, null);
+                                .createJob(did, nodes, null, null, (i == 0));
                         JobId jobId = hcc.startJob(job, EnumSet
                                 .noneOf(JobFlag.class));
                         hcc.waitForCompletion(jobId);
@@ -177,26 +176,31 @@ public class Dynamic {
         }
     }
 
-    public static GnuPlot plot() throws Exception {
-        GnuPlot plot = new GnuPlot(new File("/tmp/cache"), "kmeans100kK", "k",
+    public static GnuPlot plot(String name) throws Exception {
+        GnuPlot plot = new GnuPlot(new File("/tmp/cache"), name, "Model size (MB)",
                 "Time (seconds)");
         File file = new File(KmeansFigs.figsDir, "k3i" + KmeansFigs.ITERATIONS
-                + "b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2");
+                + "b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2d");
         KmeansFigs f = new KmeansFigs(file);
         plot.extra = "set title \"K-means" + " 10^5 points/node*" + f.nodeCount
                 + " Iteration=" + f.iterations + "\\n cpu=" + f.core
                 + "core/node*" + f.nodeCount + " memory=" + f.memory
                 + "MB/node*" + f.nodeCount + " \"";
-        plot.setPlotNames("Fixed aggregation", "Dynamic aggregation");
+        plot.setPlotNames("Original IMRU", "Fixed aggregation",
+                "Dynamic aggregation");
         plot.startPointType = 1;
         plot.pointSize = 1;
         plot.scale = false;
         plot.colored = true;
-        for (int k = 3; k <= 7; k++) {
+        for (int k = 2; k <= 16; k++) {
+            plot.startNewX(k*5);
             f = new KmeansFigs(new File(KmeansFigs.figsDir, "k" + k + "i"
                     + KmeansFigs.ITERATIONS
                     + "b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2"));
-            plot.startNewX(k);
+            plot.addY(f.get("imruMem1"));
+            f = new KmeansFigs(new File(KmeansFigs.figsDir, "k" + k + "i"
+                    + KmeansFigs.ITERATIONS
+                    + "b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2_ds"));
             plot.addY(f.get("imruMem1"));
             f = new KmeansFigs(new File(KmeansFigs.figsDir, "k" + k + "i"
                     + KmeansFigs.ITERATIONS
@@ -208,8 +212,14 @@ public class Dynamic {
     }
 
     public static void main(String[] args) throws Exception {
-        runExp();
-        plot().show();
+        //        runExp();
+        //        KmeansFigs.figsDir=new File("resultD3_delay60s");
+        KmeansFigs.figsDir = new File("resultD3_delay60s2");
+        plot("straggler");
+        //        KmeansFigs.figsDir=new File("resultD3_no_delay");
+        KmeansFigs.figsDir = new File("resultD3_no_delay2");
+        plot("together");
+        
         //        System.exit(0);
     }
 }

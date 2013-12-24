@@ -13,12 +13,8 @@ import edu.uci.ics.hyracks.imru.util.CreateDeployment;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class DynamicJob {
-    public static void main(String[] args) throws Exception {
-        if (args.length == 0)
-            args = new String[] { "192.168.56.102" };
-        //        args = new String[] { "localhost" };
-        //connect to hyracks
-        HyracksConnection hcc = new HyracksConnection(args[0], 3099);
+    static void run(String host, boolean disableSwapping) throws Exception {
+        HyracksConnection hcc = new HyracksConnection(host, 3099);
         String[] nodes = hcc.getNodeControllerInfos().keySet().toArray(
                 new String[0]);
         for (String s : nodes) {
@@ -34,7 +30,7 @@ public class DynamicJob {
 
         try {
             JobSpecification job = DynamicAggregationStressTest.createJob(did,
-                    nodes, null, null);
+                    nodes, null, null, disableSwapping);
             JobId jobId = hcc.startJob(did, job, EnumSet.noneOf(JobFlag.class));
             hcc.waitForCompletion(jobId);
             Rt.p("finished");
@@ -44,5 +40,13 @@ public class DynamicJob {
             Thread.sleep(1000);
             System.exit(0);
         }
+    }
+
+    public static void main(String[] args) throws Exception {
+        if (args.length == 0)
+            args = new String[] { "192.168.56.102" };
+        //        args = new String[] { "localhost" };
+        //connect to hyracks
+        run(args[0],false);
     }
 }

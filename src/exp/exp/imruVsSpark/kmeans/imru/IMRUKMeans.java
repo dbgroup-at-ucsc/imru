@@ -75,7 +75,7 @@ public class IMRUKMeans {
 
     public static int runEc2(String cc, int nodes, int size, String path,
             boolean memCache, boolean noDiskCache, int k, int iterations,
-            String aggType, int aggArg,boolean dynamic) throws Exception {
+            String aggType, int aggArg,boolean dynamic,boolean dynamicD) throws Exception {
         CreateDeployment.uploadJarFiles = false;
         DataGenerator.TEMPLATE = "/home/ubuntu/test/exp_data/product_name";
         if (!new File(DataGenerator.TEMPLATE).exists())
@@ -97,6 +97,8 @@ public class IMRUKMeans {
             cmdline += " -no-disk-cache";
         if (dynamic)
             cmdline += " -dynamic";
+        if (dynamicD)
+            cmdline += " -dynamic-disable";
 
         cmdline += " -example-paths ";
         for (int i = 0; i < nodes; i++) {

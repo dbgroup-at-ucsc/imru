@@ -23,13 +23,14 @@ import java.util.Iterator;
 import java.util.List;
 
 import edu.uci.ics.hyracks.imru.api.DataWriter;
-import edu.uci.ics.hyracks.imru.api.IIMRUJob;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
 import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
 import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruObject;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
+import edu.uci.ics.hyracks.imru.api.old.IIMRUJob;
 import edu.uci.ics.hyracks.imru.example.utils.Client;
 
 /**
@@ -52,7 +53,7 @@ public class IMRUHdfsTest {
             args = cmdline.split(" ");
         }
 
-        String finalModel = Client.run(new IIMRUJob<String, String, String>() {
+        String finalModel = Client.run(new ImruObject<String, String, String>() {
             @Override
             public int getCachedDataFrameSize() {
                 return 256;

@@ -23,15 +23,16 @@ import java.util.Iterator;
 import java.util.List;
 
 import edu.uci.ics.hyracks.imru.api.DataWriter;
-import edu.uci.ics.hyracks.imru.api.IIMRUJob;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
 import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruObject;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
+import edu.uci.ics.hyracks.imru.api.old.IIMRUJob;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
-public class BGDJob implements IIMRUJob<Model, Data, Gradient> {
+public class BGDJob extends ImruObject<Model, Data, Gradient> {
     int features;
 
     public BGDJob(int features) {

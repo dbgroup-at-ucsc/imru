@@ -15,28 +15,33 @@ import edu.uci.ics.hyracks.api.context.IHyracksTaskContext;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryInputUnaryOutputOperatorNodePushable;
 import edu.uci.ics.hyracks.imru.api.ASyncIO;
-import edu.uci.ics.hyracks.imru.api.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
+import edu.uci.ics.hyracks.imru.api.ImruFrames;
 import edu.uci.ics.hyracks.imru.api.ImruParameters;
+import edu.uci.ics.hyracks.imru.api.ImruStream;
+import edu.uci.ics.hyracks.imru.api.old.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.data.MergedFrames;
+import edu.uci.ics.hyracks.imru.data.SerializedFrames;
 import edu.uci.ics.hyracks.imru.dataflow.IMRUSerialize;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class ImruSendOperator<Model extends Serializable, Data extends Serializable>
         extends AbstractUnaryInputUnaryOutputOperatorNodePushable {
-    public static boolean fixedTree = false;
+    boolean diableSwapping = false;
+    int maxWaitTimeBeforeSwap = 1000;
     public static boolean debug = false;
-    public static int networkSpeed = 0;
-    public static int nodeCount = 8;
-    public static int maxWaitTimeBeforeSwap = 1000;
+    public static int debugNetworkSpeed = 0;
+    public static int debugNodeCount = 8;
     public static ImruSendOperator[] debugSendOperators = new ImruSendOperator[100];
 
     static void printAggrTree() {
+        if (!debug)
+            return;
         StringBuilder sb = new StringBuilder();
         sb.append("Current aggregation tree\n");
-        for (int i = 0; i < nodeCount; i++) {
+        for (int i = 0; i < debugNodeCount; i++) {
             ImruSendOperator o = debugSendOperators[i];
             if (o == null)
                 continue;
@@ -72,7 +77,7 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
         }
     }
 
-    final IIMRUJob2<Model, Data> imruSpec;
+    final ImruFrames<Model, Data> imruSpec;
     ImruParameters parameters;
     IMRUReduceContext imruContext;
     String modelName;
@@ -123,16 +128,19 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
 
     public ImruSendOperator(IHyracksTaskContext ctx, int curPartition,
             int nPartitions, int[] targetPartitions,
-            IIMRUJob2<Model, Data> imruSpec, ImruParameters parameters,
-            String modelName, IMRUConnection imruConnection)
+            ImruStream<Model, Data> imruSpec, ImruParameters parameters,
+            String modelName, IMRUConnection imruConnection,
+            boolean diableSwapping, int maxWaitTimeBeforeSwap)
             throws HyracksDataException {
         this.ctx = ctx;
         this.curPartition = curPartition;
         this.nPartitions = nPartitions;
-        this.imruSpec = imruSpec;
+        this.imruSpec = (ImruFrames<Model, Data>)imruSpec;
         this.parameters = parameters;
         this.modelName = modelName;
         this.imruConnection = imruConnection;
+        this.diableSwapping = diableSwapping;
+        this.maxWaitTimeBeforeSwap = maxWaitTimeBeforeSwap;
         frameSize = ctx.getFrameSize();
         frame = ctx.allocateFrame();
         debugSendOperators[curPartition] = this;
@@ -270,7 +278,7 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
                 Iterator<byte[]> input = io.getInput();
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
                 try {
-                    imruSpec.reduce(imruContext, input, out);
+                    imruSpec.reduceFrames(imruContext, input, out);
                     aggregatedResult = out.toByteArray();
                     //                    IMRUDebugger.sendDebugInfo(imruContext.getNodeId()
                     //                            + " reduce start " + curPartition);
@@ -307,9 +315,9 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
                             + curPartition + " "
                             + imruContext.getOperatorName());
             if (frames.data != null) {
-                if (ImruSendOperator.networkSpeed > 0)
+                if (ImruSendOperator.debugNetworkSpeed > 0)
                     Thread
-                            .sleep((int) (frames.data.length / ImruSendOperator.networkSpeed));
+                            .sleep((int) (frames.data.length / ImruSendOperator.debugNetworkSpeed));
 
                 if (imruContext.getIterationNumber() >= parameters.compressIntermediateResultsAfterNIterations)
                     frames.data = IMRUSerialize.decompress(frames.data);

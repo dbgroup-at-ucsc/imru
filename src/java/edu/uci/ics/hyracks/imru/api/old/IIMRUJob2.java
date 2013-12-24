@@ -13,62 +13,84 @@
  * limitations under the License.
  */
 
-package edu.uci.ics.hyracks.imru.api;
+package edu.uci.ics.hyracks.imru.api.old;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.Serializable;
+import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
 
+import edu.uci.ics.hyracks.imru.api.DataWriter;
+import edu.uci.ics.hyracks.imru.api.FrameWriter;
+import edu.uci.ics.hyracks.imru.api.IMRUContext;
+import edu.uci.ics.hyracks.imru.api.IMRUDataException;
+import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
+import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
+import edu.uci.ics.hyracks.imru.api.RecoveryAction;
+
 /**
- * High level IMRU job interface. Data passed through are objects.
+ * Low level IMRU job interface. Data passed through
+ * is raw binary data.
  * 
  * @author Rui Wang
  * @param <Model>
- *            data model
- * @param <Data>
- *            data example
- * @param <IntermediateResult>
- *            intermediate result produced by map() and reduce()
  */
-public interface IIMRUJob<Model extends Serializable, Data extends Serializable, IntermediateResult extends Serializable>
-        extends Serializable {
+public interface IIMRUJob2<Model, Data extends Serializable> extends
+        Serializable {
     /**
      * Frame size must be large enough to store at least one tuple
      */
     public int getCachedDataFrameSize();
 
     /**
-     * Parse input data and output data objects
+     * Parse input data and output binary data, called if data is cached in disk
+     */
+    public void parse(IMRUContext ctx, InputStream in, FrameWriter writer)
+            throws IOException;
+
+    /**
+     * Parse input data and output data objects, called if data is cached in memory
      */
     public void parse(IMRUContext ctx, InputStream input,
             DataWriter<Data> output) throws IOException;
 
     /**
-     * For a list of data objects, return one result
+     * For a list of binary data, return one binary data
      */
-    public IntermediateResult map(IMRUContext ctx, Iterator<Data> input,
-            Model model) throws IOException;
+    public void map(IMRUContext ctx, Iterator<ByteBuffer> input, Model model,
+            OutputStream output, int cachedDataFrameSize)
+            throws IMRUDataException;
 
     /**
-     * Combine multiple results to one result
+     * For a list of in memory data, return one binary data
      */
-    public IntermediateResult reduce(IMRUContext ctx,
-            Iterator<IntermediateResult> input) throws IMRUDataException;
+    public void mapMem(IMRUContext ctx, Iterator<Data> input, Model model,
+            OutputStream output, int cachedDataFrameSize)
+            throws IMRUDataException;
 
     /**
-     * update the model using combined result
+     * Combine multiple raw data to one binary data
      */
-    public Model update(IMRUContext ctx, Iterator<IntermediateResult> input,
-            Model model, ImruIterationInformation iterationInfo)
+    public void reduce(IMRUReduceContext ctx, Iterator<byte[]> input,
+            OutputStream output) throws IMRUDataException;
+
+    /**
+     * update the model using combined binary data.
+     * Return the same model object or return another object.
+     */
+    public Model update(IMRUContext ctx, Iterator<byte[]> input, Model model,
+            final ImruIterationInformation runtimeInformation)
             throws IMRUDataException;
 
     /**
      * Return true to exit loop
      */
     public boolean shouldTerminate(Model model,
-            ImruIterationInformation iterationInfo);
+            ImruIterationInformation runtimeInformation);
 
     /**
      * Callback function when some nodes failed. User should decide what action to take
@@ -87,8 +109,8 @@ public interface IIMRUJob<Model extends Serializable, Data extends Serializable,
      *            the estimated time to rerun only the unprocessed data
      * @return action to take
      */
-    RecoveryAction onJobFailed(List<ImruSplitInfo> completedRanges,
-            long dataSize, int optimalNodesForRerun, float rerunTime,
+    RecoveryAction onJobFailed(List<ImruSplitInfo> completedRanges, long dataSize,
+            int optimalNodesForRerun, float rerunTime,
             int optimalNodesForPartiallyRerun, float partiallyRerunTime);
 
     /**

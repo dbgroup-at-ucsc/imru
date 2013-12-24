@@ -25,8 +25,9 @@ import edu.uci.ics.hyracks.api.dataflow.value.IRecordDescriptorProvider;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.api.job.JobSpecification;
 import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryInputSinkOperatorNodePushable;
-import edu.uci.ics.hyracks.imru.api.IIMRUJob2;
+import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.api.TupleReader;
+import edu.uci.ics.hyracks.imru.api.old.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.file.ConfigurationFactory;
 import edu.uci.ics.hyracks.imru.file.IMRUFileSplit;
 import edu.uci.ics.hyracks.imru.util.Rt;
@@ -44,7 +45,7 @@ public class HDFSOD extends IMRUOperatorDescriptor<Serializable,Serializable> {
     protected final ConfigurationFactory confFactory;
     protected final IMRUFileSplit[] inputSplits;
 
-    public HDFSOD(JobSpecification spec, IIMRUJob2<Serializable,Serializable> imruSpec,
+    public HDFSOD(JobSpecification spec, ImruStream<Serializable,Serializable> imruSpec,
             IMRUFileSplit[] inputSplits, ConfigurationFactory confFactory) {
         super(spec, 1, 0, "parse", imruSpec);
         this.inputSplits = inputSplits;

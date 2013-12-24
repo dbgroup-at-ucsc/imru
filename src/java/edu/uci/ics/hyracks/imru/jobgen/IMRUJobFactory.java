@@ -48,8 +48,8 @@ import edu.uci.ics.hyracks.hdfs.api.IKeyValueParser;
 import edu.uci.ics.hyracks.hdfs.api.IKeyValueParserFactory;
 import edu.uci.ics.hyracks.hdfs.dataflow.HDFSReadOperatorDescriptor;
 import edu.uci.ics.hyracks.imru.api.IIMRUDataGenerator;
-import edu.uci.ics.hyracks.imru.api.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.api.ImruParameters;
+import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.api.TupleWriter;
 import edu.uci.ics.hyracks.imru.dataflow.DataGeneratorOperatorDescriptor;
 import edu.uci.ics.hyracks.imru.dataflow.DataLoadOperatorDescriptor;
@@ -101,6 +101,8 @@ public class IMRUJobFactory {
     IMRUConnection imruConnection;
     public ImruParameters parameters;
     boolean dynamicAggr;
+    public boolean disableSwapping = false;
+    public int maxWaitTimeBeforeSwap = 1000;
 
     public IMRUJobFactory(IMRUConnection imruConnection, String inputPaths,
             ConfigurationFactory confFactory, String type, int fanIn,
@@ -239,7 +241,7 @@ public class IMRUJobFactory {
      * @throws IOException
      */
     @SuppressWarnings("rawtypes")
-    public JobSpecification generateDataLoadJob(IIMRUJob2 model,
+    public JobSpecification generateDataLoadJob(ImruStream model,
             boolean memCache) throws IOException {
         JobSpecification spec = new JobSpecification();
         if (confFactory.useHDFS()) {
@@ -329,7 +331,7 @@ public class IMRUJobFactory {
      * @throws HyracksException
      */
     @SuppressWarnings( { "rawtypes", "unchecked" })
-    public JobSpecification generateJob(IIMRUJob2 model,
+    public JobSpecification generateJob(ImruStream model,
             DeploymentId deploymentId, int roundNum, int recoverRoundNum,
             int rerunNum, String modelName, boolean noDiskCache)
             throws HyracksException {
@@ -350,7 +352,8 @@ public class IMRUJobFactory {
             int[] targets = DynamicAggregationStressTest.getAggregationTree(
                     mapOperatorLocations.length, this.fanIn);
             ImruSendOD send = new ImruSendOD(spec, targets, model, "send",
-                    parameters, modelName, imruConnection);
+                    parameters, modelName, imruConnection, disableSwapping,
+                    maxWaitTimeBeforeSwap);
             ImruRecvOD recv = new ImruRecvOD(spec, deploymentId, targets);
             spec.connect(new SpreadConnectorDescriptor(spec, null, null), send,
                     0, recv, 0);

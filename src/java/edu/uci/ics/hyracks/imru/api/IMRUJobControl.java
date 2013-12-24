@@ -34,7 +34,7 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
     public HyracksConnection hcc;
     public IMRUConnection imruConnection;
     public ConfigurationFactory confFactory;
-    IMRUJobFactory jobFactory;
+    public IMRUJobFactory jobFactory;
     IMRUDriver<Model, Data> driver;
     public String localIntermediateModelPath;
     public String modelFileName;
@@ -103,8 +103,7 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
      * @throws Exception
      */
     public JobStatus run(DeploymentId deploymentId,
-            IIMRUJob2<Model, Data> job2, Model initialModel)
-            throws Exception {
+            ImruStream<Model, Data> job2, Model initialModel) throws Exception {
         //        Model initialModel = job2.initModel();
         driver = new IMRUDriver<Model, Data>(hcc, deploymentId, imruConnection,
                 job2, initialModel, jobFactory, confFactory
@@ -139,10 +138,9 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
      * @throws Exception
      */
     public <T extends Serializable> JobStatus run(DeploymentId deploymentId,
-            IIMRUJob<Model, Data, T> job, Model initialModel)
+            ImruObject<Model, Data, T> job, Model initialModel)
             throws Exception {
-        return run(deploymentId, new IMRUJob2Impl<Model, Data, T>(deploymentId,
-                job), initialModel);
+        return run(deploymentId, (ImruStream<Model, Data>)job, initialModel);
     }
 
     /**

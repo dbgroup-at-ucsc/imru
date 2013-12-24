@@ -23,8 +23,8 @@ import edu.uci.ics.hyracks.api.dataflow.IConnectorDescriptor;
 import edu.uci.ics.hyracks.api.dataflow.IOperatorDescriptor;
 import edu.uci.ics.hyracks.api.job.JobSpecification;
 import edu.uci.ics.hyracks.dataflow.std.connectors.LocalityAwareMToNPartitioningConnectorDescriptor;
-import edu.uci.ics.hyracks.imru.api.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.api.ImruParameters;
+import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.dataflow.ReduceOperatorDescriptor;
 import edu.uci.ics.hyracks.imru.dataflow.SpreadConnectorDescriptor;
 import edu.uci.ics.hyracks.imru.dataflow.dynamic.ImruRecvOD;
@@ -72,7 +72,7 @@ public class ReduceAggregationTreeFactory {
             int producerOpCount, IOperatorDescriptor consumerOp,
             int consumerPort, IConnectorDescriptor consumerConn, int fanIn,
             boolean useLocalCombiners, boolean dynamicAggr,
-            String[] producerOpLocations, IIMRUJob2 imruSpec,
+            String[] producerOpLocations, ImruStream imruSpec,
             ImruParameters parameters) {
         if (useLocalCombiners) {
             producerOpCount = LocalReducerFactory

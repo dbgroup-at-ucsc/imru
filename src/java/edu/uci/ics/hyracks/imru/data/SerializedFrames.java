@@ -5,10 +5,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Hashtable;
+import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.concurrent.Future;
 
 import edu.uci.ics.hyracks.api.comm.FrameHelper;
 import edu.uci.ics.hyracks.api.comm.IFrameWriter;
@@ -16,7 +19,11 @@ import edu.uci.ics.hyracks.api.context.IHyracksTaskContext;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.api.util.JavaSerializationUtils;
 import edu.uci.ics.hyracks.dataflow.common.comm.util.FrameUtils;
+import edu.uci.ics.hyracks.imru.api.ASyncIO;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
+import edu.uci.ics.hyracks.imru.api.IMRUDataException;
+import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
+import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.dataflow.IMRUDebugger;
 import edu.uci.ics.hyracks.imru.dataflow.IMRUSerialize;
 import edu.uci.ics.hyracks.imru.util.Rt;
@@ -31,8 +38,87 @@ import edu.uci.ics.hyracks.imru.util.Rt;
  * 
  * @author Rui Wang
  */
-@Deprecated
-public class MergedFrames {
+public class SerializedFrames {
+    public static class Buf {
+        byte[] data;
+        int pos = 0;
+    }
+
+    public static class Receiver {
+        ASyncIO<byte[]> io;
+        Future future;
+        Hashtable<Integer, Buf> hash = new Hashtable<Integer, Buf>();
+
+        public void process(Iterator<byte[]> input) throws IMRUDataException {
+        }
+
+        public void process(Iterator<byte[]> input, OutputStream output)
+                throws IMRUDataException {
+        }
+
+        public void open(final OutputStream output) throws IMRUDataException {
+            io = new ASyncIO<byte[]>(1);
+            future = IMRUSerialize.threadPool.submit(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        Iterator<byte[]> input = io.getInput();
+                        if (output != null) {
+                            ByteArrayOutputStream out = new ByteArrayOutputStream();
+                            process(input, out);
+                            byte[] objectData = out.toByteArray();
+                            output.write(objectData);
+                        } else {
+                            process(input);
+                        }
+                    } catch (IMRUDataException e) {
+                        e.printStackTrace();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    } finally {
+                        try {
+                            if (output != null)
+                                output.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            });
+        }
+
+        public void receive(int srcParition, int offset, int totalSize,
+                byte[] bs) throws IMRUDataException {
+            Buf buffer = hash.get(srcParition);
+            if (buffer == null) {
+                buffer = new Buf();
+                buffer.data = new byte[totalSize];
+                buffer.pos = 0;
+                hash.put(srcParition, buffer);
+            }
+            if (buffer.pos != offset)
+                throw new IMRUDataException();
+            if (buffer.data.length != totalSize)
+                throw new IMRUDataException();
+            System.arraycopy(bs, 0, buffer.data, buffer.pos, Math.min(
+                    bs.length, buffer.data.length - buffer.pos));
+            buffer.pos += bs.length;
+            if (buffer.pos >= buffer.data.length) {
+                hash.remove(srcParition);
+                io.add(buffer.data);
+            }
+        }
+
+        public void close() throws IMRUDataException {
+            io.close();
+            try {
+                future.get();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     public static final int HEADER = 24;
     public static final int TAIL = 20;
     public static final int SOURCE_OFFSET = 4;
@@ -41,54 +127,29 @@ public class MergedFrames {
     public static final int SIZE_OFFSET = 16;
     public static final int POSITION_OFFSET = 20;
 
-    public int sourceParition;
+    public int srcParition;
     public int targetParition;
     public int replyPartition;
+    public int offset;
     public int receivedSize;
     public int totalSize;
     public byte[] data;
 
-    public static MergedFrames nextFrame(IHyracksTaskContext ctx,
-            ByteBuffer buffer, Hashtable<Integer, LinkedList<ByteBuffer>> hash)
+    public static SerializedFrames nextFrame(int frameSize, ByteBuffer buffer)
             throws HyracksDataException {
-        return nextFrame(ctx, buffer, hash, null);
-    }
-
-    public static MergedFrames nextFrame(IHyracksTaskContext ctx,
-            ByteBuffer buffer, Hashtable<Integer, LinkedList<ByteBuffer>> hash,
-            String debugInfo) throws HyracksDataException {
         if (buffer == null)
             return null;
-        int frameSize = ctx.getFrameSize();
-        LinkedList<ByteBuffer> queue = null;
-        ByteBuffer frame = ctx.allocateFrame();
-        frame.put(buffer.array(), 0, frameSize);
         int sourcePartition = buffer.getInt(SOURCE_OFFSET);
-        queue = hash.get(sourcePartition);
-        if (queue == null) {
-            queue = new LinkedList<ByteBuffer>();
-            hash.put(sourcePartition, queue);
-        }
-        queue.add(frame);
-        int size = buffer.getInt(SIZE_OFFSET);
-        int position = buffer.getInt(POSITION_OFFSET);
-        //        if (position == 0)
-        //            Rt.p(position + "/" + size);
-        if (debugInfo != null)
-            IMRUDebugger.sendDebugInfo("recv " + debugInfo + " " + position);
-        MergedFrames merge = new MergedFrames();
-        merge.sourceParition = sourcePartition;
+        SerializedFrames merge = new SerializedFrames();
+        merge.totalSize = buffer.getInt(SIZE_OFFSET);
+        merge.offset = buffer.getInt(POSITION_OFFSET);
+        merge.srcParition = sourcePartition;
         merge.targetParition = buffer.getInt(TARGET_OFFSET);
         merge.replyPartition = buffer.getInt(REPLY_OFFSET);
-        merge.receivedSize = position + frameSize - HEADER - TAIL;
-        merge.totalSize = size;
-
-        if (position + frameSize - HEADER - TAIL >= size) {
-            hash.remove(sourcePartition);
-            byte[] bs = deserializeFromChunks(ctx.getFrameSize(), queue);
-            //        Rt.p("recv " + bs.length + " " + deserialize(bs));
-            merge.data = bs;
-        }
+        merge.receivedSize = merge.offset + frameSize - HEADER - TAIL;
+        merge.data = new byte[frameSize - HEADER - TAIL];
+        System.arraycopy(buffer.array(), HEADER, merge.data, 0,
+                merge.data.length);
         return merge;
     }
 
@@ -210,4 +271,5 @@ public class MergedFrames {
             position += length;
         }
     }
+
 }

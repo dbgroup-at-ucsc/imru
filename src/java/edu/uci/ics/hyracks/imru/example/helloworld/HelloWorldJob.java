@@ -22,20 +22,21 @@ import java.io.InputStreamReader;
 import java.util.Iterator;
 import java.util.List;
 
+import edu.uci.ics.hyracks.api.deployment.DeploymentId;
 import edu.uci.ics.hyracks.imru.api.DataWriter;
-import edu.uci.ics.hyracks.imru.api.IIMRUJob;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
 import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
 import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
+import edu.uci.ics.hyracks.imru.api.ImruObject;
 
 /**
  * Core IMRU application specific code.
  * The dataflow is parse->map->reduce->update
  */
-public class HelloWorldJob implements IIMRUJob<String, String, String> {
+public class HelloWorldJob extends ImruObject<String, String, String> {
     /**
      * Frame size must be large enough to store at least one data object
      */

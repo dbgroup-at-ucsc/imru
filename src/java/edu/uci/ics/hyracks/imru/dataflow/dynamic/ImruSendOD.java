@@ -20,9 +20,10 @@ import edu.uci.ics.hyracks.api.util.JavaSerializationUtils;
 import edu.uci.ics.hyracks.dataflow.common.comm.util.FrameUtils;
 import edu.uci.ics.hyracks.dataflow.std.base.AbstractSingleActivityOperatorDescriptor;
 import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryOutputSourceOperatorNodePushable;
-import edu.uci.ics.hyracks.imru.api.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.ImruParameters;
+import edu.uci.ics.hyracks.imru.api.ImruStream;
+import edu.uci.ics.hyracks.imru.api.old.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.data.MergedFrames;
 import edu.uci.ics.hyracks.imru.dataflow.IMRUOperatorDescriptor;
 import edu.uci.ics.hyracks.imru.file.IMRUFileSplit;
@@ -35,15 +36,18 @@ import edu.uci.ics.hyracks.imru.util.Rt;
 public class ImruSendOD<Model extends Serializable, Data extends Serializable>
         extends IMRUOperatorDescriptor<Model, Data> {
     int[] targetPartitions;
-    private final IIMRUJob2<Model, Data> imruSpec;
+    private final ImruStream<Model, Data> imruSpec;
     ImruParameters parameters;
     String modelName;
     IMRUConnection imruConnection;
+    boolean disableSwapping = false;
+    int maxWaitTimeBeforeSwap = 1000;
 
     public ImruSendOD(JobSpecification spec, int[] targets,
-            IIMRUJob2<Model, Data> imruSpec, String name,
+            ImruStream<Model, Data> imruSpec, String name,
             ImruParameters parameters, String modelName,
-            IMRUConnection imruConnection) {
+            IMRUConnection imruConnection, boolean diableSwapping,
+            int maxWaitTimeBeforeSwap) {
         super(spec, 1, 1, name, imruSpec);
         this.imruSpec = imruSpec;
         this.parameters = parameters;
@@ -62,6 +66,6 @@ public class ImruSendOD<Model extends Serializable, Data extends Serializable>
             throws HyracksDataException {
         return new ImruSendOperator<Model, Data>(ctx, curPartition,
                 nPartitions, targetPartitions, imruSpec, parameters, modelName,
-                imruConnection);
+                imruConnection, disableSwapping, maxWaitTimeBeforeSwap);
     }
 }

@@ -23,14 +23,15 @@ import java.util.Iterator;
 import java.util.List;
 
 import edu.uci.ics.hyracks.imru.api.DataWriter;
-import edu.uci.ics.hyracks.imru.api.IIMRUJob;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
 import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruObject;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
+import edu.uci.ics.hyracks.imru.api.old.IIMRUJob;
 
-public class KMeansJob implements IIMRUJob<KMeansModel, DataPoint, KMeansCentroids> {
+public class KMeansJob extends ImruObject<KMeansModel, DataPoint, KMeansCentroids> {
     int k;
 
     public KMeansJob(int k) {

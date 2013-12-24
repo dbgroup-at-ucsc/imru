@@ -21,19 +21,20 @@ import java.util.Iterator;
 import java.util.List;
 
 import edu.uci.ics.hyracks.imru.api.DataWriter;
-import edu.uci.ics.hyracks.imru.api.IIMRUJob;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
 import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruObject;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
+import edu.uci.ics.hyracks.imru.api.old.IIMRUJob;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 /**
  * Core IMRU application specific code.
  * The dataflow is parse->map->reduce->update
  */
-public class AggregateJob implements IIMRUJob<byte[], byte[], byte[]> {
+public class AggregateJob extends ImruObject<byte[], byte[], byte[]> {
     int modelSize;
 
     public AggregateJob(int modelSize) {

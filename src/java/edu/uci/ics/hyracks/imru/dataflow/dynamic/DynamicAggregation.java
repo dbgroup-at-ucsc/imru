@@ -35,7 +35,7 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
         }
         so.swappingTarget = -1;
         long swapTime = System.currentTimeMillis()
-                + ImruSendOperator.maxWaitTimeBeforeSwap;
+                + so.maxWaitTimeBeforeSwap;
         while (true) {
             int unfinishedPartition = -1;
             synchronized (so.aggrSync) {
@@ -51,7 +51,7 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
                         hasMissingPartitions = true;
                     }
                 }
-                if (!so.fixedTree && unfinishedPartition >= 0) {
+                if (!so.diableSwapping && unfinishedPartition >= 0) {
                     if (System.currentTimeMillis() < swapTime) {
                         so.aggrSync.wait();
                         continue;
@@ -117,7 +117,7 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
                 StringBuilder sb = new StringBuilder();
                 for (String s2 : ss)
                     bs.set(Integer.parseInt(s2));
-                for (int i = 0; i < so.nodeCount; i++)
+                for (int i = 0; i < so.debugNodeCount; i++)
                     if (!bs.get(i))
                         sb.append("missing " + i + ",");
                 Rt.p("Partition " + so.curPartition
@@ -131,7 +131,7 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
             } else {
                 Vector<byte[]> v = new Vector<byte[]>();
                 v.add(so.aggregatedResult);
-                Model updatedModel = so.imruSpec.update(so.imruContext, v
+                Model updatedModel = so.imruSpec.updateFrames(so.imruContext, v
                         .iterator(), model, imruRuntimeInformation);
                 long start = System.currentTimeMillis();
                 imruRuntimeInformation.object = updatedModel;

@@ -33,11 +33,11 @@ public class HelloWorld {
             // creates default arguments to run the example
             String cmdline = "";
             int totalNodes = 8;
-            boolean useExistingCluster = Client.isServerAvailable(
-                    Client.getLocalIp(), 3099);
+            boolean useExistingCluster = Client.isServerAvailable(Client
+                    .getLocalIp(), 3099);
             if (useExistingCluster) {
                 // hostname of cluster controller
-                String ip=Client.getLocalIp();
+                String ip = Client.getLocalIp();
                 cmdline += "-host " + ip + " -port 3099";
                 System.out.println("Connecting to " + Client.getLocalIp());
             } else {

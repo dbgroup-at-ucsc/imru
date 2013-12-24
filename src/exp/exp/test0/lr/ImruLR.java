@@ -10,12 +10,13 @@ import java.util.Iterator;
 import java.util.List;
 
 import edu.uci.ics.hyracks.imru.api.DataWriter;
-import edu.uci.ics.hyracks.imru.api.IIMRUJob;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
 import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruObject;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
+import edu.uci.ics.hyracks.imru.api.old.IIMRUJob;
 import edu.uci.ics.hyracks.imru.example.utils.Client;
 
 public class ImruLR {
@@ -24,7 +25,7 @@ public class ImruLR {
         double[] w = LR.generateWeights();
     }
 
-    static class Job implements IIMRUJob<Model, DataPoint, double[]> {
+    static class Job extends ImruObject<Model, DataPoint, double[]> {
         @Override
         public int getCachedDataFrameSize() {
             return 1024 * 1024;
