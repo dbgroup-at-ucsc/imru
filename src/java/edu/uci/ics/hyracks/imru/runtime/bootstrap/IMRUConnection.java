@@ -9,6 +9,7 @@ import java.net.URLEncoder;
 import java.util.Random;
 
 import edu.uci.ics.hyracks.api.util.JavaSerializationUtils;
+import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class IMRUConnection implements Serializable {
@@ -30,10 +31,21 @@ public class IMRUConnection implements Serializable {
         uploadData(name, JavaSerializationUtils.serialize(model));
     }
 
+    public void uploadDbgInfo(String name, ImruIterInfo info) throws IOException {
+        uploadData(name + "_dbgInfo", JavaSerializationUtils.serialize(info));
+    }
+
     public Serializable downloadModel(String name) throws IOException,
             ClassNotFoundException {
         byte[] bs = downloadData(name);
         return (Serializable) JavaSerializationUtils.deserialize(bs, this
+                .getClass().getClassLoader());
+    }
+
+    public ImruIterInfo downloadDbgInfo(String name) throws IOException,
+            ClassNotFoundException {
+        byte[] bs = downloadData(name + "_dbgInfo");
+        return (ImruIterInfo) JavaSerializationUtils.deserialize(bs, this
                 .getClass().getClassLoader());
     }
 

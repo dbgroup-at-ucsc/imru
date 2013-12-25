@@ -44,12 +44,14 @@ import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.FrameWriter;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUMapContext;
+import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruParameters;
 import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.api.old.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.data.ChunkFrameHelper;
 import edu.uci.ics.hyracks.imru.data.MergedFrames;
 import edu.uci.ics.hyracks.imru.data.RunFileContext;
+import edu.uci.ics.hyracks.imru.data.SerializedFrames;
 import edu.uci.ics.hyracks.imru.file.IMRUFileSplit;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRURuntimeContext;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.MapTaskState;
@@ -237,16 +239,17 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                                 //                                        partition);
 
                                 ByteArrayOutputStream out = new ByteArrayOutputStream();
-                                imruSpec.map(imruContext, input, model, out,
-                                        imruSpec.getCachedDataFrameSize());
+                                ImruIterInfo info = imruSpec.map(imruContext,
+                                        input, model, out, imruSpec
+                                                .getCachedDataFrameSize());
                                 byte[] objectData = out.toByteArray();
                                 if (imruContext.getIterationNumber() >= parameters.compressIntermediateResultsAfterNIterations)
                                     objectData = IMRUSerialize
                                             .compress(objectData);
-                                MergedFrames.serializeToFrames(imruContext,
+                                SerializedFrames.serializeToFrames(imruContext,
                                         writer, objectData, partition, null);
-                                //                                IMRUSerialize.serializeToFrames(imruContext,
-                                //                                        writer, objectData);
+                                SerializedFrames.serializeDbgInfo(imruContext,
+                                        writer, info, partition);
                             }
                         } else {
                             //read from memory cache
@@ -263,7 +266,7 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                             //                                    partition);
 
                             ByteArrayOutputStream out = new ByteArrayOutputStream();
-                            imruSpec.mapMem(imruContext,
+                            ImruIterInfo info = imruSpec.mapMem(imruContext,
                                     ((Vector<Data>) vector).iterator(), model,
                                     out, imruSpec.getCachedDataFrameSize());
                             byte[] objectData = out.toByteArray();
@@ -275,13 +278,15 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                                     + " map start " + partition);
                             if (imruContext.getIterationNumber() >= parameters.compressIntermediateResultsAfterNIterations)
                                 objectData = IMRUSerialize.compress(objectData);
-                            MergedFrames.serializeToFrames(imruContext, writer,
-                                    objectData, partition, imruContext
+                            SerializedFrames.serializeToFrames(imruContext,
+                                    writer, objectData, partition, imruContext
                                             .getNodeId()
                                             + " map "
                                             + partition
                                             + " "
                                             + imruContext.getOperatorName());
+                            SerializedFrames.serializeDbgInfo(imruContext,
+                                    writer, info, partition);
                             IMRUDebugger.sendDebugInfo(imruContext.getNodeId()
                                     + " map finish");
                             //                            IMRUSerialize.serializeToFrames(imruContext,
@@ -334,8 +339,11 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                         //                    Rt.p(objectData.length);
                         if (imruContext.getIterationNumber() >= parameters.compressIntermediateResultsAfterNIterations)
                             objectData = IMRUSerialize.compress(objectData);
-                        MergedFrames.serializeToFrames(imruContext, writer,
+                        SerializedFrames.serializeToFrames(imruContext, writer,
                                 objectData, partition, null);
+                        ImruIterInfo info = new ImruIterInfo();
+                        SerializedFrames.serializeDbgInfo(imruContext, writer,
+                                info, partition);
                         //                        IMRUSerialize.serializeToFrames(imruContext, writer,
                         //                                objectData);
                     }

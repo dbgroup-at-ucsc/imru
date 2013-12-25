@@ -26,7 +26,7 @@ import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
 import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
-import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruObject;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
@@ -74,16 +74,16 @@ public class InfoJob extends ImruObject<String, String, String> {
     @Override
     public String map(IMRUContext ctx, Iterator<String> input, String model)
             throws IOException {
-        if (ctx.getNodeId().startsWith("NC0")) {
-            Rt.p(ctx.getIterationNumber() + " "
-                    + ctx.getRecoverIterationNumber());
-            if (ctx.getRecoverIterationNumber() < 0
-                    && ctx.getRerunCount() < 1) {
-                Rt.sleep(500);
-                throw new Error();
-            }
-        }
-        Rt.sleep(1000);
+        //        if (ctx.getNodeId().startsWith("NC0")) {
+        //            Rt.p(ctx.getIterationNumber() + " "
+        //                    + ctx.getRecoverIterationNumber());
+        //            if (ctx.getRecoverIterationNumber() < 0
+        //                    && ctx.getRerunCount() < 1) {
+        //                Rt.sleep(500);
+        //                throw new Error();
+        //            }
+        //        }
+        //        Rt.sleep(1000);
         String result = "";
         while (input.hasNext()) {
             String word = input.next();
@@ -100,7 +100,7 @@ public class InfoJob extends ImruObject<String, String, String> {
     @Override
     public String reduce(IMRUContext ctx, Iterator<String> input)
             throws IMRUDataException {
-        Rt.sleep(2000);
+        //        Rt.sleep(2000);
         String combined = new String();
         StringBuilder sb = new StringBuilder();
         combined = "(";
@@ -123,8 +123,7 @@ public class InfoJob extends ImruObject<String, String, String> {
     }
 
     @Override
-    public String update(IMRUContext ctx, Iterator<String> input, String model,
-            ImruIterationInformation runtimeInformation)
+    public String update(IMRUContext ctx, Iterator<String> input, String model)
             throws IMRUDataException {
         StringBuilder sb = new StringBuilder();
         sb.append("(" + model + ")");
@@ -139,8 +138,11 @@ public class InfoJob extends ImruObject<String, String, String> {
     }
 
     @Override
-    public boolean shouldTerminate(String model, ImruIterationInformation info) {
+    public boolean shouldTerminate(String model, ImruIterInfo info) {
         n--;
+        Rt.p("Completed paths:");
+        for (String s : info.completedPaths)
+            Rt.np(s);
         Rt.p("current iteration: " + info.currentIteration);
         Rt.p("current recovery iteration: " + info.finishedRecoveryIteration);
         Rt.p("left iterations: " + n);

@@ -26,7 +26,7 @@ import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
 import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
-import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruObject;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
@@ -74,8 +74,8 @@ public class AggrJob extends ImruObject<String, String, String> {
     @Override
     public String map(IMRUContext ctx, Iterator<String> input, String model)
             throws IOException {
-//        Rt.sleep(500);
-      Rt.sleep(1000 * Integer.parseInt(ctx.getNodeId().substring(2)));
+        //        Rt.sleep(500);
+        Rt.sleep(1000 * Integer.parseInt(ctx.getNodeId().substring(2)));
         String result = "";
         while (input.hasNext()) {
             String word = input.next();
@@ -117,8 +117,7 @@ public class AggrJob extends ImruObject<String, String, String> {
     }
 
     @Override
-    public String update(IMRUContext ctx, Iterator<String> input, String model,
-            ImruIterationInformation runtimeInformation)
+    public String update(IMRUContext ctx, Iterator<String> input, String model)
             throws IMRUDataException {
         StringBuilder sb = new StringBuilder();
         sb.append("(" + model + ")");
@@ -133,7 +132,7 @@ public class AggrJob extends ImruObject<String, String, String> {
     }
 
     @Override
-    public boolean shouldTerminate(String model, ImruIterationInformation info) {
+    public boolean shouldTerminate(String model, ImruIterInfo info) {
         n--;
         Rt.p("current iteration: " + info.currentIteration);
         Rt.p("current recovery iteration: " + info.finishedRecoveryIteration);

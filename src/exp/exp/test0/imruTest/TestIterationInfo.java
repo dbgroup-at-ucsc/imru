@@ -42,6 +42,7 @@ public class TestIterationInfo {
                 cmdline += " -agg-tree-type none";
                 cmdline += " -compress-after-iterations 2";
                 cmdline += " -disable-logging";
+                cmdline += " -frame-size 256";
 
                 System.out.println("Starting hyracks cluster");
             }

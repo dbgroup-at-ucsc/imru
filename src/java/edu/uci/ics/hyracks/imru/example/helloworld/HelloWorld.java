@@ -46,6 +46,7 @@ public class HelloWorld {
                 cmdline += " -debugNodes " + totalNodes;
                 cmdline += " -agg-tree-type nary -fan-in 4";
                 cmdline += " -agg-tree-type none";
+                cmdline += " -frame-size 256";
 
                 System.out.println("Starting hyracks cluster");
             }

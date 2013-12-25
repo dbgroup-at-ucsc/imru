@@ -36,6 +36,7 @@ import edu.uci.ics.hyracks.api.job.JobSpecification;
 import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryInputUnaryOutputOperatorNodePushable;
 import edu.uci.ics.hyracks.imru.api.ASyncIO;
 import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
+import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruParameters;
 import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.api.old.IIMRUJob2;
@@ -100,6 +101,7 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
                     IMRUDebugger.sendDebugInfo(imruContext.getNodeId()
                             + " reduce start " + partition);
 
+                    imruSpec.reduceDbgInfoInit(imruContext);
                     imruSpec.reduceInit(imruContext, new OutputStream() {
                         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
@@ -147,8 +149,12 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
                 try {
                     SerializedFrames f = SerializedFrames.nextFrame(ctx
                             .getFrameSize(), encapsulatedChunk);
-                    imruSpec.reduceReceive(f.srcParition, f.offset,
-                            f.totalSize, f.data);
+                    if (f.replyPartition == SerializedFrames.DBG_INFO_FRAME)
+                        imruSpec.reduceDbgInfoReceive(f.srcPartition, f.offset,
+                                f.totalSize, f.data);
+                    else
+                        imruSpec.reduceReceive(f.srcPartition, f.offset,
+                                f.totalSize, f.data);
                     //                    MergedFrames frames = MergedFrames.nextFrame(ctx,
                     //                            encapsulatedChunk, hash, imruContext.getNodeId()
                     //                                    + " recv " + partition + " "
@@ -174,7 +180,14 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
 
             @Override
             public void close() throws HyracksDataException {
-                imruSpec.reduceClose();
+                imruSpec.reduceDbgInfoClose();
+                ImruIterInfo info = imruSpec.reduceClose();
+                try {
+                    SerializedFrames.serializeDbgInfo(imruContext, writer,
+                            info, partition);
+                } catch (IOException e) {
+                    throw new HyracksDataException(e);
+                }
                 writer.close();
             }
         };

@@ -25,7 +25,7 @@ import java.util.List;
 import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
-import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruObject;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
@@ -100,8 +100,8 @@ public class BGDJob extends ImruObject<Model, Data, Gradient> {
     }
 
     @Override
-    public Model update(IMRUContext ctx, Iterator<Gradient> input, Model model,
-            ImruIterationInformation iterationInfo) throws IMRUDataException {
+    public Model update(IMRUContext ctx, Iterator<Gradient> input, Model model)
+            throws IMRUDataException {
         Gradient g = reduce(ctx, input);
         model.error = 100f * (g.total - g.correct) / g.total;
         for (int i = 0; i < model.weights.length; i++)
@@ -117,8 +117,7 @@ public class BGDJob extends ImruObject<Model, Data, Gradient> {
     }
 
     @Override
-    public boolean shouldTerminate(Model model,
-            ImruIterationInformation iterationInfo) {
+    public boolean shouldTerminate(Model model, ImruIterInfo iterationInfo) {
         return model.roundsRemaining <= 0;
     }
 

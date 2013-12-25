@@ -55,7 +55,7 @@ import edu.uci.ics.hyracks.imru.api.IMRUDataException;
 import edu.uci.ics.hyracks.imru.api.IMRUMapContext;
 import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
 import edu.uci.ics.hyracks.imru.api.ImruFrames;
-import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruObject;
 import edu.uci.ics.hyracks.imru.api.ImruParameters;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
@@ -89,14 +89,12 @@ public class DynamicAggregationStressTest {
     static class Job extends ImruObject<String, String, String> {
         @Override
         public String update(IMRUContext ctx, Iterator<String> input,
-                String model, ImruIterationInformation iterationInfo)
-                throws IMRUDataException {
+                String model) throws IMRUDataException {
             return null;
         }
 
         @Override
-        public boolean shouldTerminate(String model,
-                ImruIterationInformation iterationInfo) {
+        public boolean shouldTerminate(String model, ImruIterInfo iterationInfo) {
             return false;
         }
 
@@ -206,8 +204,8 @@ public class DynamicAggregationStressTest {
         ImruParameters parameters = new ImruParameters();
         PartitionConstraintHelper.addAbsoluteLocationConstraint(job, reader,
                 mapOperatorLocations);
-        ImruSendOD send = new ImruSendOD(job, targets, imruSpec, "abc", parameters,
-                modelName, imruConnection, disableSwapping, 0);
+        ImruSendOD send = new ImruSendOD(job, targets, imruSpec, "abc",
+                parameters, modelName, imruConnection, disableSwapping, 0);
         //        job.connect(new MToNReplicatingConnectorDescriptor(job), reader, 0,
         //                send, 0);
         job.connect(new OneToOneConnectorDescriptor(job), reader, 0, send, 0);

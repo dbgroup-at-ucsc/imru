@@ -24,7 +24,7 @@ import java.util.List;
 import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
-import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
 
@@ -68,14 +68,14 @@ public interface IIMRUJob<Model extends Serializable, Data extends Serializable,
      * update the model using combined result
      */
     public Model update(IMRUContext ctx, Iterator<IntermediateResult> input,
-            Model model, ImruIterationInformation iterationInfo)
+            Model model, ImruIterInfo iterationInfo)
             throws IMRUDataException;
 
     /**
      * Return true to exit loop
      */
     public boolean shouldTerminate(Model model,
-            ImruIterationInformation iterationInfo);
+            ImruIterInfo iterationInfo);
 
     /**
      * Callback function when some nodes failed. User should decide what action to take

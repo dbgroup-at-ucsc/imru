@@ -35,26 +35,27 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
     }
 
     @Override
-    public void mapMem(IMRUContext ctx, Iterator<Data> input, Model model,
-            OutputStream output, int cachedDataFrameSize)
+    public ImruIterInfo mapMem(IMRUContext ctx, Iterator<Data> input,
+            Model model, OutputStream output, int cachedDataFrameSize)
             throws IMRUDataException {
         try {
-            ImruIterationInformation r = new ImruIterationInformation<IntermediateResult>();
-            r.object = map(ctx, input, model);
-            r.completedPaths.add(((IMRUMapContext) ctx).getDataPath());
-            byte[] objectData = JavaSerializationUtils.serialize(r);
+            IntermediateResult result = map(ctx, input, model);
+            byte[] objectData = JavaSerializationUtils.serialize(result);
             output.write(objectData);
             output.close();
+            ImruIterInfo r = new ImruIterInfo();
+            r.completedPaths.add(((IMRUMapContext) ctx).getDataPath());
+            return r;
         } catch (Exception e) {
             e.printStackTrace();
             throw new IMRUDataException(e);
         }
     }
 
-    public void map(final IMRUContext ctx, Iterator<ByteBuffer> input,
+    public ImruIterInfo map(final IMRUContext ctx, Iterator<ByteBuffer> input,
             Model model, OutputStream output, int cachedDataFrameSize)
             throws IMRUDataException {
-        final ImruIterationInformation r = new ImruIterationInformation<IntermediateResult>();
+        final ImruIterInfo r = new ImruIterInfo();
         FrameTupleAccessor accessor = new FrameTupleAccessor(
                 cachedDataFrameSize, new RecordDescriptor(
                         new ISerializerDeserializer[fieldCount]));
@@ -74,12 +75,7 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
                 int len = reader.read(bs);
                 if (len != length)
                     throw new Exception("partial read");
-                NCApplicationContext appContext = (NCApplicationContext) ctx
-                        .getJobletContext().getApplicationContext();
-                IJobSerializerDeserializer jobSerDe = appContext
-                        .getJobSerializerDeserializerContainer()
-                        .getJobSerializerDeserializer(deploymentId);
-                Data data = (Data) jobSerDe.deserialize(bs);
+                Data data = (Data) deserialize(ctx, bs);
                 r.mappedDataSize += bs.length;
                 return data;
             }
@@ -104,11 +100,12 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
             }
         };
         try {
-            r.object = map(ctx, dataInterator, model);
-            r.completedPaths.add(((IMRUMapContext) ctx).getDataPath());
-            byte[] objectData = JavaSerializationUtils.serialize(r);
+            IntermediateResult result = map(ctx, dataInterator, model);
+            byte[] objectData = JavaSerializationUtils.serialize(result);
             output.write(objectData);
             output.close();
+            r.completedPaths.add(((IMRUMapContext) ctx).getDataPath());
+            return r;
         } catch (Exception e) {
             e.printStackTrace();
             throw new IMRUDataException(e);
@@ -119,7 +116,6 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
     public void reduceFrames(final IMRUReduceContext ctx,
             final Iterator<byte[]> input, OutputStream output)
             throws IMRUDataException {
-        final ImruIterationInformation r = new ImruIterationInformation<IntermediateResult>();
         Iterator<IntermediateResult> iterator = new Iterator<IntermediateResult>() {
             @Override
             public void remove() {
@@ -136,26 +132,20 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
                 if (objectData == null)
                     return null;
 
-                NCApplicationContext appContext = (NCApplicationContext) ctx
-                        .getJobletContext().getApplicationContext();
-                IJobSerializerDeserializer jobSerDe = appContext
-                        .getJobSerializerDeserializerContainer()
-                        .getJobSerializerDeserializer(deploymentId);
                 try {
-                    ImruIterationInformation<IntermediateResult> r2 = (ImruIterationInformation) jobSerDe
-                            .deserialize(objectData);
-                    r.add(r2);
-                    return r2.object;
+                    IntermediateResult result = (IntermediateResult) deserialize(
+                            ctx, objectData);
+                    return result;
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
                 return null;
             }
         };
-        r.object = reduce(ctx, iterator);
+        IntermediateResult result = reduce(ctx, iterator);
         byte[] objectData;
         try {
-            objectData = JavaSerializationUtils.serialize(r);
+            objectData = JavaSerializationUtils.serialize(result);
             output.write(objectData);
             output.close();
         } catch (IOException e) {
@@ -165,9 +155,7 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
 
     @Override
     public Model updateFrames(final IMRUContext ctx,
-            final Iterator<byte[]> input, Model model,
-            final ImruIterationInformation runtimeInformation)
-            throws IMRUDataException {
+            final Iterator<byte[]> input, Model model) throws IMRUDataException {
         Iterator<IntermediateResult> iterator = new Iterator<IntermediateResult>() {
             @Override
             public void remove() {
@@ -183,16 +171,10 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
                 byte[] objectData = input.next();
                 if (objectData == null)
                     return null;
-                NCApplicationContext appContext = (NCApplicationContext) ctx
-                        .getJobletContext().getApplicationContext();
-                IJobSerializerDeserializer jobSerDe = appContext
-                        .getJobSerializerDeserializerContainer()
-                        .getJobSerializerDeserializer(deploymentId);
                 try {
-                    ImruIterationInformation<IntermediateResult> r2 = (ImruIterationInformation) jobSerDe
-                            .deserialize(objectData);
-                    runtimeInformation.add(r2);
-                    return r2.object;
+                    IntermediateResult result = (IntermediateResult) deserialize(
+                            ctx, objectData);
+                    return result;
                 } catch (Exception e) {
                     Rt
                             .p("Read reduce result failed len=%,d",
@@ -202,7 +184,7 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
                 return null;
             }
         };
-        return update(ctx, iterator, model, runtimeInformation);
+        return update(ctx, iterator, model);
     }
 
     /**
@@ -221,7 +203,7 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
      * update the model using combined result
      */
     abstract public Model update(IMRUContext ctx,
-            Iterator<IntermediateResult> input, Model model,
-            ImruIterationInformation iterationInfo) throws IMRUDataException;
+            Iterator<IntermediateResult> input, Model model)
+            throws IMRUDataException;
 
 }

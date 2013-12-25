@@ -26,7 +26,7 @@ import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
 import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
-import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruObject;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
@@ -53,65 +53,69 @@ public class IMRUHdfsTest {
             args = cmdline.split(" ");
         }
 
-        String finalModel = Client.run(new ImruObject<String, String, String>() {
-            @Override
-            public int getCachedDataFrameSize() {
-                return 256;
-            }
+        String finalModel = Client.run(
+                new ImruObject<String, String, String>() {
+                    @Override
+                    public int getCachedDataFrameSize() {
+                        return 256;
+                    }
 
-            @Override
-            public void parse(IMRUContext ctx, InputStream input,
-                    DataWriter<String> output) throws IOException {
-                BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(input));
-                String line = reader.readLine();
-                reader.close();
-                for (String s : line.split(" ")) {
-                    System.out.println(ctx.getNodeId() + "-"
-                            + ctx.getOperatorName() + ": " + s);
-                    output.addData(s);
-                }
-            }
+                    @Override
+                    public void parse(IMRUContext ctx, InputStream input,
+                            DataWriter<String> output) throws IOException {
+                        BufferedReader reader = new BufferedReader(
+                                new InputStreamReader(input));
+                        String line = reader.readLine();
+                        reader.close();
+                        for (String s : line.split(" ")) {
+                            System.out.println(ctx.getNodeId() + "-"
+                                    + ctx.getOperatorName() + ": " + s);
+                            output.addData(s);
+                        }
+                    }
 
-            @Override
-            public String map(IMRUContext ctx, Iterator<String> input,
-                    String model) throws IOException {
-                return input.next();
-            }
+                    @Override
+                    public String map(IMRUContext ctx, Iterator<String> input,
+                            String model) throws IOException {
+                        return input.next();
+                    }
 
-            @Override
-            public String reduce(IMRUContext ctx, Iterator<String> input)
-                    throws IMRUDataException {
-                String combined = new String();
-                while (input.hasNext())
-                    combined += input.next();
-                return combined;
-            }
+                    @Override
+                    public String reduce(IMRUContext ctx, Iterator<String> input)
+                            throws IMRUDataException {
+                        String combined = new String();
+                        while (input.hasNext())
+                            combined += input.next();
+                        return combined;
+                    }
 
-            @Override
-            public String update(IMRUContext ctx, Iterator<String> input,
-                    String model,
-                    ImruIterationInformation iterationInfo) throws IMRUDataException {
-                return reduce(ctx, input);
-            }
+                    @Override
+                    public String update(IMRUContext ctx,
+                            Iterator<String> input, String model)
+                            throws IMRUDataException {
+                        return reduce(ctx, input);
+                    }
 
-            @Override
-            public boolean shouldTerminate(String model,
-                    ImruIterationInformation iterationInfo) {
-                return true;
-            }
-             @Override
-            public String integrate(String model1, String model2) {
-                return model1;
-            }
-              @Override
-            public RecoveryAction onJobFailed(
-                    List<ImruSplitInfo> completedRanges, long dataSize,
-                    int optimalNodesForRerun, float rerunTime,
-                    int optimalNodesForPartiallyRerun, float partiallyRerunTime) {
-                return RecoveryAction.Accept;
-            }
-        }, "", args);
+                    @Override
+                    public boolean shouldTerminate(String model,
+                            ImruIterInfo iterationInfo) {
+                        return true;
+                    }
+
+                    @Override
+                    public String integrate(String model1, String model2) {
+                        return model1;
+                    }
+
+                    @Override
+                    public RecoveryAction onJobFailed(
+                            List<ImruSplitInfo> completedRanges, long dataSize,
+                            int optimalNodesForRerun, float rerunTime,
+                            int optimalNodesForPartiallyRerun,
+                            float partiallyRerunTime) {
+                        return RecoveryAction.Accept;
+                    }
+                }, "", args);
         System.out.println("FinalModel: " + finalModel);
         System.exit(0);
     }

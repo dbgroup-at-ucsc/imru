@@ -27,7 +27,7 @@ import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
 import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
-import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
 import edu.uci.ics.hyracks.imru.api.ImruObject;
@@ -108,8 +108,8 @@ public class HelloWorldJob extends ImruObject<String, String, String> {
      * update the model using combined result
      */
     @Override
-    public String update(IMRUContext ctx, Iterator<String> input, String model,
-            ImruIterationInformation iterationInfo) throws IMRUDataException {
+    public String update(IMRUContext ctx, Iterator<String> input, String model)
+            throws IMRUDataException {
         StringBuilder sb = new StringBuilder();
         sb.append("(" + model + ")");
         while (input.hasNext()) {
@@ -126,8 +126,7 @@ public class HelloWorldJob extends ImruObject<String, String, String> {
      * Return true to exit loop
      */
     @Override
-    public boolean shouldTerminate(String model,
-            ImruIterationInformation iterationInfo) {
+    public boolean shouldTerminate(String model, ImruIterInfo iterationInfo) {
         return true;
     }
 

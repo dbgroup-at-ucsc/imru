@@ -43,7 +43,7 @@ import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
 import edu.uci.ics.hyracks.imru.api.IMRUMapContext;
 import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
-import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
 import edu.uci.ics.hyracks.imru.api.TupleReader;
@@ -87,10 +87,10 @@ public class IMRUJob2Impl<Model extends Serializable, Data extends Serializable,
             Model model, OutputStream output, int cachedDataFrameSize)
             throws IMRUDataException {
         try {
-            ImruIterationInformation r = new ImruIterationInformation<T>();
-            r.object = job.map(ctx, input, model);
-            r.completedPaths.add(((IMRUMapContext) ctx).getDataPath());
-            byte[] objectData = JavaSerializationUtils.serialize(r);
+            //            ImruIterInfo r = new ImruIterInfo<T>();
+            Serializable object = job.map(ctx, input, model);
+            //            r.completedPaths.add(((IMRUMapContext) ctx).getDataPath());
+            byte[] objectData = JavaSerializationUtils.serialize(object);
             output.write(objectData);
             output.close();
         } catch (Exception e) {
@@ -103,7 +103,7 @@ public class IMRUJob2Impl<Model extends Serializable, Data extends Serializable,
     public void map(final IMRUContext ctx, Iterator<ByteBuffer> input,
             Model model, OutputStream output, int cachedDataFrameSize)
             throws IMRUDataException {
-        final ImruIterationInformation r = new ImruIterationInformation<T>();
+        final ImruIterInfo r = new ImruIterInfo();
         FrameTupleAccessor accessor = new FrameTupleAccessor(
                 cachedDataFrameSize, new RecordDescriptor(
                         new ISerializerDeserializer[fieldCount]));
@@ -153,9 +153,9 @@ public class IMRUJob2Impl<Model extends Serializable, Data extends Serializable,
             }
         };
         try {
-            r.object = job.map(ctx, dataInterator, model);
-            r.completedPaths.add(((IMRUMapContext) ctx).getDataPath());
-            byte[] objectData = JavaSerializationUtils.serialize(r);
+            Serializable object = job.map(ctx, dataInterator, model);
+            //            r.completedPaths.add(((IMRUMapContext) ctx).getDataPath());
+            byte[] objectData = JavaSerializationUtils.serialize(object);
             output.write(objectData);
             output.close();
         } catch (Exception e) {
@@ -168,7 +168,7 @@ public class IMRUJob2Impl<Model extends Serializable, Data extends Serializable,
     public void reduce(final IMRUReduceContext ctx,
             final Iterator<byte[]> input, OutputStream output)
             throws IMRUDataException {
-        final ImruIterationInformation r = new ImruIterationInformation<T>();
+        final ImruIterInfo r = new ImruIterInfo();
         Iterator<T> iterator = new Iterator<T>() {
             @Override
             public void remove() {
@@ -191,17 +191,16 @@ public class IMRUJob2Impl<Model extends Serializable, Data extends Serializable,
                         .getJobSerializerDeserializerContainer()
                         .getJobSerializerDeserializer(deploymentId);
                 try {
-                    ImruIterationInformation<T> r2 = (ImruIterationInformation) jobSerDe
-                            .deserialize(objectData);
-                    r.add(r2);
-                    return r2.object;
+                    T o = (T) jobSerDe.deserialize(objectData);
+                    //                    r.add(r2);
+                    return o;
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
                 return null;
             }
         };
-        r.object = job.reduce(ctx, iterator);
+        T object = job.reduce(ctx, iterator);
         byte[] objectData;
         try {
             objectData = JavaSerializationUtils.serialize(r);
@@ -212,15 +211,13 @@ public class IMRUJob2Impl<Model extends Serializable, Data extends Serializable,
         }
     }
 
-    public boolean shouldTerminate(Model model,
-            ImruIterationInformation runtimeInformation) {
+    public boolean shouldTerminate(Model model, ImruIterInfo runtimeInformation) {
         return job.shouldTerminate(model, runtimeInformation);
     }
 
     @Override
     public Model update(final IMRUContext ctx, final Iterator<byte[]> input,
-            Model model, final ImruIterationInformation r)
-            throws IMRUDataException {
+            Model model, final ImruIterInfo r) throws IMRUDataException {
         Iterator<T> iterator = new Iterator<T>() {
             @Override
             public void remove() {
@@ -242,10 +239,9 @@ public class IMRUJob2Impl<Model extends Serializable, Data extends Serializable,
                         .getJobSerializerDeserializerContainer()
                         .getJobSerializerDeserializer(deploymentId);
                 try {
-                    ImruIterationInformation<T> r2 = (ImruIterationInformation) jobSerDe
-                            .deserialize(objectData);
-                    r.add(r2);
-                    return r2.object;
+                    T r2 = (T) jobSerDe.deserialize(objectData);
+                    //                    r.add(r2);
+                    return r2;
                 } catch (Exception e) {
                     Rt
                             .p("Read reduce result failed len=%,d",

@@ -25,7 +25,7 @@ import java.util.List;
 import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
-import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruObject;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
@@ -113,8 +113,8 @@ public class RandomSelectJob extends
      */
     @Override
     public KMeansModel update(IMRUContext ctx,
-            Iterator<KMeansStartingPoints> input, KMeansModel model,
-            ImruIterationInformation iterationInfo) throws IMRUDataException {
+            Iterator<KMeansStartingPoints> input, KMeansModel model)
+            throws IMRUDataException {
         KMeansStartingPoints obj = reduce(ctx, input);
         KMeansStartingPoints startingPoints = (KMeansStartingPoints) obj;
         for (int i = 0; i < k; i++)
@@ -127,8 +127,7 @@ public class RandomSelectJob extends
      * Return true to exit loop
      */
     @Override
-    public boolean shouldTerminate(KMeansModel model,
-            ImruIterationInformation iterationInfo) {
+    public boolean shouldTerminate(KMeansModel model, ImruIterInfo iterationInfo) {
         return model.roundsRemaining <= 0;
     }
 

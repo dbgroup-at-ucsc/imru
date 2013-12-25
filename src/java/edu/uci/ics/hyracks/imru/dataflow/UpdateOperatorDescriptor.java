@@ -38,7 +38,7 @@ import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryInputSinkOperatorNodeP
 import edu.uci.ics.hyracks.imru.api.ASyncIO;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.ImruParameters;
-import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.api.old.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.data.ChunkFrameHelper;
@@ -107,7 +107,6 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
             private Model model;
             private final String name;
             IMRUContext imruContext;
-            ImruIterationInformation imruRuntimeInformation;
 
             Model updatedModel;
 
@@ -115,7 +114,6 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
                 this.name = UpdateOperatorDescriptor.this.getDisplayName()
                         + partition;
                 imruContext = new IMRUContext(ctx, name, partition);
-                imruRuntimeInformation = new ImruIterationInformation();
             }
 
             @SuppressWarnings("unchecked")
@@ -126,7 +124,8 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
                 model = (Model) imruContext.getModel();
                 if (model == null)
                     Rt.p("Model == null " + imruContext.getNodeId());
-                imruSpec.updateInit(imruContext, model, imruRuntimeInformation);
+                imruSpec.updateInit(imruContext, model);
+                imruSpec.updateDbgInfoInit(imruContext);
                 //                io = new ASyncIO<byte[]>();
                 //                future = IMRUSerialize.threadPool.submit(new Runnable() {
                 //                    @Override
@@ -147,8 +146,12 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
                     throws HyracksDataException {
                 SerializedFrames f = SerializedFrames.nextFrame(ctx
                         .getFrameSize(), encapsulatedChunk);
-                imruSpec.updateReceive(f.srcParition, f.offset, f.totalSize,
-                        f.data);
+                if (f.replyPartition == SerializedFrames.DBG_INFO_FRAME)
+                    imruSpec.updateDbgInfoReceive(f.srcPartition, f.offset,
+                            f.totalSize, f.data);
+                else
+                    imruSpec.updateReceive(f.srcPartition, f.offset,
+                            f.totalSize, f.data);
                 //                MergedFrames frames = MergedFrames.nextFrame(ctx,
                 //                        encapsulatedChunk, hash, imruContext.getNodeId()
                 //                                + " recv " + partition + " "
@@ -177,9 +180,11 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
             @Override
             public void close() throws HyracksDataException {
                 try {
-                    updatedModel = imruSpec.updateClose();
-//                    if (updatedModel == null)
-//                        throw new Error("model is null");
+                    imruSpec.updateDbgInfoClose();
+                    ImruIterInfo info = imruSpec.updateClose();
+                    updatedModel = imruSpec.getUpdatedModel();
+                    //                    if (updatedModel == null)
+                    //                        throw new Error("model is null");
                     //                    io.close();
                     //                    try {
                     //                        future.get();
@@ -190,11 +195,9 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
                     //                    imruContext.setModel(model);
 
                     long start = System.currentTimeMillis();
-                    imruRuntimeInformation.object = model;
-                    imruRuntimeInformation.currentIteration = imruContext
-                            .getIterationNumber();
-                    imruConnection.uploadModel(modelName,
-                            imruRuntimeInformation);
+                    info.currentIteration = imruContext.getIterationNumber();
+                    imruConnection.uploadModel(modelName, model);
+                    imruConnection.uploadDbgInfo(modelName, info);
                     long end = System.currentTimeMillis();
                     //                Rt.p(model);
                     LOG.info("uploaded model to CC " + (end - start)

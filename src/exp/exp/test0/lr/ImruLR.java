@@ -12,7 +12,7 @@ import java.util.List;
 import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
-import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruObject;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
@@ -65,8 +65,7 @@ public class ImruLR {
 
         @Override
         public Model update(IMRUContext ctx, Iterator<double[]> input,
-                Model model, ImruIterationInformation iterationInfo)
-                throws IMRUDataException {
+                Model model) throws IMRUDataException {
             double[] gradient = reduce(ctx, input);
             for (int i = 0; i < gradient.length; i++)
                 model.w[i] += gradient[i];
@@ -75,8 +74,7 @@ public class ImruLR {
         }
 
         @Override
-        public boolean shouldTerminate(Model model,
-                ImruIterationInformation iterationInfo) {
+        public boolean shouldTerminate(Model model, ImruIterInfo iterationInfo) {
             return model.iterationRemaining <= 0;
         }
 

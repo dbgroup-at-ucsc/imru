@@ -5,7 +5,7 @@ import java.io.Serializable;
 import java.util.BitSet;
 import java.util.Vector;
 
-import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.data.MergedFrames;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
@@ -34,8 +34,7 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
             }
         }
         so.swappingTarget = -1;
-        long swapTime = System.currentTimeMillis()
-                + so.maxWaitTimeBeforeSwap;
+        long swapTime = System.currentTimeMillis() + so.maxWaitTimeBeforeSwap;
         while (true) {
             int unfinishedPartition = -1;
             synchronized (so.aggrSync) {
@@ -106,7 +105,7 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
             Rt.p(so.curPartition + " start sending");
         boolean isRoot = so.targetPartition < 0;
         if (isRoot) {
-            ImruIterationInformation imruRuntimeInformation = new ImruIterationInformation();
+            ImruIterInfo imruRuntimeInformation = new ImruIterInfo();
             Model model = (Model) so.imruContext.getModel();
             if (model == null) {
                 //                if (so.debug) {
@@ -132,12 +131,12 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
                 Vector<byte[]> v = new Vector<byte[]>();
                 v.add(so.aggregatedResult);
                 Model updatedModel = so.imruSpec.updateFrames(so.imruContext, v
-                        .iterator(), model, imruRuntimeInformation);
+                        .iterator(), model);
                 long start = System.currentTimeMillis();
-                imruRuntimeInformation.object = updatedModel;
                 imruRuntimeInformation.currentIteration = so.imruContext
                         .getIterationNumber();
-                so.imruConnection.uploadModel(so.modelName,
+                so.imruConnection.uploadModel(so.modelName, updatedModel);
+                so.imruConnection.uploadDbgInfo(so.modelName,
                         imruRuntimeInformation);
                 long end = System.currentTimeMillis();
             }

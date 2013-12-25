@@ -25,13 +25,14 @@ import java.util.List;
 import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
-import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruObject;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
 import edu.uci.ics.hyracks.imru.api.old.IIMRUJob;
 
-public class KMeansJob extends ImruObject<KMeansModel, DataPoint, KMeansCentroids> {
+public class KMeansJob extends
+        ImruObject<KMeansModel, DataPoint, KMeansCentroids> {
     int k;
 
     public KMeansJob(int k) {
@@ -50,9 +51,11 @@ public class KMeansJob extends ImruObject<KMeansModel, DataPoint, KMeansCentroid
      * Parse input data and output tuples
      */
     @Override
-    public void parse(IMRUContext ctx, InputStream input, DataWriter<DataPoint> output) throws IOException {
+    public void parse(IMRUContext ctx, InputStream input,
+            DataWriter<DataPoint> output) throws IOException {
         try {
-            BufferedReader reader = new BufferedReader(new InputStreamReader(input));
+            BufferedReader reader = new BufferedReader(new InputStreamReader(
+                    input));
             while (true) {
                 String line = reader.readLine();
                 if (line == null)
@@ -71,7 +74,8 @@ public class KMeansJob extends ImruObject<KMeansModel, DataPoint, KMeansCentroid
     }
 
     @Override
-    public KMeansCentroids map(IMRUContext ctx, Iterator<DataPoint> input, KMeansModel model) throws IOException {
+    public KMeansCentroids map(IMRUContext ctx, Iterator<DataPoint> input,
+            KMeansModel model) throws IOException {
         KMeansCentroids result = new KMeansCentroids(k);
         while (input.hasNext()) {
             DataPoint dataPoint = input.next();
@@ -96,7 +100,8 @@ public class KMeansJob extends ImruObject<KMeansModel, DataPoint, KMeansCentroid
      * Combine multiple results to one result
      */
     @Override
-    public KMeansCentroids reduce(IMRUContext ctx, Iterator<KMeansCentroids> input) throws IMRUDataException {
+    public KMeansCentroids reduce(IMRUContext ctx,
+            Iterator<KMeansCentroids> input) throws IMRUDataException {
         KMeansCentroids combined = new KMeansCentroids(k);
         while (input.hasNext()) {
             KMeansCentroids result = input.next();
@@ -111,8 +116,8 @@ public class KMeansJob extends ImruObject<KMeansModel, DataPoint, KMeansCentroid
      * update the model using combined result
      */
     @Override
-    public KMeansModel update(IMRUContext ctx, Iterator<KMeansCentroids> input, KMeansModel model,
-            ImruIterationInformation iterationInfo) throws IMRUDataException {
+    public KMeansModel update(IMRUContext ctx, Iterator<KMeansCentroids> input,
+            KMeansModel model) throws IMRUDataException {
         KMeansCentroids combined = reduce(ctx, input);
         boolean changed = false;
         for (int i = 0; i < k; i++)
@@ -129,17 +134,16 @@ public class KMeansJob extends ImruObject<KMeansModel, DataPoint, KMeansCentroid
      * Return true to exit loop
      */
     @Override
-    public boolean shouldTerminate(KMeansModel model,
-            ImruIterationInformation iterationInfo) {
+    public boolean shouldTerminate(KMeansModel model, ImruIterInfo iterationInfo) {
         return model.roundsRemaining <= 0;
     }
-    
-     @Override
+
+    @Override
     public KMeansModel integrate(KMeansModel model1, KMeansModel model2) {
         return model1;
     }
-     
-      @Override
+
+    @Override
     public RecoveryAction onJobFailed(List<ImruSplitInfo> completedRanges,
             long dataSize, int optimalNodesForRerun, float rerunTime,
             int optimalNodesForPartiallyRerun, float partiallyRerunTime) {

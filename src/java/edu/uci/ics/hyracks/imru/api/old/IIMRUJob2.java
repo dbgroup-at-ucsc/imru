@@ -28,7 +28,7 @@ import edu.uci.ics.hyracks.imru.api.FrameWriter;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
 import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
-import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
 
@@ -83,14 +83,14 @@ public interface IIMRUJob2<Model, Data extends Serializable> extends
      * Return the same model object or return another object.
      */
     public Model update(IMRUContext ctx, Iterator<byte[]> input, Model model,
-            final ImruIterationInformation runtimeInformation)
+            final ImruIterInfo runtimeInformation)
             throws IMRUDataException;
 
     /**
      * Return true to exit loop
      */
     public boolean shouldTerminate(Model model,
-            ImruIterationInformation runtimeInformation);
+            ImruIterInfo runtimeInformation);
 
     /**
      * Callback function when some nodes failed. User should decide what action to take

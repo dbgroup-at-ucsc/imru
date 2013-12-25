@@ -26,7 +26,7 @@ import java.util.regex.Pattern;
 import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
-import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruObject;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
@@ -123,8 +123,7 @@ public class SKMeansJob extends
      */
     @Override
     public SKMeansModel update(IMRUContext ctx, Iterator<FilledVectors> input,
-            SKMeansModel model, ImruIterationInformation iterationInformation)
-            throws IMRUDataException {
+            SKMeansModel model) throws IMRUDataException {
         FilledVectors combined = reduce(ctx, input);
         boolean changed = model.set(combined);
         //        Rt.p(model.totalExamples);
@@ -141,7 +140,7 @@ public class SKMeansJob extends
      */
     @Override
     public boolean shouldTerminate(SKMeansModel model,
-            ImruIterationInformation iterationInformation) {
+            ImruIterInfo iterationInformation) {
         //        Rt.p(model.totalExamples);
         return model.roundsRemaining <= 0;
     }

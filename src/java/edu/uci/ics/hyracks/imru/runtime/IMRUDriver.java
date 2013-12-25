@@ -39,7 +39,7 @@ import edu.uci.ics.hyracks.api.job.JobId;
 import edu.uci.ics.hyracks.api.job.JobSpecification;
 import edu.uci.ics.hyracks.api.job.JobStatus;
 import edu.uci.ics.hyracks.imru.api.IIMRUDataGenerator;
-import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
@@ -75,7 +75,7 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
     public int frameSize;
     public String modelFileName;
     public String localIntermediateModelPath;
-    ImruIterationInformation iterationInfo = null;
+    ImruIterInfo iterationInfo = null;
 
     /**
      * Construct a new IMRUDriver.
@@ -173,9 +173,10 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
                 return JobStatus.FAILURE;
             }
             if (iterationInfo == null) {
-                iterationInfo = (ImruIterationInformation) imruConnection
-                        .downloadModel(this.getModelName());
-                model = (Model) iterationInfo.object;
+                model = (Model) imruConnection.downloadModel(this
+                        .getModelName());
+                iterationInfo = imruConnection.downloadDbgInfo(this
+                        .getModelName());
             }
             if (model == null)
                 throw new Exception("Can't download model");
@@ -290,20 +291,22 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
                 return hcc.getJobStatus(jobId);
             } catch (Exception e) {
                 e.printStackTrace();
-                iterationInfo = (ImruIterationInformation) imruConnection
-                        .downloadModel(this.getModelName());
+                Model partialModel = (Model) imruConnection.downloadModel(this
+                        .getModelName());
+                iterationInfo = imruConnection.downloadDbgInfo(this
+                        .getModelName());
                 RecoveryAction action = onJobFailed(iterationInfo);
                 switch (action) {
                     case Accept:
-                        model = (Model) iterationInfo.object;
+                        model = partialModel;
                         return JobStatus.TERMINATED;
                     case PartiallyRerun: {
                         JobStatus pstatus = partialRerun(iterationInfo,
-                                iterationNum, modelName);
+                                partialModel, iterationNum, modelName);
                         if (pstatus == JobStatus.RUNNING)
                             continue rerun;
                         else {
-                            model = (Model) iterationInfo.object;
+                            model = partialModel;
                             return pstatus;
                         }
                     }
@@ -319,7 +322,7 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
         }
     }
 
-    public RecoveryAction onJobFailed(ImruIterationInformation info) {
+    public RecoveryAction onJobFailed(ImruIterInfo info) {
         Vector<ImruSplitInfo> completedRanges = new Vector<ImruSplitInfo>();
         long dataSize = 0;
         int optimalNodesForRerun = 0;
@@ -337,10 +340,9 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
         return action;
     }
 
-    public JobStatus partialRerun(ImruIterationInformation info,
+    public JobStatus partialRerun(ImruIterInfo info, Model partialModel,
             int iterationNum, String modelName) throws Exception {
         int finishedRecoveryIteration = 0;
-        Model partialModel = (Model) info.object;
         partialRerun: while (true) {
             HashSet<String> completedPaths = new HashSet<String>();
             for (Object path : info.completedPaths) {
@@ -382,9 +384,11 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
                 e.printStackTrace();
                 failed = true;
             }
-            ImruIterationInformation pinfo = (ImruIterationInformation) imruConnection
-                    .downloadModel(this.getModelName());
-            Model newPartialModel = (Model) pinfo.object;
+
+            ImruIterInfo pinfo = imruConnection.downloadDbgInfo(this
+                    .getModelName());
+            Model newPartialModel = (Model) imruConnection.downloadModel(this
+                    .getModelName());
             partialModel = imruSpec.integrate(partialModel, newPartialModel);
             info.add(pinfo);
             info.finishedRecoveryIteration = finishedRecoveryIteration;
@@ -394,7 +398,8 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
                     case Accept:
                         return JobStatus.TERMINATED;
                     case PartiallyRerun:
-                        return partialRerun(info, iterationNum, modelName);
+                        return partialRerun(info, partialModel, iterationNum,
+                                modelName);
                     case Rerun:
                         return JobStatus.RUNNING;
                 }

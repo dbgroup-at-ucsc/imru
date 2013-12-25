@@ -4,18 +4,23 @@ import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Vector;
 
-public class ImruIterationInformation<T> implements Serializable {
+/**
+ * IMRU iteration debugging information
+ * 
+ * @author Rui Wang
+ */
+public class ImruIterInfo implements Serializable {
     public int currentIteration = -1;
     public int finishedRecoveryIteration = 0;
     public long mappedDataSize;
     public int mappedRecords;
-    public T object;
+    //    public T object;
     public Vector<String> completedPaths = new Vector<String>();
 
-    public ImruIterationInformation() {
+    public ImruIterInfo() {
     }
 
-    public void add(ImruIterationInformation r2) {
+    public void add(ImruIterInfo r2) {
         if (this.currentIteration < 0)
             this.currentIteration = r2.currentIteration;
         this.mappedDataSize += r2.mappedDataSize;
@@ -34,8 +39,8 @@ public class ImruIterationInformation<T> implements Serializable {
 
     @Override
     public String toString() {
-        if (object != null)
-            return object.toString();
+        //        if (object != null)
+        //            return object.toString();
         return super.toString();
     }
 }

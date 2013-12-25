@@ -23,7 +23,7 @@ import java.util.List;
 import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
-import edu.uci.ics.hyracks.imru.api.ImruIterationInformation;
+import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruObject;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
@@ -82,8 +82,7 @@ public class AggregateJob extends ImruObject<byte[], byte[], byte[]> {
      * update the model using combined result
      */
     @Override
-    public byte[] update(IMRUContext ctx, Iterator<byte[]> input, byte[] model,
-            ImruIterationInformation iterationInformation)
+    public byte[] update(IMRUContext ctx, Iterator<byte[]> input, byte[] model)
             throws IMRUDataException {
         while (input.hasNext())
             input.next();
@@ -95,7 +94,7 @@ public class AggregateJob extends ImruObject<byte[], byte[], byte[]> {
      */
     @Override
     public boolean shouldTerminate(byte[] model,
-            ImruIterationInformation iterationInformation) {
+            ImruIterInfo iterationInformation) {
         return true;
     }
 
