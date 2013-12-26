@@ -2,6 +2,7 @@ package edu.uci.ics.hyracks.imru.dataflow.dynamic;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
@@ -11,6 +12,7 @@ import java.util.LinkedList;
 import java.util.Vector;
 import java.util.concurrent.Future;
 
+import edu.uci.ics.hyracks.api.comm.IFrameWriter;
 import edu.uci.ics.hyracks.api.context.IHyracksTaskContext;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryInputUnaryOutputOperatorNodePushable;
@@ -23,6 +25,7 @@ import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.api.old.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.data.MergedFrames;
 import edu.uci.ics.hyracks.imru.data.SerializedFrames;
+import edu.uci.ics.hyracks.imru.dataflow.IMRUDebugger;
 import edu.uci.ics.hyracks.imru.dataflow.IMRUSerialize;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
 import edu.uci.ics.hyracks.imru.util.Rt;
@@ -77,20 +80,20 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
         }
     }
 
-    final ImruFrames<Model, Data> imruSpec;
+    final ImruStream<Model, Data> imruSpec;
     ImruParameters parameters;
     IMRUReduceContext imruContext;
     String modelName;
     IMRUConnection imruConnection;
     Hashtable<Integer, LinkedList<ByteBuffer>> hash = new Hashtable<Integer, LinkedList<ByteBuffer>>();
     public String name;
-    ASyncIO<byte[]> io;
-    Future future;
+    //    ASyncIO<byte[]> io;
+    //    Future future;
 
     IHyracksTaskContext ctx;
     int curPartition;
     int nPartitions;
-    IMRUContext context;
+    //    IMRUContext context;
     BitSet receivingPartitions = new BitSet();
     BitSet receivedPartitions = new BitSet();
 
@@ -102,8 +105,6 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
     //    String aggrResult;
     boolean holding = false;
     boolean sending = false;
-    int frameSize;
-    ByteBuffer frame;
 
     //for swapping
     boolean swapSucceed;
@@ -135,14 +136,13 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
         this.ctx = ctx;
         this.curPartition = curPartition;
         this.nPartitions = nPartitions;
-        this.imruSpec = (ImruFrames<Model, Data>)imruSpec;
+        this.imruSpec = (ImruFrames<Model, Data>) imruSpec;
         this.parameters = parameters;
         this.modelName = modelName;
         this.imruConnection = imruConnection;
         this.diableSwapping = diableSwapping;
         this.maxWaitTimeBeforeSwap = maxWaitTimeBeforeSwap;
-        frameSize = ctx.getFrameSize();
-        frame = ctx.allocateFrame();
+        Rt.p(maxWaitTimeBeforeSwap);
         debugSendOperators[curPartition] = this;
         targetPartition = targetPartitions[curPartition];
         this.log.append(targetPartition + ",");
@@ -157,16 +157,30 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
                 incomingPartitions[sourceCount++] = i;
     }
 
-    void sendObj(int targetPartition, Serializable object) throws IOException {
+    void sendObj(int targetPartition, SwapCommand cmd) throws IOException {
         if (debug)
-            Rt.p(curPartition + " send to " + targetPartition + " " + object);
+            Rt.p(curPartition + " send to " + targetPartition + " " + cmd);
         if (targetPartition < 0 || targetPartition >= nPartitions)
             throw new Error("" + targetPartition);
-        synchronized (frame) {
-            MergedFrames.serializeToFrames(frame, frameSize, writer, object,
-                    curPartition, targetPartition);
-        }
+        SerializedFrames.serializeSwapCmd(imruContext, writer, cmd,
+                curPartition, targetPartition);
     }
+
+    IFrameWriter getWriter() {
+        return writer;
+    }
+
+    //    void sendData(int targetPartition, byte[] data) throws IOException {
+    //        if (debug)
+    //            Rt.p(curPartition + " send to " + targetPartition + " "
+    //                    + data.length);
+    //        if (targetPartition < 0 || targetPartition >= nPartitions)
+    //            throw new Error("" + targetPartition);
+    //        synchronized (frame) {
+    //            SerializedFrames.serializeToFrames(null, frame, frameSize, writer,
+    //                    data, curPartition, targetPartition, curPartition, null);
+    //        }
+    //    }
 
     Vector<Integer> lockingPartitions;
 
@@ -246,12 +260,11 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
                     + targetPartition);
     }
 
-    public void progress(int sourceParition, int targetParition, int size,
-            int total, Object object) {
+    public void aggrStarted(int srcParition, int targetParition, int size,
+            int total) {
         //                        Rt.p(targetParition + " recv " + sourceParition + " "
         //                                + size + "/" + total);
-        if (!(object instanceof SwapCommand))
-            receivingPartitions.set(sourceParition);
+        receivingPartitions.set(srcParition);
     }
 
     public void complete(int srcPartition, int thisPartition,
@@ -260,74 +273,151 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
                 replyPartition, object);
     }
 
+    public void completedAggr(int srcPartition, int thisPartition,
+            int replyPartition) throws IOException {
+        ImruSendOperator so = this;
+        //        byte[] receivedResult = (byte[]) object;
+        if (so.allChildrenFinished) {
+            Rt.p("ERROR " + so.curPartition + " recv data from " + srcPartition
+                    + " {"
+                    //                    + MergedFrames.deserialize(receivedResult)
+                    + "}");
+        }
+        synchronized (so.aggrSync) {
+            //                String orgResult = aggrResult;
+            //                addResult(receivedResult);
+            //            so.io.add(receivedResult);
+            if (so.receivedPartitions.get(srcPartition)) {
+                new Error().printStackTrace();
+            }
+            so.receivedPartitions.set(srcPartition);
+            //                if (debug)
+            //                    Rt.p(context.getNodeId() + " received result from "
+            //                            + object + ", " + orgResult + " + " + object
+            //                            + " = " + aggrResult);
+            so.aggrSync.notifyAll();
+        }
+        if (so.debug) {
+            Rt.p(so.curPartition + " recv data from " + srcPartition + " {"
+            //                    + MergedFrames.deserialize(receivedResult) 
+                    + "}");
+            so.printAggrTree();
+        }
+        if (so.totalRepliesRemaining > 0) {
+            if (so.isParentNodeOfSwapping && srcPartition == so.swappingTarget)
+                so.swapFailed = true;
+            incomingMessageProcessor.checkHoldingStatus();
+            if (so.totalRepliesRemaining <= 0)
+                incomingMessageProcessor.holdComplete();
+        }
+    }
+
+    Object dbgInfoRecvQueue;
+    Object recvQueue;
     byte[] aggregatedResult;
 
     @Override
     public void open() throws HyracksDataException {
-        this.name = "reduce " + curPartition;
-        context = new IMRUContext(ctx, "send", curPartition);
-        context.setUserObject("sendOperator", this);
+        this.name = "DR" + curPartition;
+        imruContext = new IMRUReduceContext(ctx, name, false, -1, curPartition,
+                nPartitions);
+        imruContext.setUserObject("sendOperator", this);
 
         writer.open();
 
-        imruContext = new IMRUReduceContext(ctx, name, false, -1, curPartition);
-        io = new ASyncIO<byte[]>(1);
-        future = IMRUSerialize.threadPool.submit(new Runnable() {
+        recvQueue = imruSpec.reduceInit(imruContext, new OutputStream() {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+
             @Override
-            public void run() {
-                Iterator<byte[]> input = io.getInput();
-                ByteArrayOutputStream out = new ByteArrayOutputStream();
-                try {
-                    imruSpec.reduceFrames(imruContext, input, out);
-                    aggregatedResult = out.toByteArray();
-                    //                    IMRUDebugger.sendDebugInfo(imruContext.getNodeId()
-                    //                            + " reduce start " + curPartition);
-                    if (imruContext.getIterationNumber() >= parameters.compressIntermediateResultsAfterNIterations)
-                        aggregatedResult = IMRUSerialize
-                                .compress(aggregatedResult);
-                    synchronized (aggrSync) {
-                        aggrSync.notifyAll();
-                    }
-                    //                    MergedFrames.serializeToFrames(imruContext, writer,
-                    //                            objectData, curPartition, imruContext.getNodeId()
-                    //                                    + " reduce " + curPartition + " "
-                    //                                    + imruContext.getOperatorName());
-                    //                    IMRUDebugger.sendDebugInfo(imruContext.getNodeId()
-                    //                            + " reduce finish");
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    try {
-                        fail();
-                    } catch (HyracksDataException e1) {
-                        e1.printStackTrace();
-                    }
+            public void write(byte[] b, int off, int len) throws IOException {
+                out.write(b, off, len);
+            }
+
+            @Override
+            public void write(int b) throws IOException {
+                out.write(b);
+            }
+
+            @Override
+            public void close() throws IOException {
+                aggregatedResult = out.toByteArray();
+                // if (imruContext.getIterationNumber() >=
+                // parameters.compressIntermediateResultsAfterNIterations)
+                // objectData = IMRUSerialize.compress(objectData);
+                synchronized (aggrSync) {
+                    aggrSync.notifyAll();
                 }
+                //                IMRUDebugger.sendDebugInfo(imruContext.getNodeId()
+                //                        + " reduce finish");
             }
         });
+        dbgInfoRecvQueue = imruSpec.reduceDbgInfoInit(imruContext, recvQueue);
+
+        //        io = new ASyncIO<byte[]>(1);
+        //        future = IMRUSerialize.threadPool.submit(new Runnable() {
+        //            @Override
+        //            public void run() {
+        //                Iterator<byte[]> input = io.getInput();
+        //                ByteArrayOutputStream out = new ByteArrayOutputStream();
+        //                try {
+        //                    imruSpec.reduceFrames(imruContext, input, out);
+        //                    aggregatedResult = out.toByteArray();
+        //                    //                    IMRUDebugger.sendDebugInfo(imruContext.getNodeId()
+        //                    //                            + " reduce start " + curPartition);
+        //                    if (imruContext.getIterationNumber() >= parameters.compressIntermediateResultsAfterNIterations)
+        //                        aggregatedResult = IMRUSerialize
+        //                                .compress(aggregatedResult);
+        //                    synchronized (aggrSync) {
+        //                        aggrSync.notifyAll();
+        //                    }
+        //                    //                    MergedFrames.serializeToFrames(imruContext, writer,
+        //                    //                            objectData, curPartition, imruContext.getNodeId()
+        //                    //                                    + " reduce " + curPartition + " "
+        //                    //                                    + imruContext.getOperatorName());
+        //                    //                    IMRUDebugger.sendDebugInfo(imruContext.getNodeId()
+        //                    //                            + " reduce finish");
+        //                } catch (Exception e) {
+        //                    e.printStackTrace();
+        //                    try {
+        //                        fail();
+        //                    } catch (HyracksDataException e1) {
+        //                        e1.printStackTrace();
+        //                    }
+        //                }
+        //            }
+        //        });
     }
 
     @Override
     public void nextFrame(ByteBuffer encapsulatedChunk)
             throws HyracksDataException {
         try {
-            MergedFrames frames = MergedFrames.nextFrame(ctx,
-                    encapsulatedChunk, hash, imruContext.getNodeId() + " recv "
-                            + curPartition + " "
-                            + imruContext.getOperatorName());
-            if (frames.data != null) {
-                if (ImruSendOperator.debugNetworkSpeed > 0)
-                    Thread
-                            .sleep((int) (frames.data.length / ImruSendOperator.debugNetworkSpeed));
+            SerializedFrames f = SerializedFrames.nextFrame(ctx.getFrameSize(),
+                    encapsulatedChunk);
+            if (f.replyPartition == SerializedFrames.DBG_INFO_FRAME)
+                imruSpec.reduceDbgInfoReceive(f.srcPartition, f.offset,
+                        f.totalSize, f.data, dbgInfoRecvQueue);
+            else
+                imruSpec.reduceReceive(f.srcPartition, f.offset, f.totalSize,
+                        f.data, recvQueue);
+            //            MergedFrames frames = MergedFrames.nextFrame(ctx,
+            //                    encapsulatedChunk, hash, imruContext.getNodeId() + " recv "
+            //                            + curPartition + " "
+            //                            + imruContext.getOperatorName());
+            //            if (frames.data != null) {
+            //                if (ImruSendOperator.debugNetworkSpeed > 0)
+            //                    Thread
+            //                            .sleep((int) (frames.data.length / ImruSendOperator.debugNetworkSpeed));
 
-                if (imruContext.getIterationNumber() >= parameters.compressIntermediateResultsAfterNIterations)
-                    frames.data = IMRUSerialize.decompress(frames.data);
-                io.add(frames.data);
-                if (debug) {
-                    Rt.p(curPartition + " received map result from "
-                            + frames.sourceParition + " "
-                            + MergedFrames.deserialize(frames.data));
-                }
-            }
+            //                if (imruContext.getIterationNumber() >= parameters.compressIntermediateResultsAfterNIterations)
+            //                    frames.data = IMRUSerialize.decompress(frames.data);
+            //                io.add(frames.data);
+            //                if (debug) {
+            //                    Rt.p(curPartition + " received map result from "
+            //                            + frames.sourceParition + " "
+            //                            + MergedFrames.deserialize(frames.data));
+            //                }
+            //            }
         } catch (HyracksDataException e) {
             fail();
             throw e;

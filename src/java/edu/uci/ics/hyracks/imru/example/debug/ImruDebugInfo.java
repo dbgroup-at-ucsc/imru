@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-package exp.test0.imruTest;
+package edu.uci.ics.hyracks.imru.example.debug;
 
 import edu.uci.ics.hyracks.imru.example.utils.Client;
 
 /**
- * Functional test of debugging info and auto optimization
+ * Demonstration of IMRU debugging information
  */
-public class TestIterationInfo {
+public class ImruDebugInfo {
     public static void main(String[] args) throws Exception {
         if (args.length == 0) {
             // if no argument is given, the following code
@@ -39,7 +39,7 @@ public class TestIterationInfo {
                 cmdline += "-host localhost -port 3099 -debug -disable-logging";
                 cmdline += " -debugNodes " + totalNodes;
                 cmdline += " -agg-tree-type nary -fan-in 4";
-//                cmdline += " -agg-tree-type none";
+                //                cmdline += " -agg-tree-type none";
                 cmdline += " -compress-after-iterations 2";
                 cmdline += " -disable-logging";
                 cmdline += " -frame-size 256";

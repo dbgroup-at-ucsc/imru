@@ -126,7 +126,8 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
                                     // objectData = IMRUSerialize.compress(objectData);
                                     SerializedFrames.serializeToFrames(
                                             imruContext, writer, objectData,
-                                            partition, imruContext.getNodeId()
+                                            partition, 0, imruContext
+                                                    .getNodeId()
                                                     + " reduce "
                                                     + partition
                                                     + " "
@@ -191,9 +192,9 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
                 imruSpec.reduceDbgInfoClose(dbgInfoRecvQueue);
                 ImruIterInfo info = imruSpec.reduceClose(recvQueue);
                 try {
-//                    Rt.p("send " + info.aggrTree.operator + " to " + partition);
+                    //                    Rt.p("send " + info.aggrTree.operator + " to " + partition);
                     SerializedFrames.serializeDbgInfo(imruContext, writer,
-                            info, partition);
+                            info, partition, 0);
                 } catch (IOException e) {
                     throw new HyracksDataException(e);
                 }

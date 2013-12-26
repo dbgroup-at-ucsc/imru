@@ -103,7 +103,7 @@ public class IMRUJob2Impl<Model extends Serializable, Data extends Serializable,
     public void map(final IMRUContext ctx, Iterator<ByteBuffer> input,
             Model model, OutputStream output, int cachedDataFrameSize)
             throws IMRUDataException {
-        final ImruIterInfo r = new ImruIterInfo();
+        final ImruIterInfo r = new ImruIterInfo(ctx);
         FrameTupleAccessor accessor = new FrameTupleAccessor(
                 cachedDataFrameSize, new RecordDescriptor(
                         new ISerializerDeserializer[fieldCount]));
@@ -129,7 +129,7 @@ public class IMRUJob2Impl<Model extends Serializable, Data extends Serializable,
                         .getJobSerializerDeserializerContainer()
                         .getJobSerializerDeserializer(deploymentId);
                 Data data = (Data) jobSerDe.deserialize(bs);
-                r.mappedDataSize += bs.length;
+                r.aggrTree.mappedDataSize += bs.length;
                 return data;
             }
 
@@ -140,7 +140,7 @@ public class IMRUJob2Impl<Model extends Serializable, Data extends Serializable,
                 try {
                     reader.nextTuple();
                     Data data = read();
-                    r.mappedRecords++;
+                    r.aggrTree.mappedRecords++;
                     return data;
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -168,7 +168,7 @@ public class IMRUJob2Impl<Model extends Serializable, Data extends Serializable,
     public void reduce(final IMRUReduceContext ctx,
             final Iterator<byte[]> input, OutputStream output)
             throws IMRUDataException {
-        final ImruIterInfo r = new ImruIterInfo();
+        final ImruIterInfo r = new ImruIterInfo(ctx);
         Iterator<T> iterator = new Iterator<T>() {
             @Override
             public void remove() {

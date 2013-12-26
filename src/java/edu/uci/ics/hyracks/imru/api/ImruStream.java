@@ -153,11 +153,11 @@ abstract public class ImruStream<Model extends Serializable, Data extends Serial
         return reducerDbgInfo;
     }
 
-    public void reduceDbgInfoReceive(int srcParition, int offset,
+    public boolean reduceDbgInfoReceive(int srcParition, int offset,
             int totalSize, byte[] bs, Object userObject)
             throws IMRUDataException {
         SerializedFrames.Receiver reducerDbgInfo = (SerializedFrames.Receiver) userObject;
-        reducerDbgInfo.receive(srcParition, offset, totalSize, bs);
+        return reducerDbgInfo.receive(srcParition, offset, totalSize, bs);
     }
 
     public void reduceDbgInfoClose(Object userObject) throws IMRUDataException {

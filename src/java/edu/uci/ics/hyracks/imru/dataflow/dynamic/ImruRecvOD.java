@@ -24,6 +24,7 @@ import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryInputSinkOperatorNodeP
 import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryOutputSourceOperatorNodePushable;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.data.MergedFrames;
+import edu.uci.ics.hyracks.imru.data.SerializedFrames;
 import edu.uci.ics.hyracks.imru.dataflow.SpreadOD;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
 import edu.uci.ics.hyracks.imru.util.Rt;
@@ -49,49 +50,64 @@ public class ImruRecvOD<Model extends Serializable> extends
             IRecordDescriptorProvider recordDescProvider, final int partition,
             final int nPartitions) throws HyracksDataException {
         return new AbstractUnaryInputSinkOperatorNodePushable() {
-            Hashtable<Integer, LinkedList<ByteBuffer>> queue = new Hashtable<Integer, LinkedList<ByteBuffer>>();
+            //            Hashtable<Integer, LinkedList<ByteBuffer>> queue = new Hashtable<Integer, LinkedList<ByteBuffer>>();
             IMRUContext context;
             ImruSendOperator sendOperator;
 
             @Override
             public void open() throws HyracksDataException {
-                context = new IMRUContext(ctx, "send",partition);
+                context = new IMRUContext(ctx, "send", partition, nPartitions);
             }
 
             @Override
             public void nextFrame(ByteBuffer buffer)
                     throws HyracksDataException {
-                if (buffer == null)
-                    return;
-                MergedFrames frames = MergedFrames
-                        .nextFrame(ctx, buffer, queue);
-                if (sendOperator == null)
-                    sendOperator = (ImruSendOperator) context
-                            .getUserObject("sendOperator");
-                if (frames.data == null) {
-                    sendOperator.progress(frames.sourceParition,
-                            frames.targetParition, frames.receivedSize,
-                            frames.totalSize, null);
-                    return;
-                }
                 try {
-                    if (ImruSendOperator.debugNetworkSpeed > 0) {
-                        Thread
-                                .sleep(1 + (int) (frames.data.length / ImruSendOperator.debugNetworkSpeed));
+                    if (buffer == null)
+                        return;
+                    SerializedFrames f = SerializedFrames.nextFrame(ctx
+                            .getFrameSize(), buffer);
+                    //                MergedFrames frames = MergedFrames
+                    //                        .nextFrame(ctx, buffer, queue);
+                    if (sendOperator == null) {
+                        sendOperator = (ImruSendOperator) context
+                                .getUserObject("sendOperator");
                     }
-                    NCApplicationContext appContext = (NCApplicationContext) ctx
-                            .getJobletContext().getApplicationContext();
-                    IJobSerializerDeserializer jobSerDe = appContext
-                            .getJobSerializerDeserializerContainer()
-                            .getJobSerializerDeserializer(deploymentId);
-                    Serializable receivedObject = (Serializable) jobSerDe
-                            .deserialize(frames.data);
-                    sendOperator.progress(frames.sourceParition,
-                            frames.targetParition, frames.receivedSize,
-                            frames.totalSize, receivedObject);
-                    sendOperator.complete(frames.sourceParition,
-                            frames.targetParition, frames.replyPartition,
-                            receivedObject);
+                    if (f.replyPartition == SerializedFrames.DBG_INFO_FRAME) {
+                        boolean completed = sendOperator.imruSpec
+                                .reduceDbgInfoReceive(f.srcPartition, f.offset,
+                                        f.totalSize, f.data,
+                                        sendOperator.dbgInfoRecvQueue);
+                        if (completed)
+                            sendOperator.completedAggr(f.srcPartition,
+                                    f.targetParition, f.replyPartition);
+                    } else if (f.replyPartition == SerializedFrames.DYNAMIC_COMMUNICATION_FRAME) {
+                        NCApplicationContext appContext = (NCApplicationContext) ctx
+                                .getJobletContext().getApplicationContext();
+                        IJobSerializerDeserializer jobSerDe = appContext
+                                .getJobSerializerDeserializerContainer()
+                                .getJobSerializerDeserializer(deploymentId);
+                        Serializable receivedObject = (Serializable) jobSerDe
+                                .deserialize(f.data);
+                        sendOperator.complete(f.srcPartition, f.targetParition,
+                                f.replyPartition, receivedObject);
+                    } else {
+                        sendOperator.imruSpec.reduceReceive(f.srcPartition,
+                                f.offset, f.totalSize, f.data,
+                                sendOperator.recvQueue);
+                        sendOperator.aggrStarted(f.srcPartition,
+                                f.targetParition, f.receivedSize, f.totalSize);
+                    }
+                    //                    if (frames.data == null) {
+                    //                        sendOperator.progress(frames.sourceParition,
+                    //                                frames.targetParition, frames.receivedSize,
+                    //                                frames.totalSize, null);
+                    //                        return;
+                    //                    }
+                    //                    if (ImruSendOperator.debugNetworkSpeed > 0) {
+                    //                        Thread
+                    //                                .sleep(1 + (int) (frames.data.length / ImruSendOperator.debugNetworkSpeed));
+                    //                    }
                 } catch (Exception e) {
                     throw new HyracksDataException(e);
                 } finally {

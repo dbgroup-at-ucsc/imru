@@ -164,7 +164,7 @@ public class DynamicAggregationStressTest {
         public IOperatorNodePushable createPushRuntime(
                 final IHyracksTaskContext ctx,
                 IRecordDescriptorProvider recordDescProvider,
-                final int partition, int nPartitions) {
+                final int partition, final int nPartitions) {
             return new AbstractUnaryOutputSourceOperatorNodePushable() {
                 @Override
                 public void initialize() throws HyracksDataException {
@@ -173,7 +173,7 @@ public class DynamicAggregationStressTest {
                         ByteBuffer frame = ctx.allocateFrame();
                         ByteArrayOutputStream out = new ByteArrayOutputStream();
                         IMRUMapContext context = new IMRUMapContext(ctx, "",
-                                "", partition);
+                                "", partition, nPartitions);
                         imru.map(context, null, "", out, 1024);
                         byte[] data = out.toByteArray();
                         //                            Rt.p("send " + MergedFrames.deserialize(data)

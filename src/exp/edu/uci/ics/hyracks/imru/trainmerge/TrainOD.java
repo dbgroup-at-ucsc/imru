@@ -80,8 +80,8 @@ public class TrainOD<Model extends Serializable> extends
                 return;
         }
         writer.open();
-        TrainMergeContext context = new TrainMergeContext(ctx,
-                "train", writer, partition,partition, mergerIds[partition],
+        TrainMergeContext context = new TrainMergeContext(ctx, "train", writer,
+                partition, nPartitions, partition, mergerIds[partition],
                 imruConnection, jobId);
         try {
             String nodeId = context.getNodeId();

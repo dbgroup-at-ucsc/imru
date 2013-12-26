@@ -46,7 +46,7 @@ public class ImruSendOD<Model extends Serializable, Data extends Serializable>
     public ImruSendOD(JobSpecification spec, int[] targets,
             ImruStream<Model, Data> imruSpec, String name,
             ImruParameters parameters, String modelName,
-            IMRUConnection imruConnection, boolean diableSwapping,
+            IMRUConnection imruConnection, boolean disableSwapping,
             int maxWaitTimeBeforeSwap) {
         super(spec, 1, 1, name, imruSpec);
         this.imruSpec = imruSpec;
@@ -56,6 +56,8 @@ public class ImruSendOD<Model extends Serializable, Data extends Serializable>
         targetPartitions = targets;
         this.modelName = modelName;
         this.imruConnection = imruConnection;
+        this.maxWaitTimeBeforeSwap = maxWaitTimeBeforeSwap;
+        this.disableSwapping = disableSwapping;
     }
 
     @Override

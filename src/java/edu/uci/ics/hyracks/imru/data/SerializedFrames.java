@@ -28,6 +28,7 @@ import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.dataflow.IMRUDebugger;
 import edu.uci.ics.hyracks.imru.dataflow.IMRUSerialize;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.SwapCommand;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 /**
@@ -42,6 +43,7 @@ import edu.uci.ics.hyracks.imru.util.Rt;
  */
 public class SerializedFrames {
     public static final int DBG_INFO_FRAME = -1;
+    public static final int DYNAMIC_COMMUNICATION_FRAME = -2;
 
     public static class Buf {
         byte[] data;
@@ -100,7 +102,7 @@ public class SerializedFrames {
             io.add(bs);
         }
 
-        public void receive(int srcPartition, int offset, int totalSize,
+        public boolean receive(int srcPartition, int offset, int totalSize,
                 byte[] bs) throws IMRUDataException {
             Buf buffer = hash.get(srcPartition);
             if (buffer == null) {
@@ -119,7 +121,9 @@ public class SerializedFrames {
             if (buffer.pos >= buffer.data.length) {
                 hash.remove(srcPartition);
                 receiveComplete(srcPartition, buffer.data);
+                return true;
             }
+            return false;
         }
 
         public void close() throws IMRUDataException {
@@ -195,19 +199,29 @@ public class SerializedFrames {
     }
 
     public static void serializeToFrames(IMRUContext ctx, IFrameWriter writer,
-            byte[] objectData, int partition, String debugInfo)
-            throws HyracksDataException {
+            byte[] objectData, int partition, int targetPartition,
+            String debugInfo) throws HyracksDataException {
         ByteBuffer frame = ctx.allocateFrame();
         serializeToFrames(ctx, frame, ctx.getFrameSize(), writer, objectData,
-                partition, 0, partition, debugInfo);
+                partition, targetPartition, partition, debugInfo);
     }
 
     public static void serializeDbgInfo(IMRUContext ctx, IFrameWriter writer,
-            ImruIterInfo info, int partition) throws IOException {
+            ImruIterInfo info, int partition, int targetPartition)
+            throws IOException {
         byte[] objectData = JavaSerializationUtils.serialize(info);
         ByteBuffer frame = ctx.allocateFrame();
         serializeToFrames(ctx, frame, ctx.getFrameSize(), writer, objectData,
-                partition, 0, -1, null);
+                partition, targetPartition, DBG_INFO_FRAME, null);
+    }
+
+    public static void serializeSwapCmd(IMRUContext ctx, IFrameWriter writer,
+            SwapCommand cmd, int partition, int targetPartition)
+            throws IOException {
+        byte[] objectData = JavaSerializationUtils.serialize(cmd);
+        ByteBuffer frame = ctx.allocateFrame();
+        serializeToFrames(ctx, frame, ctx.getFrameSize(), writer, objectData,
+                partition, targetPartition, DYNAMIC_COMMUNICATION_FRAME, null);
     }
 
     public static Object deserialize(byte[] bytes) {
@@ -249,14 +263,6 @@ public class SerializedFrames {
         encapsulatedChunk.putInt(FrameHelper.getTupleCountOffset(ctx
                 .getFrameSize()) - 4);
         encapsulatedChunk.position(0);
-    }
-
-    public static void serializeToFrames(ByteBuffer frame, int frameSize,
-            IFrameWriter writer, Serializable object, int sourcePartition,
-            int targetPartition) throws IOException {
-        byte[] bs = JavaSerializationUtils.serialize(object);
-        serializeToFrames(null, frame, frameSize, writer, bs, sourcePartition,
-                targetPartition, sourcePartition, null);
     }
 
     /**

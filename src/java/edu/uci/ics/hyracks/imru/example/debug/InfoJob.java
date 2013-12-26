@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-package exp.test0.dynamicTest;
+package edu.uci.ics.hyracks.imru.example.debug;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -34,13 +34,12 @@ import edu.uci.ics.hyracks.imru.api.old.IIMRUJob;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 /**
- * Core IMRU application specific code.
  * The dataflow is parse->map->reduce->update
  */
-public class AggrJob extends ImruObject<String, String, String> {
+public class InfoJob extends ImruObject<String, String, String> {
     int n = 5;
 
-    public AggrJob(int n) {
+    public InfoJob(int n) {
         this.n = n;
     }
 
@@ -74,8 +73,16 @@ public class AggrJob extends ImruObject<String, String, String> {
     @Override
     public String map(IMRUContext ctx, Iterator<String> input, String model)
             throws IOException {
-        //        Rt.sleep(500);
-        Rt.sleep(1000 * Integer.parseInt(ctx.getNodeId().substring(2)));
+        //        if (ctx.getNodeId().startsWith("NC0")) {
+        //            Rt.p(ctx.getIterationNumber() + " "
+        //                    + ctx.getRecoverIterationNumber());
+        //            if (ctx.getRecoverIterationNumber() < 0
+        //                    && ctx.getRerunCount() < 1) {
+        //                Rt.sleep(500);
+        //                throw new Error();
+        //            }
+        //        }
+        //        Rt.sleep(1000);
         String result = "";
         while (input.hasNext()) {
             String word = input.next();
@@ -92,21 +99,21 @@ public class AggrJob extends ImruObject<String, String, String> {
     @Override
     public String reduce(IMRUContext ctx, Iterator<String> input)
             throws IMRUDataException {
-        IMRUReduceContext reduceContext = (IMRUReduceContext) ctx;
+        //        Rt.sleep(2000);
         String combined = new String();
         StringBuilder sb = new StringBuilder();
-        if (!reduceContext.isLocalReducer())
-            combined = "(";
+        combined = "(";
+        //        Rt.p(ctx.getOperatorName() + " open");
         while (input.hasNext()) {
+            //            Rt.p(ctx.getOperatorName() + " next");
             String result = input.next();
             if (sb.length() > 0)
                 sb.append("+");
             sb.append(result);
             combined += result;
         }
-        if (!reduceContext.isLocalReducer())
-            combined += ")_" + (reduceContext.isLocalReducer() ? "L" : "")
-                    + ctx.getNodeId();
+        combined += ")_" + ctx.getNodeId();
+        IMRUReduceContext reduceContext = (IMRUReduceContext) ctx;
         System.out.println(ctx.getNodeId()
                 + "-"
                 + ctx.getOperatorName()
@@ -134,11 +141,7 @@ public class AggrJob extends ImruObject<String, String, String> {
     @Override
     public boolean shouldTerminate(String model, ImruIterInfo info) {
         n--;
-        Rt.p("current iteration: " + info.currentIteration);
-        Rt.p("current recovery iteration: " + info.finishedRecoveryIteration);
-        Rt.p("left iterations: " + n);
-        Rt.p("map data size: " + info.mappedDataSize);
-        Rt.p("map records: " + info.mappedRecords);
+        info.printReport();
         return n <= 0;
     }
 

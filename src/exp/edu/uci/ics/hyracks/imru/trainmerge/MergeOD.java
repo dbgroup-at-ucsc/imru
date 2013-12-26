@@ -74,7 +74,8 @@ public class MergeOD<Model extends Serializable> extends
             @Override
             public void close() throws HyracksDataException {
                 if (partition == 0) {
-                    IMRUContext imruContext = new IMRUContext(ctx, "merge",partition);
+                    IMRUContext imruContext = new IMRUContext(ctx, "merge",
+                            partition, nPartitions);
                     long start = System.currentTimeMillis();
                     Model model = (Model) imruContext.getModel();
                     try {
@@ -146,8 +147,8 @@ public class MergeOD<Model extends Serializable> extends
             return;
         try {
             TrainMergeContext context = new TrainMergeContext(ctx, "merge",
-                    null, partition, totalTrainPartitions + partition,
-                    partition, imruConnection, jobId);
+                    null, partition, nPartitions, totalTrainPartitions
+                            + partition, partition, imruConnection, jobId);
             Serializable receivedObject = (Serializable) JavaSerializationUtils
                     .deserialize(frames.data, SpreadOD.class.getClassLoader());
             trainMergejob.receive(context, frames.replyPartition,

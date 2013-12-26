@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-package exp.test0.imruTest;
+package edu.uci.ics.hyracks.imru.example.dynamic;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -33,14 +33,10 @@ import edu.uci.ics.hyracks.imru.api.RecoveryAction;
 import edu.uci.ics.hyracks.imru.api.old.IIMRUJob;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
-/**
- * Core IMRU application specific code.
- * The dataflow is parse->map->reduce->update
- */
-public class InfoJob extends ImruObject<String, String, String> {
+public class AggrJob extends ImruObject<String, String, String> {
     int n = 5;
 
-    public InfoJob(int n) {
+    public AggrJob(int n) {
         this.n = n;
     }
 
@@ -74,16 +70,9 @@ public class InfoJob extends ImruObject<String, String, String> {
     @Override
     public String map(IMRUContext ctx, Iterator<String> input, String model)
             throws IOException {
-        //        if (ctx.getNodeId().startsWith("NC0")) {
-        //            Rt.p(ctx.getIterationNumber() + " "
-        //                    + ctx.getRecoverIterationNumber());
-        //            if (ctx.getRecoverIterationNumber() < 0
-        //                    && ctx.getRerunCount() < 1) {
-        //                Rt.sleep(500);
-        //                throw new Error();
-        //            }
-        //        }
-        //        Rt.sleep(1000);
+//        if (ctx.getPartition() == ctx.getPartitions() - 1)
+//            Rt.sleep(3000);
+        Rt.sleep(500*ctx.getPartition());
         String result = "";
         while (input.hasNext()) {
             String word = input.next();
@@ -100,21 +89,21 @@ public class InfoJob extends ImruObject<String, String, String> {
     @Override
     public String reduce(IMRUContext ctx, Iterator<String> input)
             throws IMRUDataException {
-        //        Rt.sleep(2000);
+        IMRUReduceContext reduceContext = (IMRUReduceContext) ctx;
         String combined = new String();
         StringBuilder sb = new StringBuilder();
-        combined = "(";
-        //        Rt.p(ctx.getOperatorName() + " open");
+        if (!reduceContext.isLocalReducer())
+            combined = "(";
         while (input.hasNext()) {
-            //            Rt.p(ctx.getOperatorName() + " next");
             String result = input.next();
             if (sb.length() > 0)
                 sb.append("+");
             sb.append(result);
             combined += result;
         }
-        combined += ")_" + ctx.getNodeId();
-        IMRUReduceContext reduceContext = (IMRUReduceContext) ctx;
+        if (!reduceContext.isLocalReducer())
+            combined += ")_" + (reduceContext.isLocalReducer() ? "L" : "")
+                    + ctx.getNodeId();
         System.out.println(ctx.getNodeId()
                 + "-"
                 + ctx.getOperatorName()

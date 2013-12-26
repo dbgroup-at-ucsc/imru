@@ -34,20 +34,23 @@ public class SpreadOD extends AbstractSingleActivityOperatorDescriptor {
         first = level == 0;
         last = level == levels.length - 1;
         if (!last)
-            recordDescriptors[0] = new RecordDescriptor(new ISerializerDeserializer[1]);
+            recordDescriptors[0] = new RecordDescriptor(
+                    new ISerializerDeserializer[1]);
     }
 
     public static int[] result = new int[100];
 
     @Override
-    public IOperatorNodePushable createPushRuntime(final IHyracksTaskContext ctx,
-            IRecordDescriptorProvider recordDescProvider, final int partition, int nPartitions)
-            throws HyracksDataException {
+    public IOperatorNodePushable createPushRuntime(
+            final IHyracksTaskContext ctx,
+            IRecordDescriptorProvider recordDescProvider, final int partition,
+            final int nPartitions) throws HyracksDataException {
         if (first) {
             return new AbstractUnaryOutputSourceOperatorNodePushable() {
                 @Override
                 public void initialize() throws HyracksDataException {
-                    SpreadOD.this.nextFrame(ctx, writer, partition, null, null);
+                    SpreadOD.this.nextFrame(ctx, writer, partition,
+                            nPartitions, null, null);
                 }
             };
         } else if (last) {
@@ -59,8 +62,10 @@ public class SpreadOD extends AbstractSingleActivityOperatorDescriptor {
                 }
 
                 @Override
-                public void nextFrame(ByteBuffer buffer) throws HyracksDataException {
-                    SpreadOD.this.nextFrame(ctx, writer, partition, buffer, queue);
+                public void nextFrame(ByteBuffer buffer)
+                        throws HyracksDataException {
+                    SpreadOD.this.nextFrame(ctx, writer, partition,
+                            nPartitions, buffer, queue);
                 }
 
                 @Override
@@ -80,8 +85,10 @@ public class SpreadOD extends AbstractSingleActivityOperatorDescriptor {
                 }
 
                 @Override
-                public void nextFrame(ByteBuffer buffer) throws HyracksDataException {
-                    SpreadOD.this.nextFrame(ctx, writer, partition, buffer, queue);
+                public void nextFrame(ByteBuffer buffer)
+                        throws HyracksDataException {
+                    SpreadOD.this.nextFrame(ctx, writer, partition,
+                            nPartitions, buffer, queue);
                 }
 
                 @Override
@@ -97,8 +104,8 @@ public class SpreadOD extends AbstractSingleActivityOperatorDescriptor {
 
     public static final int BYTES_IN_INT = 4;
 
-    public static byte[] deserializeFromChunks(int frameSize, LinkedList<ByteBuffer> chunks)
-            throws HyracksDataException {
+    public static byte[] deserializeFromChunks(int frameSize,
+            LinkedList<ByteBuffer> chunks) throws HyracksDataException {
         int curPosition = 0;
         byte[] bs = null;
         for (ByteBuffer buffer : chunks) {
@@ -108,7 +115,7 @@ public class SpreadOD extends AbstractSingleActivityOperatorDescriptor {
                 bs = new byte[size];
             else if (size != bs.length)
                 throw new Error();
-//            Rt.p(position);
+            //            Rt.p(position);
             if (position != curPosition)
                 throw new Error(position + " " + curPosition);
             int len = Math.min(bs.length - curPosition, frameSize - 12);
@@ -120,16 +127,18 @@ public class SpreadOD extends AbstractSingleActivityOperatorDescriptor {
         return bs;
     }
 
-    public static void serializeToFrames(ByteBuffer frame, int frameSize, IFrameWriter writer, byte[] objectData,
-            int targetPartition) throws HyracksDataException {
+    public static void serializeToFrames(ByteBuffer frame, int frameSize,
+            IFrameWriter writer, byte[] objectData, int targetPartition)
+            throws HyracksDataException {
         int position = 0;
         while (position < objectData.length) {
             frame.position(0);
             frame.putInt(targetPartition);
             frame.putInt(objectData.length);
             frame.putInt(position);
-//            Rt.p(position);
-            int length = Math.min(objectData.length - position, frameSize - 3 * BYTES_IN_INT);
+            //            Rt.p(position);
+            int length = Math.min(objectData.length - position, frameSize - 3
+                    * BYTES_IN_INT);
             frame.put(objectData, position, length);
             frame.position(frameSize);
             frame.flip();
@@ -138,7 +147,8 @@ public class SpreadOD extends AbstractSingleActivityOperatorDescriptor {
         }
     }
 
-    public void nextFrame(IHyracksTaskContext ctx, IFrameWriter writer, int partition, ByteBuffer buffer,
+    public void nextFrame(IHyracksTaskContext ctx, IFrameWriter writer,
+            int partition, int nPartitions, ByteBuffer buffer,
             LinkedList<ByteBuffer> queue) throws HyracksDataException {
         int frameSize = ctx.getFrameSize();
         if (buffer != null) {
@@ -147,7 +157,7 @@ public class SpreadOD extends AbstractSingleActivityOperatorDescriptor {
             queue.add(frame);
             int size = buffer.getInt(4);
             int position = buffer.getInt(8);
-//            Rt.p(position + "/" + size);
+            //            Rt.p(position + "/" + size);
             if (position + frameSize - 12 < size)
                 return;
         }
@@ -156,7 +166,8 @@ public class SpreadOD extends AbstractSingleActivityOperatorDescriptor {
         try {
             if (first != (queue == null))
                 throw new Error();
-            IMRUContext imruContext = new IMRUContext(ctx,partition);
+            IMRUContext imruContext = new IMRUContext(ctx, partition,
+                    nPartitions);
             String nodeId = imruContext.getNodeId();
             byte[] bs = null;
             if (first) {
@@ -175,7 +186,8 @@ public class SpreadOD extends AbstractSingleActivityOperatorDescriptor {
                 //                        node.print(0);
                 //                        Rt.p(to.nodes.get(partition).name + " " + new IMRUContext(ctx).getNodeId() + " to " + node.name);
                 //                buffer.putInt(0, n.partitionInThisLevel);
-                serializeToFrames(frame, frameSize, writer, bs, n.partitionInThisLevel);
+                serializeToFrames(frame, frameSize, writer, bs,
+                        n.partitionInThisLevel);
                 if (last)
                     throw new Error();
                 //                writer.nextFrame(buffer);

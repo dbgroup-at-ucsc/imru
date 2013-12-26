@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-package exp.test0.dynamicTest;
+package edu.uci.ics.hyracks.imru.example.dynamic;
 
 import edu.uci.ics.hyracks.imru.example.utils.Client;
 
 /**
- * Functional test of debugging info and auto optimization
+ * Demonstration of IMRU dynamic swapping
  */
 public class TestDynamicAggr {
     public static void main(String[] args) throws Exception {
@@ -43,6 +43,8 @@ public class TestDynamicAggr {
                 cmdline += " -compress-after-iterations 2";
                 cmdline += " -disable-logging";
                 cmdline += " -dynamic";
+                cmdline += " -dynamic-swap-time 0";
+                cmdline += " -dynamic-disable";
 
                 System.out.println("Starting hyracks cluster");
             }

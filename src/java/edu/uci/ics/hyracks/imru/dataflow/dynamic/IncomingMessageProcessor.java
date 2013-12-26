@@ -58,41 +58,8 @@ public class IncomingMessageProcessor {
                 so.holding = false;
                 so.aggrSync.notifyAll();
             }
-        } else {
-            byte[] receivedResult = (byte[]) object;
-            if (so.allChildrenFinished) {
-                Rt.p("ERROR " + so.curPartition + " recv data from "
-                        + srcPartition + " {"
-                        + MergedFrames.deserialize(receivedResult) + "}");
-            }
-            synchronized (so.aggrSync) {
-                //                String orgResult = aggrResult;
-                //                addResult(receivedResult);
-                so.io.add(receivedResult);
-                if (so.receivedPartitions.get(srcPartition)) {
-                    new Error().printStackTrace();
-                }
-                so.receivedPartitions.set(srcPartition);
-                //                if (debug)
-                //                    Rt.p(context.getNodeId() + " received result from "
-                //                            + object + ", " + orgResult + " + " + object
-                //                            + " = " + aggrResult);
-                so.aggrSync.notifyAll();
-            }
-            if (so.debug) {
-                Rt.p(so.curPartition + " recv data from " + srcPartition + " {"
-                        + MergedFrames.deserialize(receivedResult) + "}");
-                so.printAggrTree();
-            }
-            if (so.totalRepliesRemaining > 0) {
-                if (so.isParentNodeOfSwapping
-                        && srcPartition == so.swappingTarget)
-                    so.swapFailed = true;
-                checkHoldingStatus();
-                if (so.totalRepliesRemaining <= 0)
-                    holdComplete();
-            }
-        }
+        } else
+            throw new Error();
     }
 
     void processLockRequest(LockRequest request) throws IOException {
@@ -108,10 +75,10 @@ public class IncomingMessageProcessor {
         }
         if (request.isParentNode
                 && so.curPartition == request.newTargetPartition) {
-            if ( successful)
-                so.log.append("accept"+ srcPartition+",");
+            if (successful)
+                so.log.append("accept" + srcPartition + ",");
             else
-                so.log.append("reject"+ srcPartition+",");
+                so.log.append("reject" + srcPartition + ",");
         }
         if (successful && request.isParentNode
                 && so.curPartition == request.newTargetPartition) {

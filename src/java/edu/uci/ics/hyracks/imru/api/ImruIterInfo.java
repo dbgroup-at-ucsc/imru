@@ -115,20 +115,23 @@ public class ImruIterInfo implements Serializable {
     }
 
     public void printReport() {
-        Rt.p("Completed paths:");
+        Rt.p("Processed paths:");
         for (String s : allCompletedPaths)
-            Rt.np(" "+s);
+            Rt.np(" " + s);
+
+        Rt.np("");
         Rt.np("current iteration: " + currentIteration);
         Rt.np("current recovery iteration: " + finishedRecoveryIteration);
         Rt.np("map data size: " + aggrTree.totalMappedDataSize);
         Rt.np("map records: " + aggrTree.totalMappedRecords);
+
+        Rt.np("");
+        Rt.np("Data flow graph:");
         Rt.np(getAggrTree());
     }
 
     @Override
     public String toString() {
-        // if (object != null)
-        // return object.toString();
         return super.toString();
     }
 }

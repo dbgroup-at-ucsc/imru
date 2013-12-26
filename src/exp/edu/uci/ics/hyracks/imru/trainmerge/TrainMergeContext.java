@@ -30,9 +30,9 @@ public class TrainMergeContext extends IMRUContext {
     String jobId;
 
     public TrainMergeContext(IHyracksTaskContext ctx, String operatorName,
-            IFrameWriter writer, int curTrainPartition, int srcParitionUUID,
+            IFrameWriter writer, int curTrainPartition,int nPartitions, int srcParitionUUID,
             int curNodeId, IMRUConnection imruConnection, String jobId) {
-        super(ctx, operatorName,curTrainPartition);
+        super(ctx, operatorName,curTrainPartition,nPartitions);
         this.writer = writer;
         this.curTrainPartition = curTrainPartition;
         this.curNodeId = curNodeId;

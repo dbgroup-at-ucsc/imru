@@ -5,8 +5,10 @@ import java.io.Serializable;
 import java.util.BitSet;
 import java.util.Vector;
 
+import edu.uci.ics.hyracks.api.util.JavaSerializationUtils;
 import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.data.MergedFrames;
+import edu.uci.ics.hyracks.imru.data.SerializedFrames;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class DynamicAggregation<Model extends Serializable, Data extends Serializable> {
@@ -76,8 +78,11 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
             if (so.swappingTarget >= 0)
                 performSwap();
         }
-        so.io.close();
+        so.imruSpec.reduceDbgInfoClose(so.dbgInfoRecvQueue);
+        ImruIterInfo info = so.imruSpec.reduceClose(so.recvQueue);
+        //        so.io.close();
 
+        //TODO: check the following code, no need to wait?
         so.allChildrenFinished = true;
         if (so.debug)
             Rt.p(so.curPartition + " all children finished");
@@ -100,12 +105,13 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
                     so.aggrSync.wait();
             }
         }
-        so.future.get();
+        //        so.future.get();
         if (so.debug)
             Rt.p(so.curPartition + " start sending");
         boolean isRoot = so.targetPartition < 0;
         if (isRoot) {
-            ImruIterInfo imruRuntimeInformation = new ImruIterInfo();
+            ImruIterInfo imruRuntimeInformation = new ImruIterInfo(
+                    so.imruContext);
             Model model = (Model) so.imruContext.getModel();
             if (model == null) {
                 //                if (so.debug) {
@@ -128,17 +134,29 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
                         + sb);
                 //                }
             } else {
-                Vector<byte[]> v = new Vector<byte[]>();
-                v.add(so.aggregatedResult);
-                Model updatedModel = so.imruSpec.updateFrames(so.imruContext, v
-                        .iterator(), model);
-                long start = System.currentTimeMillis();
-                imruRuntimeInformation.currentIteration = so.imruContext
-                        .getIterationNumber();
+                Object recvQueue = so.imruSpec
+                        .updateInit(so.imruContext, model);
+                Object dbgInfoQueue = so.imruSpec.updateDbgInfoInit(
+                        so.imruContext, recvQueue);
+                so.imruSpec.updateReceive(so.curPartition, 0,
+                        so.aggregatedResult.length, so.aggregatedResult,
+                        recvQueue);
+                byte[] infoData = JavaSerializationUtils.serialize(info);
+                so.imruSpec.updateDbgInfoReceive(so.curPartition, 0,
+                        infoData.length, infoData, dbgInfoQueue);
+
+                so.imruSpec.updateDbgInfoClose(dbgInfoQueue);
+                info = so.imruSpec.updateClose(recvQueue);
+                Model updatedModel = so.imruSpec.getUpdatedModel();
+                //                Vector<byte[]> v = new Vector<byte[]>();
+                //                v.add(so.aggregatedResult);
+                //                Model updatedModel = so.imruSpec.updateFrames(so.imruContext, v
+                //                        .iterator(), model);
+                //                long start = System.currentTimeMillis();
+                info.currentIteration = so.imruContext.getIterationNumber();
                 so.imruConnection.uploadModel(so.modelName, updatedModel);
-                so.imruConnection.uploadDbgInfo(so.modelName,
-                        imruRuntimeInformation);
-                long end = System.currentTimeMillis();
+                so.imruConnection.uploadDbgInfo(so.modelName, info);
+                //                long end = System.currentTimeMillis();
             }
             //                Rt.p(model);
             //            LOG.info("uploaded model to CC " + (end - start) + " milliseconds");
@@ -150,7 +168,13 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
                         //                        + aggregatedResult.length);
                         + MergedFrames.deserialize(so.aggregatedResult));
             }
-            so.sendObj(so.targetPartition, so.aggregatedResult);
+            SerializedFrames.serializeToFrames(so.imruContext, so.getWriter(),
+                    so.aggregatedResult, so.curPartition, so.targetPartition,
+                    so.imruContext.getNodeId() + " reduce " + so.curPartition
+                            + " " + so.imruContext.getOperatorName());
+            //                        so.sendData(so.targetPartition, so.aggregatedResult);
+            SerializedFrames.serializeDbgInfo(so.imruContext, so.getWriter(),
+                    info, so.curPartition, so.targetPartition);
         }
         so.sentPartition = so.targetPartition;
         so.targetPartition = -2;
@@ -237,6 +261,7 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
                 if (target >= 0)
                     so.sendObj(target, new SwapChildrenRequest(so.curPartition,
                             so.swappingTarget));
+//                Rt.p("swap "+ so.curPartition+" with "+ so.swappingTarget);
                 so.swappingTarget = -1;
                 break;
             }
