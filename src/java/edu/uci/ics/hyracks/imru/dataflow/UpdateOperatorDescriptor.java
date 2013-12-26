@@ -101,19 +101,20 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
     public IOperatorNodePushable createPushRuntime(
             final IHyracksTaskContext ctx,
             IRecordDescriptorProvider recordDescProvider, final int partition,
-            int nPartitions) throws HyracksDataException {
+            final int nPartitions) throws HyracksDataException {
         return new AbstractUnaryInputSinkOperatorNodePushable() {
             Hashtable<Integer, LinkedList<ByteBuffer>> hash = new Hashtable<Integer, LinkedList<ByteBuffer>>();
             private Model model;
             private final String name;
             IMRUContext imruContext;
-
             Model updatedModel;
+            Object dbgInfoQueue;
+            Object recvQueue;
 
             {
                 this.name = UpdateOperatorDescriptor.this.getDisplayName()
                         + partition;
-                imruContext = new IMRUContext(ctx, name, partition);
+                imruContext = new IMRUContext(ctx, name, partition, nPartitions);
             }
 
             @SuppressWarnings("unchecked")
@@ -124,8 +125,9 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
                 model = (Model) imruContext.getModel();
                 if (model == null)
                     Rt.p("Model == null " + imruContext.getNodeId());
-                imruSpec.updateInit(imruContext, model);
-                imruSpec.updateDbgInfoInit(imruContext);
+                recvQueue = imruSpec.updateInit(imruContext, model);
+                dbgInfoQueue = imruSpec.updateDbgInfoInit(imruContext,
+                        recvQueue);
                 //                io = new ASyncIO<byte[]>();
                 //                future = IMRUSerialize.threadPool.submit(new Runnable() {
                 //                    @Override
@@ -148,10 +150,10 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
                         .getFrameSize(), encapsulatedChunk);
                 if (f.replyPartition == SerializedFrames.DBG_INFO_FRAME)
                     imruSpec.updateDbgInfoReceive(f.srcPartition, f.offset,
-                            f.totalSize, f.data);
+                            f.totalSize, f.data, dbgInfoQueue);
                 else
                     imruSpec.updateReceive(f.srcPartition, f.offset,
-                            f.totalSize, f.data);
+                            f.totalSize, f.data, recvQueue);
                 //                MergedFrames frames = MergedFrames.nextFrame(ctx,
                 //                        encapsulatedChunk, hash, imruContext.getNodeId()
                 //                                + " recv " + partition + " "
@@ -180,8 +182,8 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
             @Override
             public void close() throws HyracksDataException {
                 try {
-                    imruSpec.updateDbgInfoClose();
-                    ImruIterInfo info = imruSpec.updateClose();
+                    imruSpec.updateDbgInfoClose(dbgInfoQueue);
+                    ImruIterInfo info = imruSpec.updateClose(recvQueue);
                     updatedModel = imruSpec.getUpdatedModel();
                     //                    if (updatedModel == null)
                     //                        throw new Error("model is null");

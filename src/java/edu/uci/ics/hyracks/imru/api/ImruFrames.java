@@ -9,42 +9,53 @@ import edu.uci.ics.hyracks.imru.util.Rt;
 
 public abstract class ImruFrames<Model extends Serializable, Data extends Serializable>
         extends ImruStream<Model, Data> {
-    SerializedFrames.Receiver reducer;
-    ImruIterInfo reducerInfo;
-    SerializedFrames.Receiver update;
-    ImruIterInfo updateInfo;
+    public static class A {
+        SerializedFrames.Receiver recv;
+        ImruIterInfo info;
+    }
+
     Model updatedModel;
 
     @Override
-    public void reduceInit(final IMRUReduceContext ctx,
+    public Object reduceInit(final IMRUReduceContext ctx,
             final OutputStream output) throws IMRUDataException {
-        reducerInfo = new ImruIterInfo();
-        reducer = new SerializedFrames.Receiver() {
+        A a = new A();
+        a.info = new ImruIterInfo(ctx);
+        //        Rt.p(reducerInfo.aggrTree.operator + " open");
+        a.recv = new SerializedFrames.Receiver() {
             @Override
             public void process(Iterator<byte[]> input, OutputStream output)
                     throws IMRUDataException {
                 reduceFrames(ctx, input, output);
             }
         };
-        reducer.open(output);
+        a.recv.open(output);
+        return a;
     }
 
     @Override
     public void reduceReceive(int srcParition, int offset, int totalSize,
-            byte[] bs) throws IMRUDataException {
-        reducer.receive(srcParition, offset, totalSize, bs);
+            byte[] bs, Object userObject) throws IMRUDataException {
+        //        Rt.p(reducerInfo.aggrTree.operator + " recv from " + srcParition + " "
+        //                + offset + "/" + totalSize);
+        A a = (A) userObject;
+        a.recv.receive(srcParition, offset, totalSize, bs);
     }
 
     @Override
-    public void reduceRecvInformation(int srcParition, ImruIterInfo info)
-            throws IMRUDataException {
-        reducerInfo.add(info);
+    public void reduceRecvDbgInfo(int srcParition, ImruIterInfo info,
+            Object userObject) throws IMRUDataException {
+        //        Rt.p(reducerInfo.aggrTree.operator + " recv info ");
+        A a = (A) userObject;
+        a.info.add(info);
     }
 
     @Override
-    public ImruIterInfo reduceClose() throws IMRUDataException {
-        reducer.close();
-        return reducerInfo;
+    public ImruIterInfo reduceClose(Object userObject) throws IMRUDataException {
+        //        Rt.p(reducerInfo.aggrTree.operator + " close ");
+        A a = (A) userObject;
+        a.recv.close();
+        return a.info;
     }
 
     /**
@@ -55,35 +66,40 @@ public abstract class ImruFrames<Model extends Serializable, Data extends Serial
             throws IMRUDataException;
 
     @Override
-    public void updateInit(final IMRUContext ctx, final Model model)
+    public Object updateInit(final IMRUContext ctx, final Model model)
             throws IMRUDataException {
-        updateInfo=new ImruIterInfo();
-        update = new SerializedFrames.Receiver() {
+        A a = new A();
+        a.info = new ImruIterInfo(ctx);
+        a.recv = new SerializedFrames.Receiver() {
             @Override
             public void process(Iterator<byte[]> input)
                     throws IMRUDataException {
                 updatedModel = updateFrames(ctx, input, model);
             }
         };
-        update.open(null);
+        a.recv.open(null);
+        return a;
     }
 
     @Override
     public void updateReceive(int srcParition, int offset, int totalSize,
-            byte[] bs) throws IMRUDataException {
-        update.receive(srcParition, offset, totalSize, bs);
+            byte[] bs, Object userObject) throws IMRUDataException {
+        A a = (A) userObject;
+        a.recv.receive(srcParition, offset, totalSize, bs);
     }
 
     @Override
-    public void updateRecvInformation(int srcParition, ImruIterInfo info)
-            throws IMRUDataException {
-        updateInfo.add(info);
+    public void updateRecvInformation(int srcParition, ImruIterInfo info,
+            Object userObject) throws IMRUDataException {
+        A a = (A) userObject;
+        a.info.add(info);
     }
 
     @Override
-    public ImruIterInfo updateClose() throws IMRUDataException {
-        update.close();
-        return updateInfo;
+    public ImruIterInfo updateClose(Object userObject) throws IMRUDataException {
+        A a = (A) userObject;
+        a.recv.close();
+        return a.info;
     }
 
     @Override

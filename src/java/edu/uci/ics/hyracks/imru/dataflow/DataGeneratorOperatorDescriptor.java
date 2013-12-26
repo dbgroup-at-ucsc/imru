@@ -44,7 +44,7 @@ public class DataGeneratorOperatorDescriptor extends
     public IOperatorNodePushable createPushRuntime(
             final IHyracksTaskContext ctx,
             IRecordDescriptorProvider recordDescProvider, final int partition,
-            int nPartitions) throws HyracksDataException {
+           final  int nPartitions) throws HyracksDataException {
         return new AbstractOperatorNodePushable() {
             private final String name;
             long startTime;
@@ -63,7 +63,7 @@ public class DataGeneratorOperatorDescriptor extends
                 initialized = true;
                 startTime = System.currentTimeMillis();
 
-                imruContext = new IMRUContext(ctx, name,partition);
+                imruContext = new IMRUContext(ctx, name,partition,nPartitions);
                 final IMRUFileSplit split = inputSplits[partition];
                 try {
                     BufferedOutputStream output = new BufferedOutputStream(

@@ -104,7 +104,9 @@ public class InfoJob extends ImruObject<String, String, String> {
         String combined = new String();
         StringBuilder sb = new StringBuilder();
         combined = "(";
+        //        Rt.p(ctx.getOperatorName() + " open");
         while (input.hasNext()) {
+            //            Rt.p(ctx.getOperatorName() + " next");
             String result = input.next();
             if (sb.length() > 0)
                 sb.append("+");
@@ -140,14 +142,7 @@ public class InfoJob extends ImruObject<String, String, String> {
     @Override
     public boolean shouldTerminate(String model, ImruIterInfo info) {
         n--;
-        Rt.p("Completed paths:");
-        for (String s : info.completedPaths)
-            Rt.np(s);
-        Rt.p("current iteration: " + info.currentIteration);
-        Rt.p("current recovery iteration: " + info.finishedRecoveryIteration);
-        Rt.p("left iterations: " + n);
-        Rt.p("map data size: " + info.mappedDataSize);
-        Rt.p("map records: " + info.mappedRecords);
+        info.printReport();
         return n <= 0;
     }
 

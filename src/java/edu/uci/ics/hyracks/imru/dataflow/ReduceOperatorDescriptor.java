@@ -81,11 +81,13 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
     public IOperatorNodePushable createPushRuntime(
             final IHyracksTaskContext ctx,
             IRecordDescriptorProvider recordDescProvider, final int partition,
-            int nPartitions) throws HyracksDataException {
+            final int nPartitions) throws HyracksDataException {
         return new AbstractUnaryInputUnaryOutputOperatorNodePushable() {
             IMRUReduceContext imruContext;
             Hashtable<Integer, LinkedList<ByteBuffer>> hash = new Hashtable<Integer, LinkedList<ByteBuffer>>();
             public String name;
+            Object dbgInfoRecvQueue;
+            Object recvQueue;
 
             {
                 this.name = ReduceOperatorDescriptor.this.getDisplayName()
@@ -97,41 +99,46 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
                 writer.open();
                 try {
                     imruContext = new IMRUReduceContext(ctx, name, isLocal,
-                            level, partition);
+                            level, partition, nPartitions);
                     IMRUDebugger.sendDebugInfo(imruContext.getNodeId()
                             + " reduce start " + partition);
 
-                    imruSpec.reduceDbgInfoInit(imruContext);
-                    imruSpec.reduceInit(imruContext, new OutputStream() {
-                        ByteArrayOutputStream out = new ByteArrayOutputStream();
+                    recvQueue = imruSpec.reduceInit(imruContext,
+                            new OutputStream() {
+                                ByteArrayOutputStream out = new ByteArrayOutputStream();
 
-                        @Override
-                        public void write(byte[] b, int off, int len)
-                                throws IOException {
-                            out.write(b, off, len);
-                        }
+                                @Override
+                                public void write(byte[] b, int off, int len)
+                                        throws IOException {
+                                    out.write(b, off, len);
+                                }
 
-                        @Override
-                        public void write(int b) throws IOException {
-                            out.write(b);
-                        }
+                                @Override
+                                public void write(int b) throws IOException {
+                                    out.write(b);
+                                }
 
-                        @Override
-                        public void close() throws IOException {
-                            byte[] objectData = out.toByteArray();
-                            //                            if (imruContext.getIterationNumber() >= parameters.compressIntermediateResultsAfterNIterations)
-                            //                                objectData = IMRUSerialize.compress(objectData);
-                            SerializedFrames.serializeToFrames(imruContext,
-                                    writer, objectData, partition, imruContext
+                                @Override
+                                public void close() throws IOException {
+                                    byte[] objectData = out.toByteArray();
+                                    // if (imruContext.getIterationNumber() >=
+                                    // parameters.compressIntermediateResultsAfterNIterations)
+                                    // objectData = IMRUSerialize.compress(objectData);
+                                    SerializedFrames.serializeToFrames(
+                                            imruContext, writer, objectData,
+                                            partition, imruContext.getNodeId()
+                                                    + " reduce "
+                                                    + partition
+                                                    + " "
+                                                    + imruContext
+                                                            .getOperatorName());
+                                    IMRUDebugger.sendDebugInfo(imruContext
                                             .getNodeId()
-                                            + " reduce "
-                                            + partition
-                                            + " "
-                                            + imruContext.getOperatorName());
-                            IMRUDebugger.sendDebugInfo(imruContext.getNodeId()
-                                    + " reduce finish");
-                        }
-                    });
+                                            + " reduce finish");
+                                }
+                            });
+                    dbgInfoRecvQueue = imruSpec.reduceDbgInfoInit(imruContext,
+                            recvQueue);
                 } catch (Exception e) {
                     e.printStackTrace();
                     try {
@@ -151,19 +158,20 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
                             .getFrameSize(), encapsulatedChunk);
                     if (f.replyPartition == SerializedFrames.DBG_INFO_FRAME)
                         imruSpec.reduceDbgInfoReceive(f.srcPartition, f.offset,
-                                f.totalSize, f.data);
+                                f.totalSize, f.data, dbgInfoRecvQueue);
                     else
                         imruSpec.reduceReceive(f.srcPartition, f.offset,
-                                f.totalSize, f.data);
-                    //                    MergedFrames frames = MergedFrames.nextFrame(ctx,
-                    //                            encapsulatedChunk, hash, imruContext.getNodeId()
-                    //                                    + " recv " + partition + " "
-                    //                                    + imruContext.getOperatorName());
-                    //                    if (frames.data != null) {
-                    //                        if (imruContext.getIterationNumber() >= parameters.compressIntermediateResultsAfterNIterations)
-                    //                            frames.data = IMRUSerialize.decompress(frames.data);
-                    //                        io.add(frames.data);
-                    //                    }
+                                f.totalSize, f.data, recvQueue);
+                    // MergedFrames frames = MergedFrames.nextFrame(ctx,
+                    // encapsulatedChunk, hash, imruContext.getNodeId()
+                    // + " recv " + partition + " "
+                    // + imruContext.getOperatorName());
+                    // if (frames.data != null) {
+                    // if (imruContext.getIterationNumber() >=
+                    // parameters.compressIntermediateResultsAfterNIterations)
+                    // frames.data = IMRUSerialize.decompress(frames.data);
+                    // io.add(frames.data);
+                    // }
                 } catch (HyracksDataException e) {
                     fail();
                     throw e;
@@ -175,14 +183,15 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
 
             @Override
             public void fail() throws HyracksDataException {
-                //                writer.fail();
+                // writer.fail();
             }
 
             @Override
             public void close() throws HyracksDataException {
-                imruSpec.reduceDbgInfoClose();
-                ImruIterInfo info = imruSpec.reduceClose();
+                imruSpec.reduceDbgInfoClose(dbgInfoRecvQueue);
+                ImruIterInfo info = imruSpec.reduceClose(recvQueue);
                 try {
+//                    Rt.p("send " + info.aggrTree.operator + " to " + partition);
                     SerializedFrames.serializeDbgInfo(imruContext, writer,
                             info, partition);
                 } catch (IOException e) {

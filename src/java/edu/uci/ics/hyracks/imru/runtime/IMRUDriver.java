@@ -329,7 +329,7 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
         float rerunTime = 0;
         int optimalNodesForPartiallyRerun = 0;
         float partiallyRerunTime = 0;
-        for (Object path : info.completedPaths) {
+        for (Object path : info.allCompletedPaths) {
             ImruSplitInfo splitInfo = new ImruSplitInfo();
             splitInfo.path = (String) path;
             completedRanges.add(splitInfo);
@@ -345,7 +345,7 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
         int finishedRecoveryIteration = 0;
         partialRerun: while (true) {
             HashSet<String> completedPaths = new HashSet<String>();
-            for (Object path : info.completedPaths) {
+            for (Object path : info.allCompletedPaths) {
                 completedPaths.add((String) path);
             }
             StringBuilder incompletedPaths = new StringBuilder();

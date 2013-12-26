@@ -17,8 +17,6 @@ import edu.uci.ics.hyracks.imru.data.SerializedFrames;
 abstract public class ImruStream<Model extends Serializable, Data extends Serializable>
         implements Serializable {
     DeploymentId deploymentId;
-    private SerializedFrames.Receiver reducerDbgInfo;
-    private SerializedFrames.Receiver updateDbgInfo;
 
     public void setDeploymentId(DeploymentId deploymentId) {
         this.deploymentId = deploymentId;
@@ -68,27 +66,32 @@ abstract public class ImruStream<Model extends Serializable, Data extends Serial
             Model model, OutputStream output, int cachedDataFrameSize)
             throws IMRUDataException;
 
-    abstract public void reduceInit(IMRUReduceContext ctx, OutputStream output)
+    abstract public Object reduceInit(IMRUReduceContext ctx, OutputStream output)
             throws IMRUDataException;
 
     abstract public void reduceReceive(int srcParition, int offset,
-            int totalSize, byte[] bs) throws IMRUDataException;
+            int totalSize, byte[] bs, Object userObject)
+            throws IMRUDataException;
 
-    abstract public void reduceRecvInformation(int srcParition,
-            ImruIterInfo information) throws IMRUDataException;
+    abstract public void reduceRecvDbgInfo(int srcParition,
+            ImruIterInfo information, Object userObject)
+            throws IMRUDataException;
 
-    abstract public ImruIterInfo reduceClose() throws IMRUDataException;
+    abstract public ImruIterInfo reduceClose(Object userObject)
+            throws IMRUDataException;
 
-    abstract public void updateInit(IMRUContext ctx, Model model)
+    abstract public Object updateInit(IMRUContext ctx, Model model)
             throws IMRUDataException;
 
     abstract public void updateReceive(int srcParition, int offset,
-            int totalSize, byte[] bs) throws IMRUDataException;
+            int totalSize, byte[] bs, Object userObject)
+            throws IMRUDataException;
 
     abstract public void updateRecvInformation(int srcParition,
-            ImruIterInfo info) throws IMRUDataException;
+            ImruIterInfo info, Object userObject) throws IMRUDataException;
 
-    abstract public ImruIterInfo updateClose() throws IMRUDataException;
+    abstract public ImruIterInfo updateClose(Object userObject)
+            throws IMRUDataException;
 
     abstract public Model getUpdatedModel() throws IMRUDataException;
 
@@ -131,14 +134,14 @@ abstract public class ImruStream<Model extends Serializable, Data extends Serial
         return model1;
     }
 
-    public void reduceDbgInfoInit(final IMRUContext ctx)
-            throws IMRUDataException {
-        reducerDbgInfo = new SerializedFrames.Receiver() {
+    public Object reduceDbgInfoInit(final IMRUContext ctx,
+            final Object userObject) throws IMRUDataException {
+        SerializedFrames.Receiver reducerDbgInfo = new SerializedFrames.Receiver() {
             @Override
             public void receiveComplete(int srcPartition, byte[] bs)
                     throws IMRUDataException {
                 ImruIterInfo info = (ImruIterInfo) deserialize(ctx, bs);
-                reduceRecvInformation(srcPartition, info);
+                reduceRecvDbgInfo(srcPartition, info, userObject);
             }
 
             @Override
@@ -147,25 +150,29 @@ abstract public class ImruStream<Model extends Serializable, Data extends Serial
             }
         };
         reducerDbgInfo.open();
+        return reducerDbgInfo;
     }
 
     public void reduceDbgInfoReceive(int srcParition, int offset,
-            int totalSize, byte[] bs) throws IMRUDataException {
+            int totalSize, byte[] bs, Object userObject)
+            throws IMRUDataException {
+        SerializedFrames.Receiver reducerDbgInfo = (SerializedFrames.Receiver) userObject;
         reducerDbgInfo.receive(srcParition, offset, totalSize, bs);
     }
 
-    public void reduceDbgInfoClose() throws IMRUDataException {
+    public void reduceDbgInfoClose(Object userObject) throws IMRUDataException {
+        SerializedFrames.Receiver reducerDbgInfo = (SerializedFrames.Receiver) userObject;
         reducerDbgInfo.close();
     }
 
-    public void updateDbgInfoInit(final IMRUContext ctx)
-            throws IMRUDataException {
-        updateDbgInfo = new SerializedFrames.Receiver() {
+    public Object updateDbgInfoInit(final IMRUContext ctx,
+            final Object userObject) throws IMRUDataException {
+        SerializedFrames.Receiver updateDbgInfo = new SerializedFrames.Receiver() {
             @Override
             public void receiveComplete(int srcPartition, byte[] bs)
                     throws IMRUDataException {
                 ImruIterInfo info = (ImruIterInfo) deserialize(ctx, bs);
-                updateRecvInformation(srcPartition, info);
+                updateRecvInformation(srcPartition, info, userObject);
             }
 
             @Override
@@ -174,14 +181,18 @@ abstract public class ImruStream<Model extends Serializable, Data extends Serial
             }
         };
         updateDbgInfo.open();
+        return updateDbgInfo;
     }
 
     public void updateDbgInfoReceive(int srcParition, int offset,
-            int totalSize, byte[] bs) throws IMRUDataException {
+            int totalSize, byte[] bs, Object userObject)
+            throws IMRUDataException {
+        SerializedFrames.Receiver updateDbgInfo = (SerializedFrames.Receiver) userObject;
         updateDbgInfo.receive(srcParition, offset, totalSize, bs);
     }
 
-    public void updateDbgInfoClose() throws IMRUDataException {
+    public void updateDbgInfoClose(Object userObject) throws IMRUDataException {
+        SerializedFrames.Receiver updateDbgInfo = (SerializedFrames.Receiver) userObject;
         updateDbgInfo.close();
     }
 }

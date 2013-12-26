@@ -43,8 +43,10 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
             byte[] objectData = JavaSerializationUtils.serialize(result);
             output.write(objectData);
             output.close();
-            ImruIterInfo r = new ImruIterInfo();
-            r.completedPaths.add(((IMRUMapContext) ctx).getDataPath());
+            ImruIterInfo r = new ImruIterInfo(ctx);
+            String path = ((IMRUMapContext) ctx).getDataPath();
+            r.aggrTree.completedPath = path;
+            r.allCompletedPaths.add(path);
             return r;
         } catch (Exception e) {
             e.printStackTrace();
@@ -55,7 +57,7 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
     public ImruIterInfo map(final IMRUContext ctx, Iterator<ByteBuffer> input,
             Model model, OutputStream output, int cachedDataFrameSize)
             throws IMRUDataException {
-        final ImruIterInfo r = new ImruIterInfo();
+        final ImruIterInfo r = new ImruIterInfo(ctx);
         FrameTupleAccessor accessor = new FrameTupleAccessor(
                 cachedDataFrameSize, new RecordDescriptor(
                         new ISerializerDeserializer[fieldCount]));
@@ -76,7 +78,8 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
                 if (len != length)
                     throw new Exception("partial read");
                 Data data = (Data) deserialize(ctx, bs);
-                r.mappedDataSize += bs.length;
+                r.aggrTree.mappedDataSize += bs.length;
+                r.aggrTree.totalMappedDataSize += bs.length;
                 return data;
             }
 
@@ -87,7 +90,8 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
                 try {
                     reader.nextTuple();
                     Data data = read();
-                    r.mappedRecords++;
+                    r.aggrTree.mappedRecords++;
+                    r.aggrTree.totalMappedRecords++;
                     return data;
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -104,7 +108,9 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
             byte[] objectData = JavaSerializationUtils.serialize(result);
             output.write(objectData);
             output.close();
-            r.completedPaths.add(((IMRUMapContext) ctx).getDataPath());
+            String path = ((IMRUMapContext) ctx).getDataPath();
+            r.aggrTree.completedPath = path;
+            r.allCompletedPaths.add(path);
             return r;
         } catch (Exception e) {
             e.printStackTrace();

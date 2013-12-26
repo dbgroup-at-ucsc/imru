@@ -39,7 +39,7 @@ public class TestIterationInfo {
                 cmdline += "-host localhost -port 3099 -debug -disable-logging";
                 cmdline += " -debugNodes " + totalNodes;
                 cmdline += " -agg-tree-type nary -fan-in 4";
-                cmdline += " -agg-tree-type none";
+//                cmdline += " -agg-tree-type none";
                 cmdline += " -compress-after-iterations 2";
                 cmdline += " -disable-logging";
                 cmdline += " -frame-size 256";

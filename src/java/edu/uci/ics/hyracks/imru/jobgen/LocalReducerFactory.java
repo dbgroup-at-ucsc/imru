@@ -69,7 +69,7 @@ public class LocalReducerFactory {
             int consumerPort, IConnectorDescriptor consumerConn,
             ImruStream imruSpec, ImruParameters parameters,boolean dynamicAggr) {
         ReduceOperatorDescriptor localReducer = new ReduceOperatorDescriptor(
-                spec, imruSpec, "localReducer", parameters);
+                spec, imruSpec, "LRed", parameters);
         localReducer.level = -1;
         localReducer.isLocal = true;
         // Construct the locality map used to route tuples to local

@@ -84,7 +84,7 @@ public class ReduceAggregationTreeFactory {
         ReduceOperatorDescriptor[] aggregatorOperators = new ReduceOperatorDescriptor[numLevels];
         for (int level = 0; level < numLevels; level++) {
             aggregatorOperators[level] = new ReduceOperatorDescriptor(spec,
-                    imruSpec, "NAryReducerL" + level + "_", parameters);
+                    imruSpec, "RedL" + level + "_", parameters);
             aggregatorOperators[level].level = level;
             //            aggregatorOperators[level].setDisplayName("ReduceOperatorDescriptor(level " + level + ")");
             PartitionConstraintHelper.addPartitionCountConstraint(spec,

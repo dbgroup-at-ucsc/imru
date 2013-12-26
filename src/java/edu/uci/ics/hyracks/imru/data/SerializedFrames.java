@@ -110,7 +110,7 @@ public class SerializedFrames {
                 hash.put(srcPartition, buffer);
             }
             if (buffer.pos != offset)
-                throw new IMRUDataException();
+                throw new IMRUDataException(buffer.pos + " " + offset);
             if (buffer.data.length != totalSize)
                 throw new IMRUDataException();
             System.arraycopy(bs, 0, buffer.data, buffer.pos, Math.min(
