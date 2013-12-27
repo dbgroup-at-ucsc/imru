@@ -45,7 +45,7 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
             output.close();
             ImruIterInfo r = new ImruIterInfo(ctx);
             String path = ((IMRUMapContext) ctx).getDataPath();
-            r.aggrTree.completedPath = path;
+            r.op.completedPath = path;
             r.allCompletedPaths.add(path);
             return r;
         } catch (Exception e) {
@@ -78,8 +78,8 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
                 if (len != length)
                     throw new Exception("partial read");
                 Data data = (Data) deserialize(ctx, bs);
-                r.aggrTree.mappedDataSize += bs.length;
-                r.aggrTree.totalMappedDataSize += bs.length;
+                r.op.mappedDataSize += bs.length;
+                r.op.totalMappedDataSize += bs.length;
                 return data;
             }
 
@@ -90,8 +90,8 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
                 try {
                     reader.nextTuple();
                     Data data = read();
-                    r.aggrTree.mappedRecords++;
-                    r.aggrTree.totalMappedRecords++;
+                    r.op.mappedRecords++;
+                    r.op.totalMappedRecords++;
                     return data;
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -109,7 +109,7 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
             output.write(objectData);
             output.close();
             String path = ((IMRUMapContext) ctx).getDataPath();
-            r.aggrTree.completedPath = path;
+            r.op.completedPath = path;
             r.allCompletedPaths.add(path);
             return r;
         } catch (Exception e) {

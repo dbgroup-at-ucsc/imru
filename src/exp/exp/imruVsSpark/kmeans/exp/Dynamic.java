@@ -177,10 +177,10 @@ public class Dynamic {
     }
 
     public static GnuPlot plot(String name) throws Exception {
-        GnuPlot plot = new GnuPlot(new File("/tmp/cache"), name, "Model size (MB)",
-                "Time (seconds)");
-        File file = new File(KmeansFigs.figsDir, "k3i" + KmeansFigs.ITERATIONS
-                + "b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2d");
+        GnuPlot plot = new GnuPlot(new File("/tmp/cache"), name,
+                "Model size (MB)", "Time (seconds)");
+        File file = new File(KmeansFigs.figsDir, "k2i" + KmeansFigs.ITERATIONS
+                + "b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2_d");
         KmeansFigs f = new KmeansFigs(file);
         plot.extra = "set title \"K-means" + " 10^5 points/node*" + f.nodeCount
                 + " Iteration=" + f.iterations + "\\n cpu=" + f.core
@@ -192,8 +192,8 @@ public class Dynamic {
         plot.pointSize = 1;
         plot.scale = false;
         plot.colored = true;
-        for (int k = 2; k <= 16; k++) {
-            plot.startNewX(k*5);
+        for (int k = 2; k <= 16; k+=2) {
+            plot.startNewX(k * 5);
             f = new KmeansFigs(new File(KmeansFigs.figsDir, "k" + k + "i"
                     + KmeansFigs.ITERATIONS
                     + "b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2"));
@@ -212,14 +212,14 @@ public class Dynamic {
     }
 
     public static void main(String[] args) throws Exception {
-        //        runExp();
+                runExp();
         //        KmeansFigs.figsDir=new File("resultD3_delay60s");
-        KmeansFigs.figsDir = new File("resultD3_delay60s2");
-        plot("straggler");
+//        KmeansFigs.figsDir = new File("resultD3_all_dynamic/resultD3_delay60s2");
+        plot("straggler").show();
         //        KmeansFigs.figsDir=new File("resultD3_no_delay");
-        KmeansFigs.figsDir = new File("resultD3_no_delay2");
-        plot("together");
-        
+        //        KmeansFigs.figsDir = new File("resultD3_no_delay2");
+        //        plot("together");
+
         //        System.exit(0);
     }
 }

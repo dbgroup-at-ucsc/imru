@@ -11,12 +11,12 @@ public class UpdateTemplate {
     public static void main(String[] args) throws Exception {
         //        VirtualBoxExperiments.createTemplate("192.168.56.102", "ubuntu");
         //        System.exit(0);
-        VirtualBox.remove();
-        String ip = "192.168.56.110";
-        VirtualBox.startTemplate();
-        Rt.sleep(5000);
-        Rt.runAndShowCommand("mvn package -DskipTests=true", new File(
-                "/data/a/imru/hyracks10/hyracks"));
+//        VirtualBox.remove();
+        String ip = "192.168.56.102";
+//        VirtualBox.startTemplate();
+//        Rt.sleep(5000);
+//        Rt.runAndShowCommand("mvn package -DskipTests=true", new File(
+//                "/data/a/imru/hyracks10/hyracks"));
         VirtualBoxExperiments.createTemplate(ip, "ubuntu");
         SSH ssh = new SSH("ubuntu", ip, 22, new File(
                 "/home/wangrui/.ssh/id_rsa"));

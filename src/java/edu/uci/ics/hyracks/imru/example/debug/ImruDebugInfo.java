@@ -57,8 +57,10 @@ public class ImruDebugInfo {
         }
 
         try {
-            String finalModel = Client.run(new InfoJob(1), "", args);
-            System.out.println("FinalModel: " + finalModel);
+            int modelSize = 32 * 1024;
+            byte[] model = Client.run(new InfoJob(modelSize, 1),
+                    new byte[modelSize], args);
+            System.out.println("FinalModel: " + model.length);
         } catch (Throwable e) {
             e.printStackTrace();
             System.exit(0);

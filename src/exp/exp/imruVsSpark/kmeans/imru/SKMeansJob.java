@@ -95,8 +95,8 @@ public class SKMeansJob extends
             result.centroids[rs.belong].add(dataPoint);
             result.distanceSum += rs.dis;
         }
-        //        if (ctx.getPartition() == 7)
-        //            Rt.sleep(60000);
+                if (ctx.getPartition() == 7)
+                    Rt.sleep(60000);
         //        Rt.p(result.count());
         return result;
     }

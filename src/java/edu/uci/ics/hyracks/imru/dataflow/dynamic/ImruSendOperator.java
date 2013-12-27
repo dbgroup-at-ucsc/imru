@@ -142,7 +142,6 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
         this.imruConnection = imruConnection;
         this.diableSwapping = diableSwapping;
         this.maxWaitTimeBeforeSwap = maxWaitTimeBeforeSwap;
-        Rt.p(maxWaitTimeBeforeSwap);
         debugSendOperators[curPartition] = this;
         targetPartition = targetPartitions[curPartition];
         this.log.append(targetPartition + ",");

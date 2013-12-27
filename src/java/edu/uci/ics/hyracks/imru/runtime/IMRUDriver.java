@@ -178,6 +178,8 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
                 iterationInfo = imruConnection.downloadDbgInfo(this
                         .getModelName());
             }
+            Rt.p("Iteration "+ iterationCount);
+            iterationInfo.printReport();
             if (model == null)
                 throw new Exception("Can't download model");
             if (localIntermediateModelPath != null)

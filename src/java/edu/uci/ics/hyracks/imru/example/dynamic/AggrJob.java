@@ -33,10 +33,12 @@ import edu.uci.ics.hyracks.imru.api.RecoveryAction;
 import edu.uci.ics.hyracks.imru.api.old.IIMRUJob;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
-public class AggrJob extends ImruObject<String, String, String> {
+public class AggrJob extends ImruObject<byte[], byte[], byte[]> {
+    int modelSize = 1024 * 1024;
     int n = 5;
 
-    public AggrJob(int n) {
+    public AggrJob(int modelSize, int n) {
+        this.modelSize = modelSize;
         this.n = n;
     }
 
@@ -45,7 +47,7 @@ public class AggrJob extends ImruObject<String, String, String> {
      */
     @Override
     public int getCachedDataFrameSize() {
-        return 256;
+        return modelSize * 2;
     }
 
     /**
@@ -53,14 +55,12 @@ public class AggrJob extends ImruObject<String, String, String> {
      */
     @Override
     public void parse(IMRUContext ctx, InputStream input,
-            DataWriter<String> output) throws IOException {
+            DataWriter<byte[]> output) throws IOException {
         BufferedReader reader = new BufferedReader(new InputStreamReader(input));
         String line = reader.readLine();
         reader.close();
         for (String s : line.split(" ")) {
-            System.out.println(ctx.getNodeId() + "-" + ctx.getOperatorName()
-                    + ": " + s);
-            output.addData(s);
+            output.addData(new byte[modelSize]);
         }
     }
 
@@ -68,17 +68,14 @@ public class AggrJob extends ImruObject<String, String, String> {
      * For a list of data objects, return one result
      */
     @Override
-    public String map(IMRUContext ctx, Iterator<String> input, String model)
+    public byte[] map(IMRUContext ctx, Iterator<byte[]> input, byte[] model)
             throws IOException {
-//        if (ctx.getPartition() == ctx.getPartitions() - 1)
-//            Rt.sleep(3000);
-        Rt.sleep(500*ctx.getPartition());
-        String result = "";
+        Rt.sleep(ctx.getPartition() * 500);
+        byte[] result = new byte[modelSize];
         while (input.hasNext()) {
-            String word = input.next();
-            result += word;
-            System.out.println(ctx.getNodeId() + "-" + ctx.getOperatorName()
-                    + ": " + word + " -> " + result);
+            byte[] word = input.next();
+            for (int i = 0; i < word.length; i++)
+                result[i] += word[i];
         }
         return result;
     }
@@ -87,66 +84,32 @@ public class AggrJob extends ImruObject<String, String, String> {
      * Combine multiple results to one result
      */
     @Override
-    public String reduce(IMRUContext ctx, Iterator<String> input)
+    public byte[] reduce(IMRUContext ctx, Iterator<byte[]> input)
             throws IMRUDataException {
-        IMRUReduceContext reduceContext = (IMRUReduceContext) ctx;
-        String combined = new String();
-        StringBuilder sb = new StringBuilder();
-        if (!reduceContext.isLocalReducer())
-            combined = "(";
+        byte[] result = new byte[modelSize];
         while (input.hasNext()) {
-            String result = input.next();
-            if (sb.length() > 0)
-                sb.append("+");
-            sb.append(result);
-            combined += result;
+            byte[] word = input.next();
+            for (int i = 0; i < word.length; i++)
+                result[i] += word[i];
         }
-        if (!reduceContext.isLocalReducer())
-            combined += ")_" + (reduceContext.isLocalReducer() ? "L" : "")
-                    + ctx.getNodeId();
-        System.out.println(ctx.getNodeId()
-                + "-"
-                + ctx.getOperatorName()
-                + "-"
-                + (reduceContext.isLocalReducer() ? "L" : reduceContext
-                        .getReducerLevel()) + ": " + sb + " -> " + combined);
-        return combined;
+        return result;
     }
 
     @Override
-    public String update(IMRUContext ctx, Iterator<String> input, String model)
+    public byte[] update(IMRUContext ctx, Iterator<byte[]> input, byte[] model)
             throws IMRUDataException {
-        StringBuilder sb = new StringBuilder();
-        sb.append("(" + model + ")");
+        byte[] result = new byte[modelSize];
         while (input.hasNext()) {
-            String result = input.next();
-            sb.append("+" + result);
-            model += result;
+            byte[] word = input.next();
+            for (int i = 0; i < word.length; i++)
+                result[i] += word[i];
         }
-        System.out.println(ctx.getNodeId() + "-" + ctx.getOperatorName() + ": "
-                + sb + " -> " + model);
-        return model;
+        return result;
     }
 
     @Override
-    public boolean shouldTerminate(String model, ImruIterInfo info) {
+    public boolean shouldTerminate(byte[] model, ImruIterInfo info) {
         n--;
-        info.printReport();
         return n <= 0;
-    }
-
-    @Override
-    public String integrate(String model1, String model2) {
-        return model1 + "+" + model2;
-    }
-
-    @Override
-    public RecoveryAction onJobFailed(List<ImruSplitInfo> completedRanges,
-            long dataSize, int optimalNodesForRerun, float rerunTime,
-            int optimalNodesForPartiallyRerun, float partiallyRerunTime) {
-        Rt.p("job failed");
-        for (ImruSplitInfo split : completedRanges)
-            Rt.np("completed " + split.path);
-        return RecoveryAction.Accept;
     }
 }

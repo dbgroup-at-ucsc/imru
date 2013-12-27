@@ -129,7 +129,7 @@ public class IMRUJob2Impl<Model extends Serializable, Data extends Serializable,
                         .getJobSerializerDeserializerContainer()
                         .getJobSerializerDeserializer(deploymentId);
                 Data data = (Data) jobSerDe.deserialize(bs);
-                r.aggrTree.mappedDataSize += bs.length;
+                r.op.mappedDataSize += bs.length;
                 return data;
             }
 
@@ -140,7 +140,7 @@ public class IMRUJob2Impl<Model extends Serializable, Data extends Serializable,
                 try {
                     reader.nextTuple();
                     Data data = read();
-                    r.aggrTree.mappedRecords++;
+                    r.op.mappedRecords++;
                     return data;
                 } catch (Exception e) {
                     e.printStackTrace();

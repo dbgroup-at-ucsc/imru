@@ -157,22 +157,13 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
                 try {
                     SerializedFrames f = SerializedFrames.nextFrame(ctx
                             .getFrameSize(), encapsulatedChunk);
-                    if (f.replyPartition == SerializedFrames.DBG_INFO_FRAME)
+                    if (f.replyPartition == SerializedFrames.DBG_INFO_FRAME) {
                         imruSpec.reduceDbgInfoReceive(f.srcPartition, f.offset,
                                 f.totalSize, f.data, dbgInfoRecvQueue);
-                    else
+                    } else {
                         imruSpec.reduceReceive(f.srcPartition, f.offset,
                                 f.totalSize, f.data, recvQueue);
-                    // MergedFrames frames = MergedFrames.nextFrame(ctx,
-                    // encapsulatedChunk, hash, imruContext.getNodeId()
-                    // + " recv " + partition + " "
-                    // + imruContext.getOperatorName());
-                    // if (frames.data != null) {
-                    // if (imruContext.getIterationNumber() >=
-                    // parameters.compressIntermediateResultsAfterNIterations)
-                    // frames.data = IMRUSerialize.decompress(frames.data);
-                    // io.add(frames.data);
-                    // }
+                    }
                 } catch (HyracksDataException e) {
                     fail();
                     throw e;
@@ -192,7 +183,6 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
                 imruSpec.reduceDbgInfoClose(dbgInfoRecvQueue);
                 ImruIterInfo info = imruSpec.reduceClose(recvQueue);
                 try {
-                    //                    Rt.p("send " + info.aggrTree.operator + " to " + partition);
                     SerializedFrames.serializeDbgInfo(imruContext, writer,
                             info, partition, 0);
                 } catch (IOException e) {

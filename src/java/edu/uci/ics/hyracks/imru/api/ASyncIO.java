@@ -27,6 +27,9 @@ public class ASyncIO<Data> {
     private Object fullSync = new Object();
     private boolean more = true;
 
+    public long totalProcessed = 0;
+    public long totalProcessTime = 0;
+
     public ASyncIO() {
         this(1);
     }
@@ -63,6 +66,7 @@ public class ASyncIO<Data> {
     public Iterator<Data> getInput() {
         return new Iterator<Data>() {
             Data data;
+            long lastReturnTime = 0;
 
             @Override
             public void remove() {
@@ -74,12 +78,21 @@ public class ASyncIO<Data> {
                     return null;
                 Data data2 = data;
                 data = null;
+                lastReturnTime = System.currentTimeMillis();
                 return data2;
             }
 
             @Override
             public boolean hasNext() {
                 try {
+                    if (lastReturnTime != 0) {
+                        long processTime = System.currentTimeMillis()
+                                - lastReturnTime;
+                        synchronized (ASyncIO.this) {
+                            totalProcessed++;
+                            totalProcessTime += processTime;
+                        }
+                    }
                     if (data == null) {
                         synchronized (queue) {
                             while (queue.size() == 0 && more) {

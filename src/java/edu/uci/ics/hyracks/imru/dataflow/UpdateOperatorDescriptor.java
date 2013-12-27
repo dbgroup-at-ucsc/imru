@@ -94,7 +94,6 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
         this.modelName = modelName;
         this.imruConnection = imruConnection;
         this.parameters = parameters;
-        //            recordDescriptors[0] = dummyRecordDescriptor;
     }
 
     @Override
@@ -128,19 +127,6 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
                 recvQueue = imruSpec.updateInit(imruContext, model);
                 dbgInfoQueue = imruSpec.updateDbgInfoInit(imruContext,
                         recvQueue);
-                //                io = new ASyncIO<byte[]>();
-                //                future = IMRUSerialize.threadPool.submit(new Runnable() {
-                //                    @Override
-                //                    public void run() {
-                //                        Iterator<byte[]> input = io.getInput();
-                //                        try {
-                //                            updatedModel = imruSpec.update(imruContext, input,
-                //                                    model, imruRuntimeInformation);
-                //                        } catch (HyracksDataException e) {
-                //                            e.printStackTrace();
-                //                        }
-                //                    }
-                //                });
             }
 
             @Override
@@ -154,25 +140,6 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
                 else
                     imruSpec.updateReceive(f.srcPartition, f.offset,
                             f.totalSize, f.data, recvQueue);
-                //                MergedFrames frames = MergedFrames.nextFrame(ctx,
-                //                        encapsulatedChunk, hash, imruContext.getNodeId()
-                //                                + " recv " + partition + " "
-                //                                + imruContext.getOperatorName());
-                //                if (frames.data != null) {
-                //                    try {
-                //                        if (imruContext.getIterationNumber() >= parameters.compressIntermediateResultsAfterNIterations)
-                //                            frames.data = IMRUSerialize.decompress(frames.data);
-                //                        if (false) {
-                //                            byte[] bs = IMRUSerialize.compress(frames.data);
-                //                            Rt.p("compression ratio: %.2f%%", bs.length * 100.0
-                //                                    / frames.data.length);
-                //                        }
-                //                    } catch (IOException e) {
-                //                        e.printStackTrace();
-                //                        throw new HyracksDataException(e);
-                //                    }
-                //                    io.add(frames.data);
-                //                }
             }
 
             @Override
@@ -185,23 +152,13 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
                     imruSpec.updateDbgInfoClose(dbgInfoQueue);
                     ImruIterInfo info = imruSpec.updateClose(recvQueue);
                     updatedModel = imruSpec.getUpdatedModel();
-                    //                    if (updatedModel == null)
-                    //                        throw new Error("model is null");
-                    //                    io.close();
-                    //                    try {
-                    //                        future.get();
-                    //                    } catch (Exception e) {
-                    //                        e.printStackTrace();
-                    //                    }
                     model = (Model) updatedModel;
-                    //                    imruContext.setModel(model);
 
                     long start = System.currentTimeMillis();
                     info.currentIteration = imruContext.getIterationNumber();
                     imruConnection.uploadModel(modelName, model);
                     imruConnection.uploadDbgInfo(modelName, info);
                     long end = System.currentTimeMillis();
-                    //                Rt.p(model);
                     LOG.info("uploaded model to CC " + (end - start)
                             + " milliseconds");
                     MemoryStatsLogger.logHeapStats(LOG,
@@ -210,16 +167,6 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
                     throw new HyracksDataException(e);
                 }
             }
-
-            //            private void enqueueChunk(ByteBuffer chunk, int senderPartition) {
-            //                if (bufferedChunks.size() <= senderPartition) {
-            //                    for (int i = bufferedChunks.size(); i <= senderPartition; i++) {
-            //                        bufferedChunks.add(new LinkedList<ByteBuffer>());
-            //                    }
-            //                }
-            //                bufferedChunks.get(senderPartition).add(chunk);
-            //            }
         };
     }
-
 }

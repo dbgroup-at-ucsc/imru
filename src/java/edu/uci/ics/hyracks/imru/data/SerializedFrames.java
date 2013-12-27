@@ -48,12 +48,23 @@ public class SerializedFrames {
     public static class Buf {
         byte[] data;
         int pos = 0;
+        int pieces = 0;
+        long totalRawData;
+        long startTime;
+        long totalTime;
     }
 
     public static class Receiver {
-        ASyncIO<byte[]> io;
+        public String name;
+        public ASyncIO<byte[]> io;
         Future future;
         Hashtable<Integer, Buf> hash = new Hashtable<Integer, Buf>();
+        public long totalRecvData = 0;
+        public long totalRecvTime = 0;
+
+        public Receiver(String name) {
+            this.name = name;
+        }
 
         public void process(Iterator<byte[]> input) throws IMRUDataException {
         }
@@ -109,6 +120,7 @@ public class SerializedFrames {
                 buffer = new Buf();
                 buffer.data = new byte[totalSize];
                 buffer.pos = 0;
+                buffer.startTime = System.currentTimeMillis();
                 hash.put(srcPartition, buffer);
             }
             if (buffer.pos != offset)
@@ -117,8 +129,16 @@ public class SerializedFrames {
                 throw new IMRUDataException();
             System.arraycopy(bs, 0, buffer.data, buffer.pos, Math.min(
                     bs.length, buffer.data.length - buffer.pos));
+            buffer.pieces++;
             buffer.pos += bs.length;
+            buffer.totalRawData += bs.length; //TODO fix this
             if (buffer.pos >= buffer.data.length) {
+                buffer.totalTime = System.currentTimeMillis()
+                        - buffer.startTime;
+                synchronized (this) {
+                    totalRecvData += buffer.totalRawData;
+                    totalRecvTime += buffer.totalTime;
+                }
                 hash.remove(srcPartition);
                 receiveComplete(srcPartition, buffer.data);
                 return true;

@@ -136,7 +136,8 @@ abstract public class ImruStream<Model extends Serializable, Data extends Serial
 
     public Object reduceDbgInfoInit(final IMRUContext ctx,
             final Object userObject) throws IMRUDataException {
-        SerializedFrames.Receiver reducerDbgInfo = new SerializedFrames.Receiver() {
+        SerializedFrames.Receiver reducerDbgInfo = new SerializedFrames.Receiver(
+                "reduceDbg") {
             @Override
             public void receiveComplete(int srcPartition, byte[] bs)
                     throws IMRUDataException {
@@ -167,7 +168,8 @@ abstract public class ImruStream<Model extends Serializable, Data extends Serial
 
     public Object updateDbgInfoInit(final IMRUContext ctx,
             final Object userObject) throws IMRUDataException {
-        SerializedFrames.Receiver updateDbgInfo = new SerializedFrames.Receiver() {
+        SerializedFrames.Receiver updateDbgInfo = new SerializedFrames.Receiver(
+                "updateDbg") {
             @Override
             public void receiveComplete(int srcPartition, byte[] bs)
                     throws IMRUDataException {

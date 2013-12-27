@@ -10,6 +10,7 @@ import edu.uci.ics.hyracks.imru.util.Rt;
 public abstract class ImruFrames<Model extends Serializable, Data extends Serializable>
         extends ImruStream<Model, Data> {
     public static class A {
+        long startTime;
         SerializedFrames.Receiver recv;
         ImruIterInfo info;
     }
@@ -22,7 +23,7 @@ public abstract class ImruFrames<Model extends Serializable, Data extends Serial
         A a = new A();
         a.info = new ImruIterInfo(ctx);
         //        Rt.p(reducerInfo.aggrTree.operator + " open");
-        a.recv = new SerializedFrames.Receiver() {
+        a.recv = new SerializedFrames.Receiver("reduce") {
             @Override
             public void process(Iterator<byte[]> input, OutputStream output)
                     throws IMRUDataException {
@@ -39,6 +40,8 @@ public abstract class ImruFrames<Model extends Serializable, Data extends Serial
         //        Rt.p(reducerInfo.aggrTree.operator + " recv from " + srcParition + " "
         //                + offset + "/" + totalSize);
         A a = (A) userObject;
+        if (a.startTime == 0)
+            a.startTime = System.currentTimeMillis();
         a.recv.receive(srcParition, offset, totalSize, bs);
     }
 
@@ -55,6 +58,12 @@ public abstract class ImruFrames<Model extends Serializable, Data extends Serial
         //        Rt.p(reducerInfo.aggrTree.operator + " close ");
         A a = (A) userObject;
         a.recv.close();
+        a.info.op.operatorStartTime = a.startTime;
+        a.info.op.operatorTotalTime = System.currentTimeMillis() - a.startTime;
+        a.info.op.totalRecvData = a.recv.totalRecvData;
+        a.info.op.totalRecvTime = a.recv.totalRecvTime;
+        a.info.op.totalProcessed = a.recv.io.totalProcessed;
+        a.info.op.totalProcessTime = a.recv.io.totalProcessTime;
         return a.info;
     }
 
@@ -70,7 +79,7 @@ public abstract class ImruFrames<Model extends Serializable, Data extends Serial
             throws IMRUDataException {
         A a = new A();
         a.info = new ImruIterInfo(ctx);
-        a.recv = new SerializedFrames.Receiver() {
+        a.recv = new SerializedFrames.Receiver("update") {
             @Override
             public void process(Iterator<byte[]> input)
                     throws IMRUDataException {
@@ -85,6 +94,8 @@ public abstract class ImruFrames<Model extends Serializable, Data extends Serial
     public void updateReceive(int srcParition, int offset, int totalSize,
             byte[] bs, Object userObject) throws IMRUDataException {
         A a = (A) userObject;
+        if (a.startTime == 0)
+            a.startTime = System.currentTimeMillis();
         a.recv.receive(srcParition, offset, totalSize, bs);
     }
 
@@ -99,6 +110,12 @@ public abstract class ImruFrames<Model extends Serializable, Data extends Serial
     public ImruIterInfo updateClose(Object userObject) throws IMRUDataException {
         A a = (A) userObject;
         a.recv.close();
+        a.info.op.operatorStartTime = a.startTime;
+        a.info.op.operatorTotalTime = System.currentTimeMillis() - a.startTime;
+        a.info.op.totalRecvData = a.recv.totalRecvData;
+        a.info.op.totalRecvTime = a.recv.totalRecvTime;
+        a.info.op.totalProcessed = a.recv.io.totalProcessed;
+        a.info.op.totalProcessTime = a.recv.io.totalProcessTime;
         return a.info;
     }
 

@@ -39,12 +39,12 @@ public class TestDynamicAggr {
                 cmdline += "-host localhost -port 3099 -debug -disable-logging";
                 cmdline += " -debugNodes " + totalNodes;
                 cmdline += " -agg-tree-type nary -fan-in 2";
-//                cmdline += " -agg-tree-type none";
+                //                cmdline += " -agg-tree-type none";
                 cmdline += " -compress-after-iterations 2";
                 cmdline += " -disable-logging";
                 cmdline += " -dynamic";
                 cmdline += " -dynamic-swap-time 0";
-                cmdline += " -dynamic-disable";
+//                cmdline += " -dynamic-disable";
 
                 System.out.println("Starting hyracks cluster");
             }
@@ -59,8 +59,10 @@ public class TestDynamicAggr {
         }
 
         try {
-            String finalModel = Client.run(new AggrJob(1), "", args);
-            System.out.println("FinalModel: " + finalModel);
+            int modelSize = 256 * 1024;
+            byte[] finalModel = Client.run(new AggrJob(modelSize, 1),
+                    new byte[modelSize], args);
+            System.out.println("FinalModel: " + finalModel.length);
         } catch (Throwable e) {
             e.printStackTrace();
             System.exit(0);
