@@ -4,7 +4,7 @@ import java.io.File;
 import java.util.Random;
 import java.util.Vector;
 
-import edu.uci.ics.hyracks.imru.data.MergedFrames;
+import edu.uci.ics.hyracks.imru.data.SerializedFrames;
 import edu.uci.ics.hyracks.imru.dataflow.IMRUSerialize;
 import edu.uci.ics.hyracks.imru.example.bgd.Data;
 import edu.uci.ics.hyracks.imru.example.bgd.Gradient;
@@ -91,7 +91,7 @@ public class GenerateBGDData {
                             g.gradient[data.fieldIds[i]] += e * data.values[i];
                     }
                 }
-                byte[] data = MergedFrames.serialize(g);
+                byte[] data = SerializedFrames.serialize(g);
                 byte[] compressed = IMRUSerialize.compress(data);
                 model.error = 100f * (g.total - g.correct) / g.total;
                 for (int i = 0; i < model.weights.length; i++)

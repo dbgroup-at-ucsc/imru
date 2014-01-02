@@ -2,12 +2,12 @@ package edu.uci.ics.hyracks.imru.dataflow.dynamic;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.nio.ByteBuffer;
 import java.util.BitSet;
 import java.util.Vector;
 
 import edu.uci.ics.hyracks.api.util.JavaSerializationUtils;
 import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
-import edu.uci.ics.hyracks.imru.data.MergedFrames;
 import edu.uci.ics.hyracks.imru.data.SerializedFrames;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
@@ -43,8 +43,7 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
                 boolean hasMissingPartitions = false;
                 StringBuilder missing = new StringBuilder();
                 for (int id : so.incomingPartitions) {
-                    if (unfinishedPartition < 0
-                            && !so.receivingPartitions.get(id)
+                    if (unfinishedPartition < 0 && !so.isPartitionFinished(id)
                             && !so.swapFailedPartitions.get(id))
                         unfinishedPartition = id;
                     if (!so.receivedPartitions.get(id)) {
@@ -52,14 +51,19 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
                         hasMissingPartitions = true;
                     }
                 }
-                if (!so.diableSwapping && unfinishedPartition >= 0) {
+                if (!so.disableSwapping && unfinishedPartition >= 0) {
                     if (System.currentTimeMillis() < swapTime) {
-                        so.aggrSync.wait();
+                        int waitTime = (int) (swapTime - System
+                                .currentTimeMillis()) / 2;
+                        if (waitTime < 1)
+                            waitTime = 1;
+                        so.aggrSync.wait(waitTime);
                         continue;
                     } else {
                         so.swappingTarget = unfinishedPartition;
                         so.swapSucceed = false;
                         so.swapFailed = false;
+                        so.failedReason = null;
                     }
                 } else {
                     if (hasMissingPartitions) {
@@ -109,13 +113,26 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
         if (so.debug)
             Rt.p(so.curPartition + " start sending");
         boolean isRoot = so.targetPartition < 0;
+        info.op.swapsWithPartitions = Rt.intArray(so.swaps);
+        info.op.swapsTime = Rt.longArray(so.swapsTime);
+        info.op.swappedWithPartitions = Rt.intArray(so.swapped);
+        info.op.swappedTime = Rt.longArray(so.swappedTime);
+        if (so.swapsFailed.size() > 0) {
+            info.op.swapsFailed = new String[so.swapsFailed.size()];
+            info.op.swapsFailedTime = new long[so.swapsFailed.size()];
+            for (int i = 0; i < so.swapsFailed.size(); i++) {
+                info.op.swapsFailed[i] = so.swapsFailed.get(i) + ":"
+                        + so.swapFailedReason.get(i);
+                info.op.swapsFailedTime[i] = so.swapFailedTime.get(i);
+            }
+        }
         if (isRoot) {
             ImruIterInfo imruRuntimeInformation = new ImruIterInfo(
                     so.imruContext);
             Model model = (Model) so.imruContext.getModel();
             if (model == null) {
                 //                if (so.debug) {
-                String s = MergedFrames.deserialize(so.aggregatedResult)
+                String s = SerializedFrames.deserialize(so.aggregatedResult)
                         .toString();
                 String[] ss = s.split(",+");
                 BitSet bs = new BitSet();
@@ -154,6 +171,9 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
                 //                        .iterator(), model);
                 //                long start = System.currentTimeMillis();
                 info.currentIteration = so.imruContext.getIterationNumber();
+                info.dynamicAggregationEnabled = true;
+                info.swappingDisabled = so.disableSwapping;
+                info.maxWaitTimeBeforeSwap = so.maxWaitTimeBeforeSwap;
                 so.imruConnection.uploadModel(so.modelName, updatedModel);
                 so.imruConnection.uploadDbgInfo(so.modelName, info);
                 //                long end = System.currentTimeMillis();
@@ -164,17 +184,22 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
             if (so.debug) {
                 so.printAggrTree();
                 Rt.p("UPLOAD " + so.curPartition + " -> " + so.targetPartition
-                        + " "
-                        //                        + aggregatedResult.length);
-                        + MergedFrames.deserialize(so.aggregatedResult));
+                        + " " + so.aggregatedResult.length
+                //                        + MergedFrames.deserialize(so.aggregatedResult)
+                        );
             }
-            SerializedFrames.serializeToFrames(so.imruContext, so.getWriter(),
+            ByteBuffer frame = so.imruContext.allocateFrame();
+            SerializedFrames.serializeToFrames(so.imruContext, frame,
+                    so.imruContext.getFrameSize(), so.getWriter(),
                     so.aggregatedResult, so.curPartition, so.targetPartition,
-                    so.imruContext.getNodeId() + " reduce " + so.curPartition
-                            + " " + so.imruContext.getOperatorName());
+                    so.curPartition, so.imruContext.getNodeId() + " reduce "
+                            + so.curPartition + " "
+                            + so.imruContext.getOperatorName(), so
+                            .partitionToWriter(so.targetPartition));
             //                        so.sendData(so.targetPartition, so.aggregatedResult);
             SerializedFrames.serializeDbgInfo(so.imruContext, so.getWriter(),
-                    info, so.curPartition, so.targetPartition);
+                    info, so.curPartition, so.targetPartition, so
+                            .partitionToWriter(so.targetPartition));
         }
         so.sentPartition = so.targetPartition;
         so.targetPartition = -2;
@@ -197,11 +222,12 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
                 Rt.p(so.curPartition + " swapping " + so.swappingTarget + " "
                         + so.swapSucceed + " " + so.swapFailed);
             if (so.swappingTarget >= 0
-                    && (so.receivingPartitions.get(so.swappingTarget) || so.receivedPartitions
-                            .get(so.swappingTarget))) {
+                    && (so.isPartitionFinished(so.swappingTarget))) {
                 if (so.debug)
                     Rt.p(so.curPartition + " swapping target finished");
+                //Already received from the target partition
                 so.swapFailed = true;
+                so.failedReason = "recv" + so.failedReasonReceivedSize;
             } else {
                 synchronized (so.aggrSync) {
                     if (!so.swapSucceed && !so.swapFailed)
@@ -221,6 +247,9 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
                     Rt.p("*** " + so.curPartition + " attempts to swap with "
                             + so.swappingTarget + " failed");
                 so.swapFailedPartitions.set(so.swappingTarget);
+                so.swapsFailed.add(so.swappingTarget);
+                so.swapFailedReason.add(so.failedReason);
+                so.swapFailedTime.add(System.currentTimeMillis());
                 so.swappingTarget = -1;
                 break;
             } else if (so.swapSucceed) {
@@ -261,7 +290,11 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
                 if (target >= 0)
                     so.sendObj(target, new SwapChildrenRequest(so.curPartition,
                             so.swappingTarget));
-//                Rt.p("swap "+ so.curPartition+" with "+ so.swappingTarget);
+                if (so.debug)
+                    Rt.p("swap " + so.curPartition + " with "
+                            + so.swappingTarget);
+                so.swaps.add(so.swappingTarget);
+                so.swapsTime.add(System.currentTimeMillis());
                 so.swappingTarget = -1;
                 break;
             }

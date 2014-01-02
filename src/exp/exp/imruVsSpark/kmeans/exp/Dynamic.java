@@ -61,14 +61,27 @@ public class Dynamic {
             String cpu = "0.5";
             int fanIn = 2;
 
-            VirtualBoxExperiments.IMRU_ONLY = true;
-            for (k = 2; k <= 20; k += 2) {
-                for (int i = 0; i < 3; i++) {
-                    VirtualBoxExperiments.dynamicAggr = i < 2;
-                    VirtualBoxExperiments.disableSwapping = (i == 0);
-                    VirtualBoxExperiments.runExperiment(nodeCount, memory, k,
-                            iterations, batchStart, batchStep, batchEnd,
-                            batchSize, network, cpu, fanIn);
+            iterations=1;
+            for (int type = 0; type < 1; type++) {
+                VirtualBoxExperiments.dynamicDebug=true;
+                if (type == 0) {
+                    KmeansFigs.figsDir = new File("resultDelay60s");
+                    VirtualBoxExperiments.resultFolder = "resultDelay60s";
+                    VirtualBoxExperiments.straggler = 60000;
+                } else {
+                    KmeansFigs.figsDir = new File("resultNoDelay");
+                    VirtualBoxExperiments.resultFolder = "resultNoDelay";
+                    VirtualBoxExperiments.straggler = 0;
+                }
+                VirtualBoxExperiments.IMRU_ONLY = true;
+                for (k = 2; k <= 2; k += 2) {
+                    for (int i = 0; i < 1; i++) {
+                        VirtualBoxExperiments.dynamicAggr = i < 2;
+                        VirtualBoxExperiments.disableSwapping = (i == 1);
+                        VirtualBoxExperiments.runExperiment(nodeCount, memory,
+                                k, iterations, batchStart, batchStep, batchEnd,
+                                batchSize, network, cpu, fanIn);
+                    }
                 }
             }
         } catch (Throwable e) {
@@ -192,7 +205,7 @@ public class Dynamic {
         plot.pointSize = 1;
         plot.scale = false;
         plot.colored = true;
-        for (int k = 2; k <= 16; k+=2) {
+        for (int k = 2; k <= 16; k += 2) {
             plot.startNewX(k * 5);
             f = new KmeansFigs(new File(KmeansFigs.figsDir, "k" + k + "i"
                     + KmeansFigs.ITERATIONS
@@ -212,9 +225,10 @@ public class Dynamic {
     }
 
     public static void main(String[] args) throws Exception {
-                runExp();
+        runExp();
         //        KmeansFigs.figsDir=new File("resultD3_delay60s");
-//        KmeansFigs.figsDir = new File("resultD3_all_dynamic/resultD3_delay60s2");
+        //        KmeansFigs.figsDir = new File("resultD3_all_dynamic/resultD3_delay60s2");
+        KmeansFigs.figsDir = new File("resultDelay60s");
         plot("straggler").show();
         //        KmeansFigs.figsDir=new File("resultD3_no_delay");
         //        KmeansFigs.figsDir = new File("resultD3_no_delay2");

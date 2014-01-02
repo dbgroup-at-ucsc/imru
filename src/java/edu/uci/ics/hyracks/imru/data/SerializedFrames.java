@@ -42,6 +42,15 @@ import edu.uci.ics.hyracks.imru.util.Rt;
  * @author Rui Wang
  */
 public class SerializedFrames {
+    public static final int HEADER = 28;
+    public static final int TAIL = 20;
+    public static final int SOURCE_OFFSET = 4;
+    public static final int TARGET_OFFSET = 8;
+    public static final int REPLY_OFFSET = 12;
+    public static final int SIZE_OFFSET = 16;
+    public static final int POSITION_OFFSET = 20;
+    public static final int WRITER_OFFSET = 24;
+
     public static final int DBG_INFO_FRAME = -1;
     public static final int DYNAMIC_COMMUNICATION_FRAME = -2;
 
@@ -156,14 +165,6 @@ public class SerializedFrames {
         }
     }
 
-    public static final int HEADER = 24;
-    public static final int TAIL = 20;
-    public static final int SOURCE_OFFSET = 4;
-    public static final int TARGET_OFFSET = 8;
-    public static final int REPLY_OFFSET = 12;
-    public static final int SIZE_OFFSET = 16;
-    public static final int POSITION_OFFSET = 20;
-
     public int srcPartition;
     public int targetParition;
     public int replyPartition;
@@ -218,30 +219,78 @@ public class SerializedFrames {
         return bs;
     }
 
+    @Deprecated
+    public static SerializedFrames nextFrame(IHyracksTaskContext ctx,
+            ByteBuffer buffer, Hashtable<Integer, LinkedList<ByteBuffer>> hash)
+            throws HyracksDataException {
+        return nextFrame(ctx, buffer, hash, null);
+    }
+
+    @Deprecated
+    public static SerializedFrames nextFrame(IHyracksTaskContext ctx,
+            ByteBuffer buffer, Hashtable<Integer, LinkedList<ByteBuffer>> hash,
+            String debugInfo) throws HyracksDataException {
+        if (buffer == null)
+            return null;
+        int frameSize = ctx.getFrameSize();
+        LinkedList<ByteBuffer> queue = null;
+        ByteBuffer frame = ctx.allocateFrame();
+        frame.put(buffer.array(), 0, frameSize);
+        int sourcePartition = buffer.getInt(SOURCE_OFFSET);
+        queue = hash.get(sourcePartition);
+        if (queue == null) {
+            queue = new LinkedList<ByteBuffer>();
+            hash.put(sourcePartition, queue);
+        }
+        queue.add(frame);
+        int size = buffer.getInt(SIZE_OFFSET);
+        int position = buffer.getInt(POSITION_OFFSET);
+        //        if (position == 0)
+        //            Rt.p(position + "/" + size);
+        if (debugInfo != null)
+            IMRUDebugger.sendDebugInfo("recv " + debugInfo + " " + position);
+        SerializedFrames merge = new SerializedFrames();
+        merge.srcPartition = sourcePartition;
+        merge.targetParition = buffer.getInt(TARGET_OFFSET);
+        merge.replyPartition = buffer.getInt(REPLY_OFFSET);
+        merge.receivedSize = position + frameSize - HEADER - TAIL;
+        merge.totalSize = size;
+
+        if (position + frameSize - HEADER - TAIL >= size) {
+            hash.remove(sourcePartition);
+            byte[] bs = deserializeFromChunks(ctx.getFrameSize(), queue);
+            //        Rt.p("recv " + bs.length + " " + deserialize(bs));
+            merge.data = bs;
+        }
+        return merge;
+    }
+
     public static void serializeToFrames(IMRUContext ctx, IFrameWriter writer,
             byte[] objectData, int partition, int targetPartition,
             String debugInfo) throws HyracksDataException {
         ByteBuffer frame = ctx.allocateFrame();
         serializeToFrames(ctx, frame, ctx.getFrameSize(), writer, objectData,
-                partition, targetPartition, partition, debugInfo);
+                partition, targetPartition, partition, debugInfo,
+                targetPartition);
     }
 
     public static void serializeDbgInfo(IMRUContext ctx, IFrameWriter writer,
-            ImruIterInfo info, int partition, int targetPartition)
+            ImruIterInfo info, int partition, int targetPartition, int writerId)
             throws IOException {
         byte[] objectData = JavaSerializationUtils.serialize(info);
         ByteBuffer frame = ctx.allocateFrame();
         serializeToFrames(ctx, frame, ctx.getFrameSize(), writer, objectData,
-                partition, targetPartition, DBG_INFO_FRAME, null);
+                partition, targetPartition, DBG_INFO_FRAME, null, writerId);
     }
 
     public static void serializeSwapCmd(IMRUContext ctx, IFrameWriter writer,
-            SwapCommand cmd, int partition, int targetPartition)
+            SwapCommand cmd, int partition, int targetPartition, int writerId)
             throws IOException {
         byte[] objectData = JavaSerializationUtils.serialize(cmd);
         ByteBuffer frame = ctx.allocateFrame();
         serializeToFrames(ctx, frame, ctx.getFrameSize(), writer, objectData,
-                partition, targetPartition, DYNAMIC_COMMUNICATION_FRAME, null);
+                partition, targetPartition, DYNAMIC_COMMUNICATION_FRAME, null,
+                writerId);
     }
 
     public static Object deserialize(byte[] bytes) {
@@ -285,6 +334,8 @@ public class SerializedFrames {
         encapsulatedChunk.position(0);
     }
 
+    int[] partitionWriter; //Mapping between partition and writer
+
     /**
      * @param ctx
      * @param frame
@@ -301,7 +352,7 @@ public class SerializedFrames {
     public static void serializeToFrames(IMRUContext ctx, ByteBuffer frame,
             int frameSize, IFrameWriter writer, byte[] objectData,
             int sourcePartition, int targetPartition, int replyPartition,
-            String debugInfo) throws HyracksDataException {
+            String debugInfo, int writerId) throws HyracksDataException {
         int position = 0;
         //        Rt.p("send " + objectData.length + " " + deserialize(objectData));
         while (position < objectData.length) {
@@ -313,6 +364,7 @@ public class SerializedFrames {
             frame.putInt(replyPartition);
             frame.putInt(objectData.length);
             frame.putInt(position);
+            frame.putInt(writerId);
             //            Rt.p(position);
             int length = Math.min(objectData.length - position, frameSize
                     - HEADER - TAIL);
@@ -331,5 +383,4 @@ public class SerializedFrames {
             position += length;
         }
     }
-
 }

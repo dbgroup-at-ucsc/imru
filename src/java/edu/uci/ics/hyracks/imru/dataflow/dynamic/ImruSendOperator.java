@@ -7,32 +7,25 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
 import java.util.Hashtable;
-import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Stack;
 import java.util.Vector;
-import java.util.concurrent.Future;
 
 import edu.uci.ics.hyracks.api.comm.IFrameWriter;
 import edu.uci.ics.hyracks.api.context.IHyracksTaskContext;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryInputUnaryOutputOperatorNodePushable;
-import edu.uci.ics.hyracks.imru.api.ASyncIO;
-import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
 import edu.uci.ics.hyracks.imru.api.ImruFrames;
 import edu.uci.ics.hyracks.imru.api.ImruParameters;
 import edu.uci.ics.hyracks.imru.api.ImruStream;
-import edu.uci.ics.hyracks.imru.api.old.IIMRUJob2;
-import edu.uci.ics.hyracks.imru.data.MergedFrames;
 import edu.uci.ics.hyracks.imru.data.SerializedFrames;
-import edu.uci.ics.hyracks.imru.dataflow.IMRUDebugger;
-import edu.uci.ics.hyracks.imru.dataflow.IMRUSerialize;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class ImruSendOperator<Model extends Serializable, Data extends Serializable>
         extends AbstractUnaryInputUnaryOutputOperatorNodePushable {
-    boolean diableSwapping = false;
+    boolean disableSwapping = false;
     int maxWaitTimeBeforeSwap = 1000;
     public static boolean debug = false;
     public static int debugNetworkSpeed = 0;
@@ -93,9 +86,14 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
     IHyracksTaskContext ctx;
     int curPartition;
     int nPartitions;
+
     //    IMRUContext context;
     BitSet receivingPartitions = new BitSet();
     BitSet receivedPartitions = new BitSet();
+
+    public boolean isPartitionFinished(int src) {
+        return receivingPartitions.get(src) || receivedPartitions.get(src);
+    }
 
     Object aggrSync = new Object();
     int targetPartition;
@@ -109,6 +107,8 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
     //for swapping
     boolean swapSucceed;
     boolean swapFailed;
+    String failedReason;
+    long failedReasonReceivedSize;
     BitSet swapFailedPartitions = new BitSet();
     int swappingTarget = -1;
     BitSet expectingReplies = new BitSet();
@@ -122,10 +122,20 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
     boolean receivedMapResult = false;
     boolean allChildrenFinished = false;
 
+    // Keep records for debugging
+    Vector<Integer> swaps = new Vector<Integer>();
+    Vector<Long> swapsTime = new Vector<Long>();
+    Vector<Integer> swapped = new Vector<Integer>();
+    Vector<Long> swappedTime = new Vector<Long>();
+    Vector<Integer> swapsFailed = new Vector<Integer>();
+    Vector<String> swapFailedReason = new Vector<String>();
+    Vector<Long> swapFailedTime = new Vector<Long>();
+
     DynamicAggregation<Model, Data> dynamicAggregation = new DynamicAggregation<Model, Data>(
             this);
     IncomingMessageProcessor incomingMessageProcessor = new IncomingMessageProcessor(
             this);
+    int[] partitionWriter; //Mapping between partition and writer
 
     public ImruSendOperator(IHyracksTaskContext ctx, int curPartition,
             int nPartitions, int[] targetPartitions,
@@ -140,7 +150,7 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
         this.parameters = parameters;
         this.modelName = modelName;
         this.imruConnection = imruConnection;
-        this.diableSwapping = diableSwapping;
+        this.disableSwapping = diableSwapping;
         this.maxWaitTimeBeforeSwap = maxWaitTimeBeforeSwap;
         debugSendOperators[curPartition] = this;
         targetPartition = targetPartitions[curPartition];
@@ -154,6 +164,13 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
         for (int i = 0; i < targetPartitions.length; i++)
             if (targetPartitions[i] == curPartition)
                 incomingPartitions[sourceCount++] = i;
+        partitionWriter = new int[nPartitions];
+        for (int i = 0; i < nPartitions; i++)
+            partitionWriter[i] = i;
+    }
+
+    int partitionToWriter(int partitionId) {
+        return partitionWriter[partitionId];
     }
 
     void sendObj(int targetPartition, SwapCommand cmd) throws IOException {
@@ -161,8 +178,12 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
             Rt.p(curPartition + " send to " + targetPartition + " " + cmd);
         if (targetPartition < 0 || targetPartition >= nPartitions)
             throw new Error("" + targetPartition);
+//        if (partitionToWriter(targetPartition) != targetPartition) {
+//            Rt.p("correct address: " + targetPartition + " -> "
+//                    + partitionToWriter(targetPartition));
+//        }
         SerializedFrames.serializeSwapCmd(imruContext, writer, cmd,
-                curPartition, targetPartition);
+                curPartition,targetPartition, partitionToWriter(targetPartition));
     }
 
     IFrameWriter getWriter() {
@@ -189,7 +210,7 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
         synchronized (aggrSync) {
             expectingReplies = new BitSet();
             for (int id : incomingPartitions) {
-                if (!receivingPartitions.get(id)) {
+                if (!isPartitionFinished(id)) {
                     expectingReplies.set(id);
                     lockingPartitions.add(id);
                 }
@@ -264,6 +285,7 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
         //                        Rt.p(targetParition + " recv " + sourceParition + " "
         //                                + size + "/" + total);
         receivingPartitions.set(srcParition);
+        failedReasonReceivedSize = size;
     }
 
     public void complete(int srcPartition, int thisPartition,
@@ -303,8 +325,11 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
             so.printAggrTree();
         }
         if (so.totalRepliesRemaining > 0) {
-            if (so.isParentNodeOfSwapping && srcPartition == so.swappingTarget)
+            if (so.isParentNodeOfSwapping && srcPartition == so.swappingTarget) {
+                //The target partition sent everything
                 so.swapFailed = true;
+                so.failedReason = "complete";
+            }
             incomingMessageProcessor.checkHoldingStatus();
             if (so.totalRepliesRemaining <= 0)
                 incomingMessageProcessor.holdComplete();
@@ -351,7 +376,16 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
             }
         });
         dbgInfoRecvQueue = imruSpec.reduceDbgInfoInit(imruContext, recvQueue);
-
+        if (curPartition == 0) {
+            // Find out the relationship between writers and partitions.
+            for (int i = 0; i < nPartitions; i++) {
+                try {
+                    sendObj(i, new IdentifyRequest(curPartition, i));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
         //        io = new ASyncIO<byte[]>(1);
         //        future = IMRUSerialize.threadPool.submit(new Runnable() {
         //            @Override

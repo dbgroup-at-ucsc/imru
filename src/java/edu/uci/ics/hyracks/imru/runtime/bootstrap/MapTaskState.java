@@ -32,6 +32,7 @@ import edu.uci.ics.hyracks.dataflow.std.base.AbstractStateObject;
 public class MapTaskState extends AbstractStateObject {
     private RunFileWriter out;
     private Vector vector;
+    public long parsedDataSize;
 
     public MapTaskState(JobId jobId, TaskId taskId) {
         super(jobId, taskId);

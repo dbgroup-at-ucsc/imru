@@ -161,6 +161,7 @@ public class DataLoadOperatorDescriptor extends
 					final IMRUFileSplit split = inputSplits[partition];
 					try {
 						InputStream in = split.getInputStream();
+						state.parsedDataSize=in.available();
 						if (runFileWriter != null) {
 							imruSpec.parse(imruContext,
 									new BufferedInputStream(in, 1024 * 1024),

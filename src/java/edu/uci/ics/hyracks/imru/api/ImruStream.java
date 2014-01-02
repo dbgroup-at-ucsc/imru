@@ -49,6 +49,9 @@ abstract public class ImruStream<Model extends Serializable, Data extends Serial
     abstract public void parse(IMRUContext ctx, InputStream in,
             FrameWriter writer) throws IOException;
 
+    /**
+     * Parse into memory cache
+     */
     abstract public void parse(IMRUContext ctx, InputStream input,
             DataWriter<Data> output) throws IOException;
 

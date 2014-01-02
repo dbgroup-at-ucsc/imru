@@ -23,7 +23,6 @@ import edu.uci.ics.hyracks.dataflow.std.base.AbstractSingleActivityOperatorDescr
 import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryInputSinkOperatorNodePushable;
 import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryOutputSourceOperatorNodePushable;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
-import edu.uci.ics.hyracks.imru.data.MergedFrames;
 import edu.uci.ics.hyracks.imru.data.SerializedFrames;
 import edu.uci.ics.hyracks.imru.dataflow.SpreadOD;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
@@ -69,9 +68,48 @@ public class ImruRecvOD<Model extends Serializable> extends
                             .getFrameSize(), buffer);
                     //                MergedFrames frames = MergedFrames
                     //                        .nextFrame(ctx, buffer, queue);
-                    if (sendOperator == null) {
+                    while (sendOperator == null) {
                         sendOperator = (ImruSendOperator) context
                                 .getUserObject("sendOperator");
+                        Thread.sleep(50);
+                    }
+                    if (f.targetParition != sendOperator.curPartition) {
+                        // TODO: find out why this happens
+                        if (f.replyPartition == SerializedFrames.DYNAMIC_COMMUNICATION_FRAME) {
+                            NCApplicationContext appContext = (NCApplicationContext) ctx
+                                    .getJobletContext().getApplicationContext();
+                            IJobSerializerDeserializer jobSerDe = appContext
+                                    .getJobSerializerDeserializerContainer()
+                                    .getJobSerializerDeserializer(deploymentId);
+                            Serializable receivedObject = (Serializable) jobSerDe
+                                    .deserialize(f.data);
+                            if (receivedObject instanceof IdentifyRequest) {
+                                IdentificationCorrection c = new IdentificationCorrection(
+                                        sendOperator.curPartition,
+                                        f.targetParition);
+                                for (int i = 0; i < sendOperator.nPartitions; i++) {
+                                    sendOperator.sendObj(i, c);
+                                }
+                            } else if (receivedObject instanceof IdentificationCorrection) {
+                            } else {
+                                Rt.p("ERROR: " + sendOperator.curPartition
+                                        + " recv wrong message from="
+                                        + f.srcPartition + " to="
+                                        + f.targetParition + " "
+                                        + receivedObject);
+                                return;
+                            }
+                            // redeliver
+
+                            //                            sendOperator.getWriter().nextFrame(buffer);
+                            //                            throw new Error();
+                            //                            System.exit(0);
+                        } else {
+                            throw new Error(sendOperator.curPartition
+                                    + " recv wrong message from="
+                                    + f.srcPartition + " to="
+                                    + f.targetParition);
+                        }
                     }
                     if (f.replyPartition == SerializedFrames.DBG_INFO_FRAME) {
                         boolean completed = sendOperator.imruSpec

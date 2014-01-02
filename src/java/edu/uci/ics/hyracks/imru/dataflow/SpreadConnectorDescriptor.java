@@ -32,7 +32,7 @@ import edu.uci.ics.hyracks.dataflow.std.collectors.NonDeterministicChannelReader
 import edu.uci.ics.hyracks.dataflow.std.collectors.NonDeterministicFrameReader;
 import edu.uci.ics.hyracks.dataflow.std.collectors.PartitionCollector;
 import edu.uci.ics.hyracks.dataflow.std.connectors.PartitionDataWriter;
-import edu.uci.ics.hyracks.imru.data.MergedFrames;
+import edu.uci.ics.hyracks.imru.data.SerializedFrames;
 import edu.uci.ics.hyracks.imru.jobgen.SpreadGraph;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
@@ -119,21 +119,25 @@ public class SpreadConnectorDescriptor extends AbstractMToNConnectorDescriptor {
                     throws HyracksDataException {
                 if (closed)
                     return;
-                int targetPartition = buffer.getInt(MergedFrames.TARGET_OFFSET);
-                if (targetPartition < 0 || targetPartition >= pWriters.length)
-                    throw new Error(targetPartition + " " + pWriters.length);
-                if (pWriters[targetPartition] == null) {
+                int srcPartition = buffer.getInt(SerializedFrames.SOURCE_OFFSET);
+                int targetPartition = buffer.getInt(SerializedFrames.TARGET_OFFSET);
+                int writerId = buffer.getInt(SerializedFrames.WRITER_OFFSET);
+//                Rt.p(srcPartition + " -> " + targetPartition);
+                if (writerId < 0 || writerId >= pWriters.length)
+                    throw new Error(writerId + " " + pWriters.length);
+                if (pWriters[writerId] == null) {
                     try {
-                        Rt.p("Open " + senderPartition + " " + targetPartition);
-                        pWriters[targetPartition] = edwFactory
-                                .createFrameWriter(targetPartition);
-                        pWriters[targetPartition].open();
+                        Rt.p("Open " + senderPartition + " " + srcPartition
+                                + " " + writerId);
+                        pWriters[writerId] = edwFactory
+                                .createFrameWriter(writerId);
+                        pWriters[writerId].open();
                     } catch (IOException e) {
                         throw new HyracksDataException(e);
                     }
                 }
-                //Rt.p("next frame "+targetPartition);
-                flushFrame(buffer, pWriters[targetPartition]);
+                //Rt.p("next frame "+writerId);
+                flushFrame(buffer, pWriters[writerId]);
                 //                if (from != null)
                 //                    Rt.p("Level " + from.level + "->" + to.level + ": " + senderPartition + " "
                 //                            + from.nodes.get(senderPartition) + "->" + targetPartition + " "

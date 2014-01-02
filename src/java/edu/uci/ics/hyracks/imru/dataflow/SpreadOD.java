@@ -30,7 +30,7 @@ import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryInputUnaryOutputOperat
 import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryOutputSourceOperatorNodePushable;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
-import edu.uci.ics.hyracks.imru.data.MergedFrames;
+import edu.uci.ics.hyracks.imru.data.SerializedFrames;
 import edu.uci.ics.hyracks.imru.jobgen.SpreadGraph;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRURuntimeContext;
@@ -131,7 +131,7 @@ public class SpreadOD extends AbstractSingleActivityOperatorDescriptor {
             Hashtable<Integer, LinkedList<ByteBuffer>> hash, int nPartitions)
             throws HyracksDataException {
         int frameSize = ctx.getFrameSize();
-        MergedFrames frames = MergedFrames.nextFrame(ctx, buffer, hash);
+        SerializedFrames frames = SerializedFrames.nextFrame(ctx, buffer, hash);
         if (!first && frames.data == null)
             return;
         if (!last)
@@ -170,11 +170,10 @@ public class SpreadOD extends AbstractSingleActivityOperatorDescriptor {
                 // Rt.p(to.nodes.get(partition).name + " " + new
                 // IMRUContext(ctx).getNodeId() + " to " + node.name);
                 // buffer.putInt(0, n.partitionInThisLevel);
-                MergedFrames
-                        .serializeToFrames(imruContext, frame, frameSize,
-                                writer, bs, node.partitionInThisLevel,
-                                n.partitionInThisLevel,
-                                node.partitionInThisLevel, null);
+                SerializedFrames.serializeToFrames(imruContext, frame,
+                        frameSize, writer, bs, node.partitionInThisLevel,
+                        n.partitionInThisLevel, node.partitionInThisLevel,
+                        null, n.partitionInThisLevel);
                 if (last)
                     throw new Error();
                 // writer.nextFrame(buffer);

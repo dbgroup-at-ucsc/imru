@@ -103,6 +103,7 @@ public class IMRUJobFactory {
     boolean dynamicAggr;
     public boolean disableSwapping = false;
     public int maxWaitTimeBeforeSwap = 1000;
+    public boolean dynamicDebug;
 
     public IMRUJobFactory(IMRUConnection imruConnection, String inputPaths,
             ConfigurationFactory confFactory, String type, int fanIn,
@@ -353,7 +354,7 @@ public class IMRUJobFactory {
                     mapOperatorLocations.length, this.fanIn);
             ImruSendOD send = new ImruSendOD(spec, targets, model, "send",
                     parameters, modelName, imruConnection, disableSwapping,
-                    maxWaitTimeBeforeSwap);
+                    maxWaitTimeBeforeSwap, dynamicDebug);
             ImruRecvOD recv = new ImruRecvOD(spec, deploymentId, targets);
             spec.connect(new SpreadConnectorDescriptor(spec, null, null), send,
                     0, recv, 0);

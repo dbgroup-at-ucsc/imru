@@ -194,6 +194,8 @@ public class Rt {
         return runAndShowCommand(cmd, null);
     }
 
+    public static int lastResult;
+
     public static String runAndShowCommand(String cmd, File dir)
             throws IOException {
         Vector<String> v = new Vector<String>();
@@ -221,7 +223,7 @@ public class Rt {
         showInputStream(process.getInputStream(), sb);
         showInputStream(process.getErrorStream(), sb);
         try {
-            process.waitFor();
+            lastResult = process.waitFor();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -346,6 +348,13 @@ public class Rt {
 
     public static int[] intArray(List<Integer> list) {
         int[] is = new int[list.size()];
+        for (int i = 0; i < is.length; i++)
+            is[i] = list.get(i);
+        return is;
+    }
+
+    public static long[] longArray(List<Long> list) {
+        long[] is = new long[list.size()];
         for (int i = 0; i < is.length; i++)
             is[i] = list.get(i);
         return is;

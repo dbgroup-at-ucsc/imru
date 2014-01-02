@@ -14,6 +14,7 @@ public class ClusterMonitor {
     DatagramSocket serverSocket;
     boolean exitFlag = false;
     public int nodes;
+    public String templateIp;
     public String[] ip = new String[32];
     public int[] memory = new int[32];
     public float[] network = new float[32]; //MB
@@ -47,6 +48,8 @@ public class ClusterMonitor {
                                 cpu[id] = Float.parseFloat(ss[4]);
                                 if (id >= nodes)
                                     nodes = id + 1;
+                            } else {
+                                templateIp = ss[1];
                             }
                         } catch (Exception e) {
                             e.printStackTrace();
@@ -177,6 +180,19 @@ public class ClusterMonitor {
         exit = true;
         monitorThread.join();
         //        monitorThread.interrupt();
+    }
+
+    public void waitTemplate(int timeout)
+            throws ImruExperimentTimeoutException, InterruptedException {
+        long startTime = System.currentTimeMillis();
+        long maxTime = startTime + timeout;
+        while (true) {
+            if (System.currentTimeMillis() > maxTime)
+                throw new ImruExperimentTimeoutException("timeout ");
+            if (templateIp != null)
+                return;
+            Thread.sleep(500);
+        }
     }
 
     public void waitIp(int n, int timeout)

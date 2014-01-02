@@ -51,12 +51,15 @@ public class VirtualBoxExperiments {
     int aggArg;
     File resultDir;
     File figDir;
+    public static String resultFolder = "result";
     public static ClusterMonitor monitor;
     public static boolean MONITOR_MEMORY_USAGE = true;
     public static int MAX_NODES_STARTUP_TIME = 5 * 60 * 1000;
     public static int MAX_EXPERIMENT_FREEZE_TIME = 30 * 60 * 1000;
     public static boolean dynamicAggr = false;
     public static boolean disableSwapping = false;
+    public static boolean dynamicDebug = false;
+    public static int straggler = 0;
 
     public VirtualBoxExperiments(LocalCluster cluster, String name, int k,
             int iterations, int batchStart, int batchStep, int batchEnd,
@@ -73,8 +76,8 @@ public class VirtualBoxExperiments {
         if (cluster != null) {
             controller = cluster.cluster.controller;
             nodes = cluster.cluster.nodes;
-            resultDir = new File("result/k" + k + "i" + iterations + "b"
-                    + batchStart + "s" + batchStep + "e" + batchEnd + "b"
+            resultDir = new File(resultFolder + "/k" + k + "i" + iterations
+                    + "b" + batchStart + "s" + batchStep + "e" + batchEnd + "b"
                     + batchSize + "/" + name + "_" + nodes.length + "nodes_"
                     + aggType + "_" + aggArg
                     + (dynamicAggr ? "_d" + (disableSwapping ? "s" : "") : ""));
@@ -229,10 +232,13 @@ public class VirtualBoxExperiments {
         arg += " -agg-tree-type " + aggType;
         arg += " -agg-count " + aggArg;
         arg += " -fan-in " + aggArg;
+        arg += " -straggler " + straggler;
         if (dynamicAggr)
             arg += " -dynamic";
         if (disableSwapping)
             arg += " -dynamic-disable";
+        if (dynamicDebug)
+            arg += " -dynamic-debug";
         ssh.maxFreezeTime = MAX_EXPERIMENT_FREEZE_TIME;
         try {
             ssh.execute("sh st.sh exp.imruVsSpark.kmeans.KmeansExperiment "
@@ -272,16 +278,23 @@ public class VirtualBoxExperiments {
         ssh.execute("cd test;");
         if (MONITOR_MEMORY_USAGE)
             monitor.start(figDir, job, nodes);
-        ssh.execute("rm result/*");
+        ssh.execute("rm " + resultFolder + "/*");
         if (runExperiment(ssh, job)) {
             String result = new String(Rt.read(ssh.get("/home/" + cluster.user
                     + "/test/result/kmeans" + job + "_org.data")));
             Rt.p(result);
             Rt.write(resultFile, result.getBytes());
+            for (int i = 0; i < iterations; i++) {
+                result = new String(Rt.read(ssh.get("/home/" + cluster.user
+                        + "/test/result/" + i + ".log")));
+                Rt.write(new File(resultDir, job + "_" + i + ".log"), result
+                        .getBytes());
+            }
             ssh.close();
         }
         if (MONITOR_MEMORY_USAGE)
             monitor.stop();
+//        System.exit(0);
         //        cluster.cluster.printLogs(-1, 100);
         //        cluster.cluster.stopHyrackCluster();
     }
@@ -297,7 +310,7 @@ public class VirtualBoxExperiments {
         ssh.execute("cd test;");
         if (MONITOR_MEMORY_USAGE)
             monitor.start(figDir, "spark", nodes);
-        ssh.execute("rm result/*");
+        ssh.execute("rm " + resultFolder + "/*");
         if (runExperiment(ssh, "spark")) {
             ssh.execute("cat " + "/home/" + cluster.user + "/masterSpark.log");
             ssh.execute("cat " + "/home/" + cluster.user + "/slaveSpark.log");
@@ -323,7 +336,7 @@ public class VirtualBoxExperiments {
         ssh.execute("cd test;");
         if (MONITOR_MEMORY_USAGE)
             monitor.start(figDir, "spark", nodes);
-        ssh.execute("rm result/*");
+        ssh.execute("rm " + resultFolder + "/*");
         cluster.cluster.executeOnAllNode(new NodeCallback() {
             @Override
             public void run(HyracksNode node) throws Exception {
@@ -370,7 +383,7 @@ public class VirtualBoxExperiments {
     }
 
     static void regenerateResults() throws Exception {
-        for (File group : new File("result").listFiles()) {
+        for (File group : new File(resultFolder).listFiles()) {
             if (!group.isDirectory())
                 continue;
             if (!group.getName().startsWith("k"))

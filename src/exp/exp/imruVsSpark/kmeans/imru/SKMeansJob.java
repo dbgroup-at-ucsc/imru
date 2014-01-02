@@ -16,6 +16,7 @@
 package exp.imruVsSpark.kmeans.imru;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -38,12 +39,16 @@ import exp.imruVsSpark.kmeans.SparseVector;
 
 public class SKMeansJob extends
         ImruObject<SKMeansModel, SparseVector, FilledVectors> {
+    File dir;
     int k;
     int dimensions;
+    int straggler;
 
-    public SKMeansJob(int k, int dimensions) {
+    public SKMeansJob(File dir, int k, int dimensions, int straggler) {
+        this.dir = dir;
         this.k = k;
         this.dimensions = dimensions;
+        this.straggler = straggler;
     }
 
     /**
@@ -95,9 +100,8 @@ public class SKMeansJob extends
             result.centroids[rs.belong].add(dataPoint);
             result.distanceSum += rs.dis;
         }
-                if (ctx.getPartition() == 7)
-                    Rt.sleep(60000);
-        //        Rt.p(result.count());
+        if (ctx.getPartition() == ctx.getPartitions() - 1)
+            Rt.sleep(straggler);
         return result;
     }
 
@@ -139,21 +143,17 @@ public class SKMeansJob extends
      * Return true to exit loop
      */
     @Override
-    public boolean shouldTerminate(SKMeansModel model,
-            ImruIterInfo iterationInformation) {
+    public boolean shouldTerminate(SKMeansModel model, ImruIterInfo info) {
         //        Rt.p(model.totalExamples);
+        try {
+            if (dir != null)
+                Rt.write(new File(dir, info.currentIteration + ".log"), info
+                        .getReport().getBytes());
+            else
+                info.printReport();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         return model.roundsRemaining <= 0;
-    }
-
-    @Override
-    public SKMeansModel integrate(SKMeansModel model1, SKMeansModel model2) {
-        return model1;
-    }
-
-    @Override
-    public RecoveryAction onJobFailed(List<ImruSplitInfo> completedRanges,
-            long dataSize, int optimalNodesForRerun, float rerunTime,
-            int optimalNodesForPartiallyRerun, float partiallyRerunTime) {
-        return RecoveryAction.Accept;
     }
 }

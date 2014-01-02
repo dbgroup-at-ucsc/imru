@@ -2,26 +2,31 @@ package exp.imruVsSpark.kmeans.exp;
 
 import java.io.File;
 
-import edu.uci.ics.hyracks.ec2.Rt;
 import edu.uci.ics.hyracks.ec2.SSH;
+import edu.uci.ics.hyracks.imru.util.Rt;
+import exp.ClusterMonitor;
 import exp.imruVsSpark.VirtualBox;
 import exp.imruVsSpark.kmeans.VirtualBoxExperiments;
 
 public class UpdateTemplate {
     public static void main(String[] args) throws Exception {
-        //        VirtualBoxExperiments.createTemplate("192.168.56.102", "ubuntu");
-        //        System.exit(0);
-//        VirtualBox.remove();
-        String ip = "192.168.56.102";
-//        VirtualBox.startTemplate();
-//        Rt.sleep(5000);
-//        Rt.runAndShowCommand("mvn package -DskipTests=true", new File(
-//                "/data/a/imru/hyracks10/hyracks"));
+        Rt.runAndShowCommand("mvn package -DskipTests=true", new File(
+                "/data/a/imru/hyracks10/hyracks"));
+        Rt.p(Rt.lastResult);
+        if (Rt.lastResult!=0)
+            throw new Error();
+        ClusterMonitor monitor = new ClusterMonitor();
+        VirtualBox.remove();
+        VirtualBox.startTemplate();
+        monitor.waitTemplate(30000);
+
+        String ip = monitor.templateIp;
         VirtualBoxExperiments.createTemplate(ip, "ubuntu");
         SSH ssh = new SSH("ubuntu", ip, 22, new File(
                 "/home/wangrui/.ssh/id_rsa"));
         ssh.timeout = 1000;
         ssh.execute("sudo poweroff", false);
         ssh.close();
+        System.exit(0);
     }
 }

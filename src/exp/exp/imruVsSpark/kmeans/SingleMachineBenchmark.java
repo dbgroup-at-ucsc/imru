@@ -39,15 +39,15 @@ public class SingleMachineBenchmark {
             long bareTime = System.currentTimeMillis() - start;
 
             start = System.currentTimeMillis();
-            IMRUKMeans.run(true, false, k, iterations, points);
+            IMRUKMeans.run(true, false, k, iterations, points, 0);
             long imruMemTime = System.currentTimeMillis() - start;
 
             start = System.currentTimeMillis();
-            IMRUKMeans.run(false, true, k, iterations, points);
+            IMRUKMeans.run(false, true, k, iterations, points, 0);
             long imruParseTime = System.currentTimeMillis() - start;
 
             start = System.currentTimeMillis();
-            IMRUKMeans.run(false, false, k, iterations, points);
+            IMRUKMeans.run(false, false, k, iterations, points, 0);
             long imruDiskTime = System.currentTimeMillis() - start;
 
             start = System.currentTimeMillis();

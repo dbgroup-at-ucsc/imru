@@ -102,7 +102,7 @@ public class VirtualBox {
         String machine = "imru_template";
         if (!running(machine)) {
             Rt.p("starting " + machine);
-            String cmd = "startvm " + machine;
+            String cmd = "startvm " + machine+ " --type headless";
             VBoxManage(true, cmd);
         }
     }

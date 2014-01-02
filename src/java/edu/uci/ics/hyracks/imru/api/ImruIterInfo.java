@@ -14,7 +14,10 @@ import edu.uci.ics.hyracks.imru.util.Rt;
  * @author Rui Wang
  */
 public class ImruIterInfo implements Serializable {
+    public static final long serialVersionUID = 1;
+
     public static class OperatorInfo implements Serializable {
+        public static final long serialVersionUID = 1;
         public String nodeId;
         public String operator;
         public int partition;
@@ -34,6 +37,14 @@ public class ImruIterInfo implements Serializable {
         public long totalRecvTime;
         public long totalProcessed;
         public long totalProcessTime;
+
+        //for dynamic aggregation
+        public int[] swapsWithPartitions; // initiate and complete swapping with partitions
+        public long[] swapsTime;
+        public int[] swappedWithPartitions; // being swapped with partitions
+        public long[] swappedTime;
+        public String[] swapsFailed; // initiate but failed
+        public long[] swapsFailedTime;
 
         public OperatorInfo(String nodeId, String operator, int partition,
                 int totalPartitions) {
@@ -62,6 +73,9 @@ public class ImruIterInfo implements Serializable {
 
     public int currentIteration = -1;
     public int finishedRecoveryIteration = 0;
+    public boolean dynamicAggregationEnabled = false;
+    public boolean swappingDisabled = false;
+    public long maxWaitTimeBeforeSwap = 0;
 
     // public T object;
     public Vector<String> allCompletedPaths = new Vector<String>();
@@ -134,6 +148,37 @@ public class ImruIterInfo implements Serializable {
             sb.append(String.format(" aggr=%d(%.1fcnt/s)", info.totalProcessed,
                     info.totalProcessed * 1000.0 / info.totalProcessTime));
         }
+        if (info.swapsWithPartitions != null
+                && info.swapsWithPartitions.length > 0) {
+            sb.append(" swaps=(");
+            for (int i = 0; i < info.swapsWithPartitions.length; i++)
+                sb.append(info.swapsWithPartitions[i]
+                        + String.format("[%.3fs]",
+                                (info.swapsTime[i] - minTime) / 1000.0) + ",");
+            sb.append(")");
+        }
+        if (info.swappedWithPartitions != null
+                && info.swappedWithPartitions.length > 0) {
+            sb.append(" swapped=(");
+            for (int i = 0; i < info.swappedWithPartitions.length; i++)
+                sb
+                        .append(info.swappedWithPartitions[i]
+                                + String
+                                        .format(
+                                                "[%.3fs]",
+                                                (info.swappedTime[i] - minTime) / 1000.0)
+                                + ",");
+            sb.append(")");
+        }
+        if (info.swapsFailed != null) {
+            sb.append(" swapsFail=(");
+            for (int i = 0; i < info.swapsFailed.length; i++)
+                sb.append(info.swapsFailed[i]
+                        + String.format("[%.3fs]",
+                                (info.swapsFailedTime[i] - minTime) / 1000.0)
+                        + ",");
+            sb.append(")");
+        }
         if (info.completedPath != null) {
             sb.append("\n");
             for (int i = 0; i < level; i++) {
@@ -161,20 +206,31 @@ public class ImruIterInfo implements Serializable {
         return sb.toString();
     }
 
-    public void printReport() {
-        Rt.np("Processed paths:");
+    public String getReport() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Processed paths:\n");
         for (String s : allCompletedPaths)
-            Rt.np(" " + s);
+            sb.append(" " + s + "\n");
 
-        Rt.np("");
-        Rt.np("current iteration: " + currentIteration);
-        Rt.np("current recovery iteration: " + finishedRecoveryIteration);
-        Rt.np("map data size: " + op.totalMappedDataSize);
-        Rt.np("map records: " + op.totalMappedRecords);
+        sb.append("\n");
+        sb.append("current iteration: " + currentIteration + "\n");
+        sb.append("current recovery iteration: " + finishedRecoveryIteration
+                + "\n");
+        sb.append("map data size: " + op.totalMappedDataSize + "\n");
+        sb.append("map records: " + op.totalMappedRecords + "\n");
+        sb.append("dynamic aggregation: " + this.dynamicAggregationEnabled
+                + "\n");
+        sb.append("disable swapping: " + this.swappingDisabled + "\n");
+        sb.append("wait before swapping: " + this.maxWaitTimeBeforeSwap + "\n");
 
-        Rt.np("");
-        Rt.np("Data flow graph:");
-        Rt.np(getAggrTree());
+        sb.append("\n");
+        sb.append("Data flow graph:\n");
+        sb.append(getAggrTree() + "\n");
+        return sb.toString();
+    }
+
+    public void printReport() {
+        Rt.np(getReport());
     }
 
     @Override

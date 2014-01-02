@@ -22,7 +22,7 @@ import edu.uci.ics.hyracks.dataflow.std.base.AbstractSingleActivityOperatorDescr
 import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryInputSinkOperatorNodePushable;
 import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryOutputSourceOperatorNodePushable;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
-import edu.uci.ics.hyracks.imru.data.MergedFrames;
+import edu.uci.ics.hyracks.imru.data.SerializedFrames;
 import edu.uci.ics.hyracks.imru.dataflow.SpreadOD;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
 import edu.uci.ics.hyracks.imru.util.Rt;
@@ -142,7 +142,7 @@ public class MergeOD<Model extends Serializable> extends
             int partition, ByteBuffer buffer,
             Hashtable<Integer, LinkedList<ByteBuffer>> hash, int nPartitions)
             throws HyracksDataException {
-        MergedFrames frames = MergedFrames.nextFrame(ctx, buffer, hash);
+        SerializedFrames frames = SerializedFrames.nextFrame(ctx, buffer, hash);
         if (frames.data == null)
             return;
         try {

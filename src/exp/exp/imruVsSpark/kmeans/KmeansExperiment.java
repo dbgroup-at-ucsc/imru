@@ -29,7 +29,8 @@ public class KmeansExperiment {
     public static void exp(String master, int nodeCount, String type, int k,
             int iterations, int startBatch, int stepBatch, int stopBatch,
             int batchSize, String aggType, int aggArg, boolean dynamic,
-            boolean dynamicDisable) throws Exception {
+            boolean dynamicDisable, int stragger, boolean dynamicDebug)
+            throws Exception {
         String user = "ubuntu";
         //        Client.disableLogging();
         DataGenerator.TEMPLATE = "/home/ubuntu/test/exp_data/product_name";
@@ -37,8 +38,9 @@ public class KmeansExperiment {
             user = "wangrui";
             DataGenerator.TEMPLATE = "/home/wangrui/test/exp_data/product_name";
         }
-        new File("result").mkdir();
-        GnuPlot plot = new GnuPlot(new File("result"), "kmeans" + type,
+        File resultDir = new File("result");
+        resultDir.mkdir();
+        GnuPlot plot = new GnuPlot(resultDir, "kmeans" + type,
                 "Data points (10^5)", "Time (seconds)");
         plot.extra = "set title \"K=" + k + ",Iteration=" + iterations + "\"";
         plot.setPlotNames(type, "data");
@@ -79,7 +81,8 @@ public class KmeansExperiment {
                 String path = getImruDataPath(sizePerNode, nodeCount, "%d");
                 int processed2 = IMRUKMeans.runEc2(master, nodeCount, dataSize,
                         path, false, false, k, iterations, aggType, aggArg,
-                        dynamic,dynamicDisable);
+                        dynamic, dynamicDisable, stragger, resultDir,
+                        dynamicDebug);
                 long imruDiskTime = System.currentTimeMillis() - start;
                 plot.startNewX(pointPerNode / 100000);
                 //                plot.addY(dataTime / 1000.0);
@@ -91,7 +94,8 @@ public class KmeansExperiment {
                 String path = getImruDataPath(sizePerNode, nodeCount, "%d");
                 int processed1 = IMRUKMeans.runEc2(master, nodeCount, dataSize,
                         path, true, false, k, iterations, aggType, aggArg,
-                        dynamic,dynamicDisable);
+                        dynamic, dynamicDisable, stragger, resultDir,
+                        dynamicDebug);
                 long imruMemTime = System.currentTimeMillis() - start;
 
                 //            start = System.currentTimeMillis();
@@ -160,9 +164,12 @@ public class KmeansExperiment {
         public int fanIn = -1;
         @Option(name = "-dynamic")
         public boolean dynamic;
-
         @Option(name = "-dynamic-disable")
         public boolean dynamicDisable;
+        @Option(name = "-dynamic-debug")
+        public boolean dynamicDebug;
+        @Option(name = "-straggler")
+        public int straggler;
     }
 
     public static void main(String[] args) throws Exception {
@@ -178,6 +185,6 @@ public class KmeansExperiment {
                 options.batchEnd, options.batchSize, options.aggTreeType,
                 "generic".equals(options.aggTreeType) ? options.aggCount
                         : options.fanIn, options.dynamic,
-                options.dynamicDisable);
+                options.dynamicDisable, options.straggler, options.dynamicDebug);
     }
 }

@@ -25,6 +25,7 @@ import java.util.Random;
 
 import edu.uci.ics.hyracks.imru.api.IIMRUDataGenerator;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.ImruSendOperator;
 import edu.uci.ics.hyracks.imru.example.utils.Client;
 import edu.uci.ics.hyracks.imru.util.CreateDeployment;
 import edu.uci.ics.hyracks.imru.util.Rt;
@@ -38,7 +39,7 @@ import exp.imruVsSpark.kmeans.spark.SparkKMeans;
  */
 public class IMRUKMeans {
     public static void run(boolean memCache, boolean noDiskCache, int k,
-            int iterations, int dataPoints) throws Exception {
+            int iterations, int dataPoints, int stragger) throws Exception {
         String cmdline = "";
         if (Client.isServerAvailable(Client.getLocalIp(), 3099)) {
             // hostname of cluster controller
@@ -46,11 +47,14 @@ public class IMRUKMeans {
             System.out.println("Connecting to " + Client.getLocalIp());
         } else {
             // debugging mode, everything run in one process
-            cmdline += "-host localhost -port 3099 -debugNodes 5 -debug -disable-logging";
+            cmdline += "-host localhost -port 3099 -debugNodes 8 -debug -disable-logging";
             if (memCache)
                 cmdline += " -mem-cache";
             if (noDiskCache)
                 cmdline += " -no-disk-cache";
+            cmdline += " -dynamic";
+            cmdline += " -dynamic-swap-time 0";
+//            cmdline += " -dynamic-debug";
             System.out.println("Starting hyracks cluster");
         }
 
@@ -61,21 +65,26 @@ public class IMRUKMeans {
                 + "NC1:/data/b/data/imru/productName.txt,"
                 + "NC2:/data/b/data/imru/productName.txt,"
                 + "NC3:/data/b/data/imru/productName.txt,"
-                + "NC4:/data/b/data/imru/productName.txt";
+                + "NC4:/data/b/data/imru/productName.txt,"
+                + "NC5:/data/b/data/imru/productName.txt,"
+                + "NC6:/data/b/data/imru/productName.txt,"
+                + "NC7:/data/b/data/imru/productName.txt"
+                ;
         System.out.println("Using command line: " + cmdline);
         String[] args = cmdline.split(" ");
 
         File templateDir = new File(DataGenerator.TEMPLATE);
         DataGenerator dataGenerator = new DataGenerator(dataPoints, templateDir);
         SKMeansModel initModel = new SKMeansModel(k, dataGenerator, iterations);
-        SKMeansModel finalModel = Client.run(new SKMeansJob(k,
-                dataGenerator.dims), initModel, args);
+        SKMeansModel finalModel = Client.run(new SKMeansJob(null, k,
+                dataGenerator.dims, stragger), initModel, args);
         Rt.p("Total examples: " + finalModel.totalExamples);
     }
 
     public static int runEc2(String cc, int nodes, int size, String path,
             boolean memCache, boolean noDiskCache, int k, int iterations,
-            String aggType, int aggArg,boolean dynamic,boolean dynamicD) throws Exception {
+            String aggType, int aggArg, boolean dynamic, boolean dynamicD,
+            int stragger, File logDir,boolean dynamicDebug) throws Exception {
         CreateDeployment.uploadJarFiles = false;
         DataGenerator.TEMPLATE = "/home/ubuntu/test/exp_data/product_name";
         if (!new File(DataGenerator.TEMPLATE).exists())
@@ -99,6 +108,8 @@ public class IMRUKMeans {
             cmdline += " -dynamic";
         if (dynamicD)
             cmdline += " -dynamic-disable";
+        if (dynamicDebug)
+            cmdline += " -dynamic-debug";
 
         cmdline += " -example-paths ";
         for (int i = 0; i < nodes; i++) {
@@ -112,8 +123,8 @@ public class IMRUKMeans {
         File templateDir = new File(DataGenerator.TEMPLATE);
         DataGenerator dataGenerator = new DataGenerator(size, templateDir);
         SKMeansModel initModel = new SKMeansModel(k, dataGenerator, iterations);
-        SKMeansModel finalModel = Client.run(new SKMeansJob(k,
-                dataGenerator.dims), initModel, args);
+        SKMeansModel finalModel = Client.run(new SKMeansJob(logDir, k,
+                dataGenerator.dims, stragger), initModel, args);
         Rt.p("Total examples: " + finalModel.totalExamples);
         return finalModel.totalExamples;
     }
@@ -174,7 +185,8 @@ public class IMRUKMeans {
     public static void main(String[] args) throws Exception {
         //        generateData(1000, 2);
         try {
-            run(true, false, 3, 5, 1000000);
+//            ImruSendOperator.debug=true;
+            run(true, false, 1, 1, 10, 5000);
         } catch (Throwable e) {
             e.printStackTrace();
         }

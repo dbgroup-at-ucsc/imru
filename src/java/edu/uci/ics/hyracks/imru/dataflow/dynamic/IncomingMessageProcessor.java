@@ -3,7 +3,6 @@ package edu.uci.ics.hyracks.imru.dataflow.dynamic;
 import java.io.IOException;
 import java.util.Vector;
 
-import edu.uci.ics.hyracks.imru.data.MergedFrames;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class IncomingMessageProcessor {
@@ -43,7 +42,9 @@ public class IncomingMessageProcessor {
             }
             if (so.isParentNodeOfSwapping
                     && request.removePartition == so.swappingTarget) {
+                // The target partition swapped itself away
                 so.swapFailed = true;
+                so.failedReason = "disappear";
                 synchronized (so.aggrSync) {
                     so.aggrSync.notifyAll();
                 }
@@ -52,22 +53,40 @@ public class IncomingMessageProcessor {
                 if (so.incomingPartitions[i] == request.removePartition) {
                     so.incomingPartitions[i] = request.addPartition;
                 }
+                synchronized (so.aggrSync) {
+                    so.aggrSync.notifyAll();
+                }
             }
         } else if (object instanceof ReleaseLock) {
             synchronized (so.aggrSync) {
                 so.holding = false;
                 so.aggrSync.notifyAll();
             }
+        } else if (object instanceof IdentifyRequest) {
+        } else if (object instanceof IdentificationCorrection) {
+            IdentificationCorrection ic = (IdentificationCorrection) object;
+//            Rt.p("correct "+so.curPartition+" "+ic);
+            so.partitionWriter[ic.partition] = ic.writer;
         } else
             throw new Error();
     }
 
     void processLockRequest(LockRequest request) throws IOException {
         boolean successful;
+        String reason = null;
         synchronized (so.aggrSync) {
-            if (so.holding || so.receivedMapResult || so.sending
-                    || so.swappingTarget >= 0) {
+            if (so.holding) {
                 successful = false;
+                reason = "hold";
+            } else if (so.receivedMapResult) {
+                successful = false;
+                reason = "mapped";
+            } else if (so.sending) {
+                successful = false;
+                reason = "send";
+            } else if (so.swappingTarget >= 0) {
+                successful = false;
+                reason = "swapping";
             } else {
                 so.holding = true;
                 successful = true;
@@ -100,6 +119,7 @@ public class IncomingMessageProcessor {
             LockReply reply = new LockReply();
             reply.forParentNode = request.isParentNode;
             reply.successful = successful;
+            reply.reason = reason;
             so.sendObj(srcPartition, reply);
             if (so.debug)
                 Rt.p(so.curPartition + " reply " + srcPartition + " with "
@@ -178,13 +198,15 @@ public class IncomingMessageProcessor {
         if (srcPartition == so.swappingTarget) {
             if (!reply.successful) {
                 so.swapFailed = true;
+                so.failedReason = reply.reason;
             }
         }
         int t = so.swappingTarget;
-        if (t >= 0
-                && (so.receivingPartitions.get(so.swappingTarget) || so.receivedPartitions
-                        .get(so.swappingTarget)))
+        if (t >= 0 && (so.isPartitionFinished(so.swappingTarget))) {
+            //Already received from the target partition
             so.swapFailed = true;
+            so.failedReason = "Recv" + so.failedReasonReceivedSize;
+        }
         //            Rt.p(curPartition + " waiting reply for " + totalRepliesRemaining
         //                    + " more");
         if (so.totalRepliesRemaining <= 0)
@@ -212,6 +234,8 @@ public class IncomingMessageProcessor {
             so.log.append("t" + so.targetPartition + ",");
             so.swapChildren(so.successfullyHoldPartitions,
                     request.incompeleteIncomingPartitions, so.swappingTarget);
+            so.swapped.add(so.swappingTarget);
+            so.swappedTime.add(System.currentTimeMillis());
             if (so.isParentNodeOfSwapping)
                 Rt.p("ERROR");
             else

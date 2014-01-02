@@ -5,6 +5,7 @@ import java.io.Serializable;
 public class LockReply extends SwapCommand {
     boolean forParentNode;
     boolean successful;
+    String reason;
     int[] holdedIncomingPartitions; // of the swapped partition
 
     @Override

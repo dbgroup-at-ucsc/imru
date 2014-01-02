@@ -12,7 +12,7 @@ import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.api.util.JavaSerializationUtils;
 import edu.uci.ics.hyracks.dataflow.common.comm.util.FrameUtils;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
-import edu.uci.ics.hyracks.imru.data.MergedFrames;
+import edu.uci.ics.hyracks.imru.data.SerializedFrames;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
 
 public class TrainMergeContext extends IMRUContext {
@@ -30,9 +30,10 @@ public class TrainMergeContext extends IMRUContext {
     String jobId;
 
     public TrainMergeContext(IHyracksTaskContext ctx, String operatorName,
-            IFrameWriter writer, int curTrainPartition,int nPartitions, int srcParitionUUID,
-            int curNodeId, IMRUConnection imruConnection, String jobId) {
-        super(ctx, operatorName,curTrainPartition,nPartitions);
+            IFrameWriter writer, int curTrainPartition, int nPartitions,
+            int srcParitionUUID, int curNodeId, IMRUConnection imruConnection,
+            String jobId) {
+        super(ctx, operatorName, curTrainPartition, nPartitions);
         this.writer = writer;
         this.curTrainPartition = curTrainPartition;
         this.curNodeId = curNodeId;
@@ -62,8 +63,8 @@ public class TrainMergeContext extends IMRUContext {
         byte[] bs = JavaSerializationUtils.serialize(model);
         ByteBuffer frame = ctx.allocateFrame();
         int frameSize = ctx.getFrameSize();
-        MergedFrames.serializeToFrames(null, frame, frameSize, writer, bs,
-                curTrainPartition, partition, curNodeId, null);
+        SerializedFrames.serializeToFrames(null, frame, frameSize, writer, bs,
+                curTrainPartition, partition, curNodeId, null, partition);
         return true;
     }
 }

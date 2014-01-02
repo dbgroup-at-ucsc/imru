@@ -49,7 +49,6 @@ import edu.uci.ics.hyracks.imru.api.ImruParameters;
 import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.api.old.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.data.ChunkFrameHelper;
-import edu.uci.ics.hyracks.imru.data.MergedFrames;
 import edu.uci.ics.hyracks.imru.data.RunFileContext;
 import edu.uci.ics.hyracks.imru.data.SerializedFrames;
 import edu.uci.ics.hyracks.imru.file.IMRUFileSplit;
@@ -257,6 +256,10 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                             info = imruSpec.mapMem(imruContext,
                                     ((Vector<Data>) vector).iterator(), model,
                                     out, imruSpec.getCachedDataFrameSize());
+                            info.op.mappedRecords = vector.size();
+                            info.op.totalMappedRecords = vector.size();
+                            info.op.mappedDataSize = state.parsedDataSize;
+                            info.op.totalMappedDataSize = state.parsedDataSize;
                         }
                     } else {
                         // parse raw data
@@ -312,7 +315,7 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                                     + " map " + partition + " "
                                     + imruContext.getOperatorName());
                     SerializedFrames.serializeDbgInfo(imruContext, writer,
-                            info, partition, 0);
+                            info, partition, 0, 0);
                     IMRUDebugger.sendDebugInfo(imruContext.getNodeId()
                             + " map finish");
                     writer.close();

@@ -24,7 +24,6 @@ import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.ImruParameters;
 import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.api.old.IIMRUJob2;
-import edu.uci.ics.hyracks.imru.data.MergedFrames;
 import edu.uci.ics.hyracks.imru.dataflow.IMRUOperatorDescriptor;
 import edu.uci.ics.hyracks.imru.file.IMRUFileSplit;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
@@ -42,12 +41,13 @@ public class ImruSendOD<Model extends Serializable, Data extends Serializable>
     IMRUConnection imruConnection;
     boolean disableSwapping = false;
     int maxWaitTimeBeforeSwap = 1000;
+    boolean debug;
 
     public ImruSendOD(JobSpecification spec, int[] targets,
             ImruStream<Model, Data> imruSpec, String name,
             ImruParameters parameters, String modelName,
             IMRUConnection imruConnection, boolean disableSwapping,
-            int maxWaitTimeBeforeSwap) {
+            int maxWaitTimeBeforeSwap, boolean debug) {
         super(spec, 1, 1, name, imruSpec);
         this.imruSpec = imruSpec;
         this.parameters = parameters;
@@ -58,6 +58,7 @@ public class ImruSendOD<Model extends Serializable, Data extends Serializable>
         this.imruConnection = imruConnection;
         this.maxWaitTimeBeforeSwap = maxWaitTimeBeforeSwap;
         this.disableSwapping = disableSwapping;
+        this.debug = debug;
     }
 
     @Override
@@ -66,6 +67,7 @@ public class ImruSendOD<Model extends Serializable, Data extends Serializable>
             IRecordDescriptorProvider recordDescProvider,
             final int curPartition, final int nPartitions)
             throws HyracksDataException {
+        ImruSendOperator.debug = debug;
         return new ImruSendOperator<Model, Data>(ctx, curPartition,
                 nPartitions, targetPartitions, imruSpec, parameters, modelName,
                 imruConnection, disableSwapping, maxWaitTimeBeforeSwap);

@@ -41,6 +41,7 @@ public class ImruDebugInfo {
                 cmdline += " -agg-tree-type nary -fan-in 4";
                 //                cmdline += " -agg-tree-type none";
                 cmdline += " -compress-after-iterations 2";
+                cmdline += " -dynamic";
                 cmdline += " -disable-logging";
                 cmdline += " -frame-size 256";
 

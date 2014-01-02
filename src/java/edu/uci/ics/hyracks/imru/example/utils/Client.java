@@ -117,6 +117,9 @@ public class Client<Model extends Serializable, Data extends Serializable> {
         @Option(name = "-dynamic-swap-time", usage = "Swap nodes after freezed for this time")
         public int dynamicSwapTime = 1000;
 
+        @Option(name = "-dynamic-debug", usage = "Show debugging information of dynamic aggregation")
+        public boolean dynamicDebug = false;
+
         @Option(name = "-no-disk-cache", usage = "Don't cache data on local disk (only works with local data)")
         public boolean noDiskCache = false;
 
@@ -287,6 +290,7 @@ public class Client<Model extends Serializable, Data extends Serializable> {
         }
         control.jobFactory.disableSwapping = options.dynamicDisable;
         control.jobFactory.maxWaitTimeBeforeSwap = options.dynamicSwapTime;
+        control.jobFactory.dynamicDebug = options.dynamicDebug;
         // hyracks connection
     }
 
@@ -306,8 +310,9 @@ public class Client<Model extends Serializable, Data extends Serializable> {
      * 
      * @throws Exception
      */
-    public <T extends Serializable> JobStatus run(ImruObject<Model, Data, T> job,
-            Model initialModel) throws Exception {
+    public <T extends Serializable> JobStatus run(
+            ImruObject<Model, Data, T> job, Model initialModel)
+            throws Exception {
         job.setDeploymentId(deploymentId);
         return control.run(deploymentId, job, initialModel);
     }

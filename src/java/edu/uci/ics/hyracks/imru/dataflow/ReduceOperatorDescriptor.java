@@ -41,7 +41,6 @@ import edu.uci.ics.hyracks.imru.api.ImruParameters;
 import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.api.old.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.data.ChunkFrameHelper;
-import edu.uci.ics.hyracks.imru.data.MergedFrames;
 import edu.uci.ics.hyracks.imru.data.SerializedFrames;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
@@ -184,7 +183,7 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
                 ImruIterInfo info = imruSpec.reduceClose(recvQueue);
                 try {
                     SerializedFrames.serializeDbgInfo(imruContext, writer,
-                            info, partition, 0);
+                            info, partition, 0, 0);
                 } catch (IOException e) {
                     throw new HyracksDataException(e);
                 }

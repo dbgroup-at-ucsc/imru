@@ -63,7 +63,7 @@ import edu.uci.ics.hyracks.imru.api.RecoveryAction;
 import edu.uci.ics.hyracks.imru.api.old.IIMRUJob;
 import edu.uci.ics.hyracks.imru.api.old.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.api.old.IMRUJob2Impl;
-import edu.uci.ics.hyracks.imru.data.MergedFrames;
+import edu.uci.ics.hyracks.imru.data.SerializedFrames;
 import edu.uci.ics.hyracks.imru.dataflow.SpreadConnectorDescriptor;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
 import edu.uci.ics.hyracks.imru.util.CreateDeployment;
@@ -114,13 +114,6 @@ public class DynamicAggregationStressTest {
         @Override
         public void parse(IMRUContext ctx, InputStream input,
                 DataWriter<String> output) throws IOException {
-        }
-
-        @Override
-        public RecoveryAction onJobFailed(List<ImruSplitInfo> completedRanges,
-                long dataSize, int optimalNodesForRerun, float rerunTime,
-                int optimalNodesForPartiallyRerun, float partiallyRerunTime) {
-            return null;
         }
 
         @Override
@@ -178,9 +171,9 @@ public class DynamicAggregationStressTest {
                         byte[] data = out.toByteArray();
                         //                            Rt.p("send " + MergedFrames.deserialize(data)
                         //                                    + " to " + partition);
-                        MergedFrames.serializeToFrames(context, frame, ctx
+                        SerializedFrames.serializeToFrames(context, frame, ctx
                                 .getFrameSize(), writer, data, partition,
-                                partition, partition, "");
+                                partition, partition, "", partition);
                     } catch (Exception e) {
                         writer.fail();
                         throw new HyracksDataException(e);
@@ -205,7 +198,8 @@ public class DynamicAggregationStressTest {
         PartitionConstraintHelper.addAbsoluteLocationConstraint(job, reader,
                 mapOperatorLocations);
         ImruSendOD send = new ImruSendOD(job, targets, imruSpec, "abc",
-                parameters, modelName, imruConnection, disableSwapping, 0);
+                parameters, modelName, imruConnection, disableSwapping, 0,
+                false);
         //        job.connect(new MToNReplicatingConnectorDescriptor(job), reader, 0,
         //                send, 0);
         job.connect(new OneToOneConnectorDescriptor(job), reader, 0, send, 0);
