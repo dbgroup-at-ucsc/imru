@@ -61,9 +61,8 @@ public class Dynamic {
             String cpu = "0.5";
             int fanIn = 2;
 
-            iterations=1;
-            for (int type = 0; type < 1; type++) {
-                VirtualBoxExperiments.dynamicDebug=true;
+            for (int type = 1; type < 2; type++) {
+//                VirtualBoxExperiments.dynamicDebug=true;
                 if (type == 0) {
                     KmeansFigs.figsDir = new File("resultDelay60s");
                     VirtualBoxExperiments.resultFolder = "resultDelay60s";
@@ -74,8 +73,8 @@ public class Dynamic {
                     VirtualBoxExperiments.straggler = 0;
                 }
                 VirtualBoxExperiments.IMRU_ONLY = true;
-                for (k = 2; k <= 2; k += 2) {
-                    for (int i = 0; i < 1; i++) {
+                for (k = 2; k <= 20; k += 2) {
+                    for (int i = 0; i < 3; i++) {
                         VirtualBoxExperiments.dynamicAggr = i < 2;
                         VirtualBoxExperiments.disableSwapping = (i == 1);
                         VirtualBoxExperiments.runExperiment(nodeCount, memory,
@@ -225,11 +224,13 @@ public class Dynamic {
     }
 
     public static void main(String[] args) throws Exception {
-        runExp();
+//        runExp();
         //        KmeansFigs.figsDir=new File("resultD3_delay60s");
         //        KmeansFigs.figsDir = new File("resultD3_all_dynamic/resultD3_delay60s2");
         KmeansFigs.figsDir = new File("resultDelay60s");
-        plot("straggler").show();
+//        plot("straggler").show();
+        KmeansFigs.figsDir=new File("resultNoDelay");
+        plot("normal").show();
         //        KmeansFigs.figsDir=new File("resultD3_no_delay");
         //        KmeansFigs.figsDir = new File("resultD3_no_delay2");
         //        plot("together");
