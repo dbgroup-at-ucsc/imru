@@ -50,7 +50,7 @@ public class ImruDebugInfo {
 
             String exampleData = System.getProperty("user.home")
                     + "/hyracks/imru/imru-example/data/helloworld";
-            cmdline += " -example-paths " + exampleData + "/hello0.txt";
+            cmdline += " -input-paths " + exampleData + "/hello0.txt";
             for (int i = 1; i < totalNodes; i++)
                 cmdline += "," + exampleData + "/hello" + i + ".txt";
             System.out.println("Using command line: " + cmdline);

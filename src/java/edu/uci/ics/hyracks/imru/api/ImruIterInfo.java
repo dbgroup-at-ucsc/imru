@@ -6,6 +6,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Vector;
 
+import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 /**
@@ -23,7 +24,7 @@ public class ImruIterInfo implements Serializable {
         public int partition;
         public int totalPartitions;
         public Vector<OperatorInfo> childrens = new Vector<OperatorInfo>();
-        public String completedPath;
+        public HDFSSplit completedSplit;
         public long mappedDataSize;
         public int mappedRecords;
         public long totalMappedDataSize;
@@ -55,7 +56,7 @@ public class ImruIterInfo implements Serializable {
         }
 
         public void copyTo(OperatorInfo target) {
-            target.completedPath = completedPath;
+            target.completedSplit = completedSplit;
             target.mappedDataSize = mappedDataSize;
             target.mappedRecords = mappedRecords;
         }
@@ -78,7 +79,7 @@ public class ImruIterInfo implements Serializable {
     public long maxWaitTimeBeforeSwap = 0;
 
     // public T object;
-    public Vector<String> allCompletedPaths = new Vector<String>();
+    public Vector<HDFSSplit> allCompletedSplits = new Vector<HDFSSplit>();
     public OperatorInfo op;
 
     public ImruIterInfo(IMRUContext ctx) {
@@ -92,25 +93,28 @@ public class ImruIterInfo implements Serializable {
     }
 
     public void add(ImruIterInfo r2) {
-        if (this.currentIteration < 0)
-            this.currentIteration = r2.currentIteration;
-        this.op.totalMappedDataSize += r2.op.totalMappedDataSize;
-        this.op.totalMappedRecords += r2.op.totalMappedRecords;
-        HashSet<String> hash = new HashSet<String>();
-        for (String s : allCompletedPaths)
-            hash.add(s);
-        for (Object object : r2.allCompletedPaths) {
-            String s = (String) object;
-            if (!hash.contains(s)) {
+        synchronized (allCompletedSplits) {
+            if (this.currentIteration < 0)
+                this.currentIteration = r2.currentIteration;
+            this.op.totalMappedDataSize += r2.op.totalMappedDataSize;
+            this.op.totalMappedRecords += r2.op.totalMappedRecords;
+            HashSet<HDFSSplit> hash = new HashSet<HDFSSplit>();
+            for (HDFSSplit s : allCompletedSplits)
                 hash.add(s);
-                this.allCompletedPaths.add(s);
+            for (HDFSSplit s2 : r2.allCompletedSplits) {
+                if (!hash.contains(s2)) {
+                    hash.add(s2);
+                    this.allCompletedSplits.add(s2);
+                } else {
+                    Rt.p("DUP "+s2);
+                }
             }
+            // if (r2.aggrTree.nodeId.equals(this.aggrTree.nodeId)) {
+            // same node
+            // }
+            //        Rt.p("add " + r2.aggrTree.operator + " to " + aggrTree.operator);
+            op.childrens.add(r2.op);
         }
-        // if (r2.aggrTree.nodeId.equals(this.aggrTree.nodeId)) {
-        // same node
-        // }
-        //        Rt.p("add " + r2.aggrTree.operator + " to " + aggrTree.operator);
-        op.childrens.add(r2.op);
     }
 
     private void printAggrTree(OperatorInfo info, StringBuilder sb, BitSet bs,
@@ -179,7 +183,7 @@ public class ImruIterInfo implements Serializable {
                         + ",");
             sb.append(")");
         }
-        if (info.completedPath != null) {
+        if (info.completedSplit != null) {
             sb.append("\n");
             for (int i = 0; i < level; i++) {
                 if (i < level - 1)
@@ -187,7 +191,7 @@ public class ImruIterInfo implements Serializable {
                 else
                     sb.append(bs.get(i) ? "   " : "   ");
             }
-            sb.append(" ").append(info.completedPath);
+            sb.append(" ").append(info.completedSplit);
         }
         sb.append("\n");
         bs.set(level, info.childrens.size() == 0);
@@ -209,7 +213,7 @@ public class ImruIterInfo implements Serializable {
     public String getReport() {
         StringBuilder sb = new StringBuilder();
         sb.append("Processed paths:\n");
-        for (String s : allCompletedPaths)
+        for (HDFSSplit s : allCompletedSplits)
             sb.append(" " + s + "\n");
 
         sb.append("\n");

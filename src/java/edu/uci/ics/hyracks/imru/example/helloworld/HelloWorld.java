@@ -55,11 +55,11 @@ public class HelloWorld {
                     + "/hyracks/imru/imru-example/data/helloworld";
             int n = 6;
             if (useExistingCluster) {
-                cmdline += " -example-paths " + exampleData + "/hello0.txt";
+                cmdline += " -input-paths " + exampleData + "/hello0.txt";
                 for (int i = 1; i < n; i++)
                     cmdline += "," + exampleData + "/hello" + i + ".txt";
             } else {
-                cmdline += " -example-paths NC0:" + exampleData + "/hello0.txt";
+                cmdline += " -input-paths NC0:" + exampleData + "/hello0.txt";
                 for (int i = 1; i < n; i++)
                     cmdline += ",NC" + (i % totalNodes) + ":" + exampleData
                             + "/hello" + i + ".txt";

@@ -94,7 +94,7 @@ public class ImruLR {
     static void run() throws Exception {
         String cmdline = "";
         cmdline += "-host localhost -port 3099 -debug";// -disable-logging";
-        cmdline += " -example-paths " + LR.datafile.getAbsolutePath();
+        cmdline += " -input-paths " + LR.datafile.getAbsolutePath();
         Model model = Client.run(new Job(), new Model(), cmdline.split(" "));
         LR.verify(LR.loadData(LR.datafile), model.w);
     }

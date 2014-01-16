@@ -50,7 +50,7 @@ public class Main {
             // application name
             cmdline += " -app digitRecognition";
             // path of input data
-            cmdline += " -example-paths /home/wangrui/b/data?start=0&len=100";
+            cmdline += " -input-paths /home/wangrui/b/data?start=0&len=100";
             // use the same model
             cmdline += " -model-file-name digitRecognition";
             System.out.println("Using command line: " + cmdline);

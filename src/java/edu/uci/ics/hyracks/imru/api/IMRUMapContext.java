@@ -1,17 +1,22 @@
 package edu.uci.ics.hyracks.imru.api;
 
 import edu.uci.ics.hyracks.api.context.IHyracksTaskContext;
+import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 
 public class IMRUMapContext extends IMRUContext {
-    private String dataPath;
+    HDFSSplit split;
 
     public IMRUMapContext(IHyracksTaskContext ctx, String operatorName,
-            String dataPath,int partition,int totalPartitions) {
-        super(ctx, operatorName,partition,totalPartitions);
-        this.dataPath = dataPath;
+            HDFSSplit split, int partition, int totalPartitions) {
+        super(ctx, operatorName, partition, totalPartitions);
+        this.split = split;
+    }
+
+    public HDFSSplit getSplit() {
+        return split;
     }
 
     public String getDataPath() {
-        return dataPath;
+        return split.getPath();
     }
 }

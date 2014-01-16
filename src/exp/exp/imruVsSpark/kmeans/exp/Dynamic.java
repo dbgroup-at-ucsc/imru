@@ -46,7 +46,7 @@ public class Dynamic {
         });
     }
 
-    public static void runExp() throws Exception {
+    public static void runExp(String folder) throws Exception {
         try {
             //            VirtualBox.remove();
             int nodeCount = 8;
@@ -61,19 +61,19 @@ public class Dynamic {
             String cpu = "0.5";
             int fanIn = 2;
 
-            for (int type = 1; type < 2; type++) {
-//                VirtualBoxExperiments.dynamicDebug=true;
+            for (int type = 0; type < 2; type++) {
+                //                VirtualBoxExperiments.dynamicDebug=true;
                 if (type == 0) {
-                    KmeansFigs.figsDir = new File("resultDelay60s");
-                    VirtualBoxExperiments.resultFolder = "resultDelay60s";
+                    VirtualBoxExperiments.resultFolder = folder
+                            + "/resultDelay60s";
                     VirtualBoxExperiments.straggler = 60000;
                 } else {
-                    KmeansFigs.figsDir = new File("resultNoDelay");
-                    VirtualBoxExperiments.resultFolder = "resultNoDelay";
+                    VirtualBoxExperiments.resultFolder = folder
+                            + "/resultNoDelay";
                     VirtualBoxExperiments.straggler = 0;
                 }
                 VirtualBoxExperiments.IMRU_ONLY = true;
-                for (k = 2; k <= 20; k += 2) {
+                for (k = 2; k <= 14; k += 2) {
                     for (int i = 0; i < 3; i++) {
                         VirtualBoxExperiments.dynamicAggr = i < 2;
                         VirtualBoxExperiments.disableSwapping = (i == 1);
@@ -90,108 +90,36 @@ public class Dynamic {
         }
     }
 
-    public static void runExp2() throws Exception {
-        try {
-            VirtualBox.remove();
-            int nodeCount = 8;
-            int memory = 2000;
-            int k = 3;
-            int iterations = 5;
-            int batchStart = 1;
-            int batchStep = 3;
-            int batchEnd = 1;
-            int batchSize = 100000;
-            int network = 0;
-            String cpu = "0.5";
-            int fanIn = 2;
-            String userName = "ubuntu";
-            String name = "local" + memory + "M" + cpu + "coreN" + network;
-            File home = new File(System.getProperty("user.home"));
-            //            String[] nodes2 = ("NC0: 192.168.56.102\n"
-            //                    + "NC1: 192.168.56.109\n" + "NC2: 192.168.56.104\n"
-            //                    + "NC3: 192.168.56.103\n" + "NC4: 192.168.56.106\n"
-            //                    + "NC5: 192.168.56.105\n" + "NC6: 192.168.56.108\n"
-            //                    + "NC7: 192.168.56.107").split("\n");
-            //            String[] nodes = new String[nodes2.length];
-            //            for (int i = 0; i < nodes.length; i++)
-            //                nodes[i] = nodes2[i].substring(4).trim();
-            String[] nodes = VirtualBoxExperiments.startNodes(nodeCount,
-                    memory, cpu, network);
-            for (int i = 0; i < 2; i++) {
-                for (k = 3; k <= 3; k++) {
-                    LocalCluster cluster = new LocalCluster(new HyracksCluster(
-                            nodes[0], nodes, userName, new File(home,
-                                    ".ssh/id_rsa")), userName);
-                    cluster.stopAll();
-                    Rt.p("testing IMRU");
-                    cluster.cluster.startHyrackCluster();
-                    Thread.sleep(5000);
-                    cluster.checkHyracks();
-                    DynamicJob.run(nodes[0], (i == 1));
-                    System.exit(0);
-                }
-            }
-        } catch (Throwable e) {
-            e.printStackTrace();
-            System.exit(0);
-        } finally {
+    static class Value {
+        double sum;
+        int count = 0;
+
+        public void add(Double d) {
+            if (d == null)
+                return;
+            sum += d;
+            count++;
+        }
+
+        public Double get() {
+            if (count == 0)
+                return null;
+            return sum / count;
         }
     }
 
-    public static void runExp3() throws Exception {
-        try {
-            DynamicAggregationStressTest.start(8);
-            //connect to hyracks
-            HyracksConnection hcc = new HyracksConnection("localhost", 3099);
-
-            //update application
-            DeploymentId did = CreateDeployment.uploadApp(hcc);
-            //hcc.deployBinary(null);
-
-            String[] nodes = new String[8];
-            for (int i = 0; i < nodes.length; i++)
-                nodes[i] = "NC" + i;
-
-            for (int interval = 1000; interval <= 10000; interval *= 2) {
-                GnuPlot plot = new GnuPlot("dynamic" + interval,
-                        "model size (MB)", "Time (seconds)");
-                plot.setPlotNames("fixed tree", "dynamic tree");
-                plot.colored = true;
-                plot.pointSize = 2;
-                plot.startPointType = 1;
-                plot.scale = false;
-                ImruSendOperator.debugNetworkSpeed = 10 * 1024 * 1024;
-                for (int k = 10; k <= 50; k *= 2) {
-                    plot.startNewX(k);
-                    for (int i = 0; i < 2; i++) {
-                        DynamicAggregationStressTest.modelSize = k * 1024 * 1024;
-                        DynamicAggregationStressTest.interval = interval;
-                        //                        Rt.p(ImruSendOperator.diableSwapping + " " + k + " "
-                        //                                + interval);
-                        long start = System.currentTimeMillis();
-                        JobSpecification job = DynamicAggregationStressTest
-                                .createJob(did, nodes, null, null, (i == 0));
-                        JobId jobId = hcc.startJob(job, EnumSet
-                                .noneOf(JobFlag.class));
-                        hcc.waitForCompletion(jobId);
-                        long timeUsed = System.currentTimeMillis() - start;
-                        plot.addY(timeUsed / 1000f);
-                        Rt.p(timeUsed);
-                    }
-                }
-                plot.finish();
-            }
-        } catch (Throwable e) {
-            e.printStackTrace();
-        } finally {
-            System.exit(0);
-        }
+    static class Exp {
+        Value org = new Value();
+        Value fixed = new Value();
+        Value dynamic = new Value();
     }
 
-    public static GnuPlot plot(String name) throws Exception {
+    public static GnuPlot plot(String name, String prefix, String postfix)
+            throws Exception {
         GnuPlot plot = new GnuPlot(new File("/tmp/cache"), name,
                 "Model size (MB)", "Time (seconds)");
-        File file = new File(KmeansFigs.figsDir, "k2i" + KmeansFigs.ITERATIONS
+        File file = new File(new File(prefix + "0" + postfix), "k2i"
+                + KmeansFigs.ITERATIONS
                 + "b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2_d");
         KmeansFigs f = new KmeansFigs(file);
         plot.extra = "set title \"K-means" + " 10^5 points/node*" + f.nodeCount
@@ -204,33 +132,49 @@ public class Dynamic {
         plot.pointSize = 1;
         plot.scale = false;
         plot.colored = true;
-        for (int k = 2; k <= 16; k += 2) {
+        Exp[] exps = new Exp[100];
+        for (int id = 0; ; id++) {
+            File dir = new File(prefix + id + postfix);
+            if (!dir.exists())
+                break;
+            KmeansFigs.figsDir = dir;
+            for (int k = 2; k <= 16; k += 2) {
+                if (exps[k] == null)
+                    exps[k] = new Exp();
+                f = new KmeansFigs(new File(KmeansFigs.figsDir, "k" + k + "i"
+                        + KmeansFigs.ITERATIONS
+                        + "b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2"));
+                exps[k].org.add(f.get("imruMem1"));
+                f = new KmeansFigs(new File(KmeansFigs.figsDir, "k" + k + "i"
+                        + KmeansFigs.ITERATIONS
+                        + "b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2_ds"));
+                exps[k].fixed.add(f.get("imruMem1"));
+                f = new KmeansFigs(new File(KmeansFigs.figsDir, "k" + k + "i"
+                        + KmeansFigs.ITERATIONS
+                        + "b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2_d"));
+                exps[k].dynamic.add(f.get("imruMem1"));
+            }
+        }
+        for (int k = 0; k < exps.length; k++) {
+            if (exps[k] == null)
+                continue;
             plot.startNewX(k * 5);
-            f = new KmeansFigs(new File(KmeansFigs.figsDir, "k" + k + "i"
-                    + KmeansFigs.ITERATIONS
-                    + "b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2"));
-            plot.addY(f.get("imruMem1"));
-            f = new KmeansFigs(new File(KmeansFigs.figsDir, "k" + k + "i"
-                    + KmeansFigs.ITERATIONS
-                    + "b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2_ds"));
-            plot.addY(f.get("imruMem1"));
-            f = new KmeansFigs(new File(KmeansFigs.figsDir, "k" + k + "i"
-                    + KmeansFigs.ITERATIONS
-                    + "b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2_d"));
-            plot.addY(f.get("imruMem1"));
+            plot.addY(exps[k].org.get());
+            plot.addY(exps[k].fixed.get());
+            plot.addY(exps[k].dynamic.get());
         }
         plot.finish();
         return plot;
     }
 
     public static void main(String[] args) throws Exception {
-//        runExp();
+        //        for (int i = 0; i < 10; i++)
+        //            runExp("result/dynamic_aggr/" + i);
         //        KmeansFigs.figsDir=new File("resultD3_delay60s");
         //        KmeansFigs.figsDir = new File("resultD3_all_dynamic/resultD3_delay60s2");
-        KmeansFigs.figsDir = new File("resultDelay60s");
-//        plot("straggler").show();
-        KmeansFigs.figsDir=new File("resultNoDelay");
-        plot("normal").show();
+        String folder = "result/dynamic_aggr/";
+//                plot("straggler", folder, "/resultDelay60s").show();
+        plot("normal", folder, "/resultNoDelay").show();
         //        KmeansFigs.figsDir=new File("resultD3_no_delay");
         //        KmeansFigs.figsDir = new File("resultD3_no_delay2");
         //        plot("together");

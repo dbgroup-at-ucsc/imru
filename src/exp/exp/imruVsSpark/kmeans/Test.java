@@ -9,7 +9,7 @@ public class Test {
      * @param args
      */
     public static void main(String[] args) {
-        String cmd = "-host 192.168.56.104 -port 3099 -agg-tree-type nary -agg-count 2 -fan-in 2 -mem-cache -example-paths NC0:/data/size1/nodes2/imru0.txt,NC1:/data/size1/nodes2/imru1.txt";
+        String cmd = "-host 192.168.56.104 -port 3099 -agg-tree-type nary -agg-count 2 -fan-in 2 -mem-cache -input-paths NC0:/data/size1/nodes2/imru0.txt,NC1:/data/size1/nodes2/imru1.txt";
         try {
             String finalModel = Client.run(new HelloWorldJob(), "", cmd
                     .split(" "));

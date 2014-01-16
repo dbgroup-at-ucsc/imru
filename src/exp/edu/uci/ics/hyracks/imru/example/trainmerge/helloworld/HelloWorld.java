@@ -48,7 +48,7 @@ public class HelloWorld {
         cmdline += " -cc-temp-path /tmp/cache/cc";
         int n = 52;
         n = 6;
-        cmdline += " -example-paths NC0:" + exampleData + "/hello0.txt";
+        cmdline += " -input-paths NC0:" + exampleData + "/hello0.txt";
         for (int i = 1; i < n; i++)
             cmdline += ",NC" + (i % totalNodes) + ":" + exampleData + "/hello"
                     + i + ".txt";

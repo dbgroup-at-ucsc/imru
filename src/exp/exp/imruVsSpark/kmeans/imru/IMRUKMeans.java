@@ -60,7 +60,7 @@ public class IMRUKMeans {
 
         cmdline += " -agg-tree-type nary -fan-in 2";
         //        cmdline += " -frame-size " + (16 * 1024 * 1024);
-        cmdline += " -example-paths"
+        cmdline += " -input-paths"
                 + " NC0:/data/b/data/imru/productName.txt,"
                 + "NC1:/data/b/data/imru/productName.txt,"
                 + "NC2:/data/b/data/imru/productName.txt,"
@@ -111,7 +111,7 @@ public class IMRUKMeans {
         if (dynamicDebug)
             cmdline += " -dynamic-debug";
 
-        cmdline += " -example-paths ";
+        cmdline += " -input-paths ";
         for (int i = 0; i < nodes; i++) {
             if (i > 0)
                 cmdline += ",";
@@ -142,7 +142,7 @@ public class IMRUKMeans {
         //        }
 
         CreateDeployment.uploadJarFiles = false;
-        cmdline += " -example-paths ";
+        cmdline += " -input-paths ";
         for (int i = 0; i < splits; i++) {
             if (i > 0)
                 cmdline += ",";

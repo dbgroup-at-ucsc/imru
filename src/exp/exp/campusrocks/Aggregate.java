@@ -21,7 +21,7 @@ public class Aggregate {
         System.out.println("Starting hyracks cluster");
 
         String exampleData = "data/helloworld";
-        cmdline += " -example-paths NC0:" + exampleData + "/hello0.txt";
+        cmdline += " -input-paths NC0:" + exampleData + "/hello0.txt";
         for (int i = 1; i < totalNodes; i++)
             cmdline += ",NC" + (i % totalNodes) + ":" + exampleData
                     + "/hello0.txt";

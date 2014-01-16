@@ -23,8 +23,11 @@ import org.kohsuke.args4j.Option;
 
 import edu.uci.ics.hyracks.api.client.HyracksConnection;
 import edu.uci.ics.hyracks.api.deployment.DeploymentId;
+import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.api.job.JobStatus;
 import edu.uci.ics.hyracks.imru.file.ConfigurationFactory;
+import edu.uci.ics.hyracks.imru.file.HDFSSplit;
+import edu.uci.ics.hyracks.imru.file.IMRUInputSplitProvider;
 import edu.uci.ics.hyracks.imru.jobgen.ClusterConfig;
 import edu.uci.ics.hyracks.imru.jobgen.IMRUJobFactory;
 import edu.uci.ics.hyracks.imru.runtime.IMRUDriver;
@@ -65,32 +68,38 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
         }
     }
 
-    public void selectNoAggregation(String examplePaths) throws IOException,
+    public HDFSSplit[] getSplits(String inputPaths, long minSplitSize,
+            long maxSplitSize) throws HyracksDataException,
             InterruptedException {
-        jobFactory = new IMRUJobFactory(imruConnection, examplePaths,
-                confFactory, IMRUJobFactory.AGGREGATION.NONE, 0, 0, parameters,
-                dynamicAggr);
+        return IMRUInputSplitProvider.getInputSplits(inputPaths, confFactory,
+                minSplitSize, maxSplitSize);
     }
 
-    public void selectGenericAggregation(String examplePaths, int aggCount)
+    public void selectNoAggregation(HDFSSplit[] splits) throws IOException,
+            InterruptedException {
+        jobFactory = new IMRUJobFactory(imruConnection, splits, confFactory,
+                IMRUJobFactory.AGGREGATION.NONE, 0, 0, parameters, dynamicAggr);
+    }
+
+    public void selectGenericAggregation(HDFSSplit[] splits, int aggCount)
             throws IOException, InterruptedException {
         if (aggCount < 1)
             throw new IllegalArgumentException(
                     "Must specify a nonnegative aggregator count using the -agg-count option");
-        jobFactory = new IMRUJobFactory(imruConnection, examplePaths,
-                confFactory, IMRUJobFactory.AGGREGATION.GENERIC, 0, aggCount,
-                parameters, dynamicAggr);
+        jobFactory = new IMRUJobFactory(imruConnection, splits, confFactory,
+                IMRUJobFactory.AGGREGATION.GENERIC, 0, aggCount, parameters,
+                dynamicAggr);
     }
 
-    public void selectNAryAggregation(String examplePaths, int fanIn)
+    public void selectNAryAggregation(HDFSSplit[] splits, int fanIn)
             throws IOException, InterruptedException {
         if (fanIn < 1) {
             throw new IllegalArgumentException(
                     "Must specify nonnegative -fan-in");
         }
-        jobFactory = new IMRUJobFactory(imruConnection, examplePaths,
-                confFactory, IMRUJobFactory.AGGREGATION.NARY, fanIn, 0,
-                parameters, dynamicAggr);
+        jobFactory = new IMRUJobFactory(imruConnection, splits, confFactory,
+                IMRUJobFactory.AGGREGATION.NARY, fanIn, 0, parameters,
+                dynamicAggr);
     }
 
     /**
@@ -140,7 +149,7 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
     public <T extends Serializable> JobStatus run(DeploymentId deploymentId,
             ImruObject<Model, Data, T> job, Model initialModel)
             throws Exception {
-        return run(deploymentId, (ImruStream<Model, Data>)job, initialModel);
+        return run(deploymentId, (ImruStream<Model, Data>) job, initialModel);
     }
 
     /**

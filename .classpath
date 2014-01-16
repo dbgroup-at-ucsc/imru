@@ -17,7 +17,7 @@
 	<classpathentry kind="lib" path="dist/lib/commons-net-1.4.1.jar"/>
 	<classpathentry kind="lib" path="dist/lib/core-3.1.1.jar"/>
 	<classpathentry kind="lib" path="dist/lib/dcache-client-0.0.1.jar"/>
-	<classpathentry kind="lib" path="dist/lib/hadoop-core-0.20.2.jar"/>
+	<classpathentry kind="lib" path="dist/lib/hadoop-core-0.20.2.jar" sourcepath="/home/wangrui/b/soft/hadoop-0.20.2/src/mapred/"/>
 	<classpathentry kind="lib" path="dist/lib/hsqldb-1.8.0.10.jar"/>
 	<classpathentry kind="lib" path="dist/lib/jasper-compiler-5.5.12.jar"/>
 	<classpathentry kind="lib" path="dist/lib/jasper-runtime-5.5.12.jar"/>

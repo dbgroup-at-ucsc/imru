@@ -56,6 +56,7 @@ import edu.uci.ics.hyracks.imru.api.IMRUJobControl;
 import edu.uci.ics.hyracks.imru.api.old.IIMRUJob;
 import edu.uci.ics.hyracks.imru.api.old.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.data.DataSpreadDriver;
+import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 import edu.uci.ics.hyracks.imru.runtime.IMRUDriver;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
 import edu.uci.ics.hyracks.imru.trainmerge.TrainMergeDriver;
@@ -104,10 +105,12 @@ public class ClientTrainMerge<Model extends Serializable> extends Client {
 
         client.init();
 
+        HDFSSplit[] splits = client.control.getSplits(
+                client.options.inputPaths, client.options.minSplitSize,
+                client.options.maxSplitSize);
         TrainMergeDriver<Model> driver = new TrainMergeDriver<Model>(
                 client.hcc, client.deploymentId, client.control.imruConnection,
-                job, initialModel, client.options.examplePaths,
-                client.control.confFactory);
+                job, initialModel, splits, client.control.confFactory);
         driver.modelFileName = client.options.modelFilename;
         JobStatus status = driver.run();
 

@@ -30,14 +30,14 @@ import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 
 public class ConfigurationFactory implements Serializable {
     private static final long serialVersionUID = 1L;
-    private boolean hasConf;
+    //    private boolean hasConf;
     public String hadoopConfPath;
 
     /**
      * HDFS is not used
      */
     public ConfigurationFactory() {
-        hasConf = false;
+        //        hasConf = false;
     }
 
     /**
@@ -47,51 +47,53 @@ public class ConfigurationFactory implements Serializable {
      */
     public ConfigurationFactory(String hadoopConfPath) {
         this.hadoopConfPath = hadoopConfPath;
-        hasConf = hadoopConfPath != null;
+        //        hasConf = hadoopConfPath != null;
     }
 
     public boolean useHDFS() {
-        return hasConf;
+        return hadoopConfPath != null;
     }
 
     public InputStream getInputStream(String path) throws IOException {
-        if (!hasConf) {
-            return new FileInputStream(new File(path));
-        } else {
-            Configuration conf = createConfiguration();
-            FileSystem dfs = FileSystem.get(conf);
-            return dfs.open(new Path(path));
-        }
+        //        if (!hasConf) {
+        //            return new FileInputStream(new File(path));
+        //        } else {
+        Configuration conf = createConfiguration();
+        FileSystem dfs = FileSystem.get(conf);
+        return dfs.open(new Path(path));
+        //        }
     }
 
     public OutputStream getOutputStream(String path) throws IOException {
-        if (!hasConf) {
-            return new FileOutputStream(new File(path));
-        } else {
-            Configuration conf = createConfiguration();
-            FileSystem dfs = FileSystem.get(conf);
-            return dfs.create(new Path(path), true);
-        }
+        //        if (!hasConf) {
+        //            return new FileOutputStream(new File(path));
+        //        } else {
+        Configuration conf = createConfiguration();
+        FileSystem dfs = FileSystem.get(conf);
+        return dfs.create(new Path(path), true);
+        //        }
     }
 
     public boolean exists(String path) throws IOException {
-        if (!hasConf) {
-            return new File(path).exists();
-        } else {
-            Configuration conf = createConfiguration();
-            FileSystem dfs = FileSystem.get(conf);
-            return dfs.exists(new Path(path));
-        }
+        //        if (!hasConf) {
+        //            return new File(path).exists();
+        //        } else {
+        Configuration conf = createConfiguration();
+        FileSystem dfs = FileSystem.get(conf);
+        return dfs.exists(new Path(path));
+        //        }
     }
 
     public Configuration createConfiguration() throws HyracksDataException {
-        if (!hasConf)
-            return null;
+        //        if (!hasConf)
+        //            return null;
         try {
             Configuration conf = new Configuration();
-            conf.addResource(new Path(hadoopConfPath + "/core-site.xml"));
-            conf.addResource(new Path(hadoopConfPath + "/mapred-site.xml"));
-            conf.addResource(new Path(hadoopConfPath + "/hdfs-site.xml"));
+            if (hadoopConfPath != null) {
+                conf.addResource(new Path(hadoopConfPath + "/core-site.xml"));
+                conf.addResource(new Path(hadoopConfPath + "/mapred-site.xml"));
+                conf.addResource(new Path(hadoopConfPath + "/hdfs-site.xml"));
+            }
             return conf;
         } catch (Exception e) {
             throw new HyracksDataException(e);

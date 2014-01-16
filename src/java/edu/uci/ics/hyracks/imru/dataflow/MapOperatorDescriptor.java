@@ -51,7 +51,7 @@ import edu.uci.ics.hyracks.imru.api.old.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.data.ChunkFrameHelper;
 import edu.uci.ics.hyracks.imru.data.RunFileContext;
 import edu.uci.ics.hyracks.imru.data.SerializedFrames;
-import edu.uci.ics.hyracks.imru.file.IMRUFileSplit;
+import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRURuntimeContext;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.MapTaskState;
 import edu.uci.ics.hyracks.imru.util.IterationUtils;
@@ -65,6 +65,7 @@ import edu.uci.ics.hyracks.imru.util.Rt;
  *            The class used to represent the global model that is persisted
  *            between iterations.
  * @author Josh Rosen
+ * @author Rui Wang
  */
 public class MapOperatorDescriptor<Model extends Serializable, Data extends Serializable>
         extends IMRUOperatorDescriptor<Model, Data> {
@@ -81,7 +82,7 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
     int recoverRoundNum;
     int rerunNum;
     boolean useDiskCache;
-    protected final IMRUFileSplit[] inputSplits;
+    protected final HDFSSplit[] inputSplits;
     ImruParameters parameters;
 
     /**
@@ -99,7 +100,7 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
      *            The round number.
      */
     public MapOperatorDescriptor(JobSpecification spec,
-            ImruStream<Model, Data> imruSpec, IMRUFileSplit[] inputSplits,
+            ImruStream<Model, Data> imruSpec, HDFSSplit[] inputSplits,
             int roundNum, int recoverRoundNum, int rerunNum, String name,
             boolean noDiskCache, ImruParameters parameters) {
         super(spec, 0, 1, name, imruSpec);
@@ -188,8 +189,7 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                             + (readInReverse ? "forwards" : "reverse")
                             + " direction");
                     IMRUMapContext imruContext = new IMRUMapContext(ctx, name,
-                            inputSplits[partition].getPath(), partition,
-                            nPartitions);
+                            inputSplits[partition], partition, nPartitions);
                     ByteArrayOutputStream out = new ByteArrayOutputStream();
                     ImruIterInfo info;
                     long mapStartTime = System.currentTimeMillis();
@@ -263,7 +263,7 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                         }
                     } else {
                         // parse raw data
-                        final IMRUFileSplit split = inputSplits[partition];
+                        final HDFSSplit split = inputSplits[partition];
                         Log.info("Parse examples " + split.getPath());
                         final ASyncIO<Data> io = new ASyncIO<Data>();
                         final DataWriter<Data> dataWriter = new DataWriter<Data>() {
@@ -276,8 +276,7 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                                 ctx);
                         final IMRUMapContext parseContext = new IMRUMapContext(
                                 chunkFrameHelper.getContext(), name,
-                                inputSplits[partition].getPath(), partition,
-                                nPartitions);
+                                inputSplits[partition], partition, nPartitions);
 
                         Future future = IMRUSerialize.threadPool
                                 .submit(new Runnable() {

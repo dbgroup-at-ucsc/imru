@@ -4,7 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Serializable;
 
-import edu.uci.ics.hyracks.imru.file.IMRUFileSplit;
+import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 import edu.uci.ics.hyracks.imru.trainmerge.TrainMergeContext;
 import edu.uci.ics.hyracks.imru.trainmerge.TrainMergeJob;
 import edu.uci.ics.hyracks.imru.util.Rt;
@@ -13,7 +13,7 @@ public class TrainJob implements TrainMergeJob<String> {
     int curNodeId = -1;
 
     @Override
-    public void process(TrainMergeContext context, IMRUFileSplit input,
+    public void process(TrainMergeContext context, HDFSSplit input,
             String model, int curNodeId, int totalNodes) throws IOException {
         this.curNodeId = curNodeId;
         BufferedReader reader = input.getReader();

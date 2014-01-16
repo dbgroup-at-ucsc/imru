@@ -55,6 +55,7 @@ import edu.uci.ics.hyracks.imru.api.IMRUJobControl;
 import edu.uci.ics.hyracks.imru.api.ImruObject;
 import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.data.DataSpreadDriver;
+import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 import edu.uci.ics.hyracks.imru.util.CreateDeployment;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
@@ -144,9 +145,11 @@ public class Client<Model extends Serializable, Data extends Serializable> {
         @Option(name = "-input-paths", usage = "HDFS path to hold input data. Or local file in the format of [nodeId]:<path>")
         public String inputPaths;
 
-        @Deprecated
-        @Option(name = "-example-paths", usage = "Same as -input-paths")
-        public String examplePaths = "/input/data.txt";
+        @Option(name = "-min-split-size", usage = "Minimum size of each split")
+        public long minSplitSize = 0;
+
+        @Option(name = "-max-split-size", usage = "Maximum size of each split")
+        public long maxSplitSize = Long.MAX_VALUE;
 
         @Option(name = "-agg-tree-type", usage = "The aggregation tree type (none, nary, or generic)")
         public String aggTreeType;
@@ -259,31 +262,26 @@ public class Client<Model extends Serializable, Data extends Serializable> {
                 options.hadoopConfPath, options.clusterConfPath);
         hcc = control.hcc;
         conf = control.confFactory.createConfiguration();
-        if (options.inputPaths != null)
-            options.examplePaths = options.inputPaths;
         // set aggregation type
+        HDFSSplit[] splits = control.getSplits(options.inputPaths,
+                options.minSplitSize, options.maxSplitSize);
         if (options.aggTreeType == null) {
-            int mappers = options.examplePaths.split(",").length;
-            //            Map<String, NodeControllerInfo> map = hcc.getNodeControllerInfos();
-            if (mappers < 3)
-                control.selectNoAggregation(options.examplePaths);
+            if (splits.length < 3)
+                control.selectNoAggregation(splits);
             else
-                control.selectNAryAggregation(options.examplePaths, 3);
+                control.selectNAryAggregation(splits, 3);
         } else if (options.aggTreeType.equals("none")) {
-            control.selectNoAggregation(options.examplePaths);
+            control.selectNoAggregation(splits);
         } else if (options.aggTreeType.equals("generic")) {
-            control.selectGenericAggregation(options.examplePaths,
-                    options.aggCount);
+            control.selectGenericAggregation(splits, options.aggCount);
         } else if (options.aggTreeType.equals("nary")) {
             Map<String, NodeControllerInfo> map = hcc.getNodeControllerInfos();
             if (map.size() < 3) {
                 Rt.p("Change to generic aggregation because there are only "
                         + map.size() + " nodes");
-                control.selectGenericAggregation(options.examplePaths,
-                        options.fanIn);
+                control.selectGenericAggregation(splits, options.fanIn);
             } else {
-                control.selectNAryAggregation(options.examplePaths,
-                        options.fanIn);
+                control.selectNAryAggregation(splits, options.fanIn);
             }
         } else {
             throw new IllegalArgumentException("Invalid aggregation tree type");

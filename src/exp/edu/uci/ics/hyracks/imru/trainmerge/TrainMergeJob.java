@@ -20,7 +20,7 @@ import java.io.InputStream;
 import java.io.Serializable;
 
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
-import edu.uci.ics.hyracks.imru.file.IMRUFileSplit;
+import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 
 /**
  * Job interface used to train machine learning model which requires
@@ -56,7 +56,7 @@ public interface TrainMergeJob<Model extends Serializable> extends Serializable 
      *            total number of nodes involved in the training.
      * @throws IOException
      */
-    public void process(TrainMergeContext context, IMRUFileSplit input,
+    public void process(TrainMergeContext context, HDFSSplit input,
             Model model, int curNodeId, int totalNodes) throws IOException;
 
     /**

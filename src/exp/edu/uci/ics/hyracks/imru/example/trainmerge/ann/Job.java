@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.util.Random;
 
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
-import edu.uci.ics.hyracks.imru.file.IMRUFileSplit;
+import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 import edu.uci.ics.hyracks.imru.trainmerge.TrainMergeContext;
 import edu.uci.ics.hyracks.imru.trainmerge.TrainMergeJob;
 
@@ -50,7 +50,7 @@ public class Job implements TrainMergeJob<NeuralNetwork> {
     }
 
     @Override
-    public void process(TrainMergeContext context, IMRUFileSplit input,
+    public void process(TrainMergeContext context, HDFSSplit input,
             NeuralNetwork model, int curNodeId, int totalNodes)
             throws IOException {
         Random random = new Random();

@@ -44,9 +44,8 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
             output.write(objectData);
             output.close();
             ImruIterInfo r = new ImruIterInfo(ctx);
-            String path = ((IMRUMapContext) ctx).getDataPath();
-            r.op.completedPath = path;
-            r.allCompletedPaths.add(path);
+            r.op.completedSplit = ((IMRUMapContext) ctx).getSplit();
+            r.allCompletedSplits.add(((IMRUMapContext) ctx).getSplit());
             return r;
         } catch (Exception e) {
             e.printStackTrace();
@@ -108,9 +107,8 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
             byte[] objectData = JavaSerializationUtils.serialize(result);
             output.write(objectData);
             output.close();
-            String path = ((IMRUMapContext) ctx).getDataPath();
-            r.op.completedPath = path;
-            r.allCompletedPaths.add(path);
+            r.op.completedSplit = ((IMRUMapContext) ctx).getSplit();
+            r.allCompletedSplits.add(((IMRUMapContext) ctx).getSplit());
             return r;
         } catch (Exception e) {
             e.printStackTrace();

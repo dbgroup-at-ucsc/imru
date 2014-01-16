@@ -50,7 +50,7 @@ import edu.uci.ics.hyracks.imru.api.TupleReader;
 import edu.uci.ics.hyracks.imru.api.old.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.data.RunFileContext;
 import edu.uci.ics.hyracks.imru.file.ConfigurationFactory;
-import edu.uci.ics.hyracks.imru.file.IMRUFileSplit;
+import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRURuntimeContext;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.MapTaskState;
 import edu.uci.ics.hyracks.imru.util.IterationUtils;
@@ -71,7 +71,7 @@ public class DataLoadOperatorDescriptor extends
 	private static final long serialVersionUID = 1L;
 
 	protected final ConfigurationFactory confFactory;
-	protected final IMRUFileSplit[] inputSplits;
+	protected final HDFSSplit[] inputSplits;
 	private boolean hdfsLoad = false;
 	private boolean memCache;
 
@@ -89,7 +89,7 @@ public class DataLoadOperatorDescriptor extends
 	 */
 	public DataLoadOperatorDescriptor(JobSpecification spec,
 			ImruStream<Serializable, Serializable> imruSpec,
-			IMRUFileSplit[] inputSplits, ConfigurationFactory confFactory,
+			HDFSSplit[] inputSplits, ConfigurationFactory confFactory,
 			boolean hdfsLoad, boolean memCache) {
 		super(spec, hdfsLoad ? 1 : 0, 0, "parse", imruSpec);
 		this.inputSplits = inputSplits;
@@ -158,7 +158,7 @@ public class DataLoadOperatorDescriptor extends
 				imruContext = new IMRUContext(fileCtx, name, partition,
 						nPartitions);
 				if (!hdfsLoad) {
-					final IMRUFileSplit split = inputSplits[partition];
+					final HDFSSplit split = inputSplits[partition];
 					try {
 						InputStream in = split.getInputStream();
 						state.parsedDataSize=in.available();

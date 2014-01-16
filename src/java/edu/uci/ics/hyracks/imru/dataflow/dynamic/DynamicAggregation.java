@@ -1,10 +1,8 @@
 package edu.uci.ics.hyracks.imru.dataflow.dynamic;
 
-import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
-import java.util.Vector;
 
 import edu.uci.ics.hyracks.api.util.JavaSerializationUtils;
 import edu.uci.ics.hyracks.imru.api.ImruIterInfo;

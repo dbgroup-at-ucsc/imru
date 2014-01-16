@@ -17,7 +17,7 @@ import edu.uci.ics.hyracks.dataflow.std.base.AbstractOperatorNodePushable;
 import edu.uci.ics.hyracks.imru.api.IIMRUDataGenerator;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.file.ConfigurationFactory;
-import edu.uci.ics.hyracks.imru.file.IMRUFileSplit;
+import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class DataGeneratorOperatorDescriptor extends
@@ -28,11 +28,11 @@ public class DataGeneratorOperatorDescriptor extends
     private static final long serialVersionUID = 1L;
 
     protected final ConfigurationFactory confFactory;
-    protected final IMRUFileSplit[] inputSplits;
+    protected final HDFSSplit[] inputSplits;
     IIMRUDataGenerator imruSpec;
 
     public DataGeneratorOperatorDescriptor(JobSpecification spec,
-            IIMRUDataGenerator imruSpec, IMRUFileSplit[] inputSplits,
+            IIMRUDataGenerator imruSpec, HDFSSplit[] inputSplits,
             ConfigurationFactory confFactory) {
         super(spec, 0, 0, "parse", null);
         this.inputSplits = inputSplits;
@@ -64,7 +64,7 @@ public class DataGeneratorOperatorDescriptor extends
                 startTime = System.currentTimeMillis();
 
                 imruContext = new IMRUContext(ctx, name,partition,nPartitions);
-                final IMRUFileSplit split = inputSplits[partition];
+                final HDFSSplit split = inputSplits[partition];
                 try {
                     BufferedOutputStream output = new BufferedOutputStream(
                             new FileOutputStream(split.getPath()), 1024 * 1024);

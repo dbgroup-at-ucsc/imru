@@ -48,7 +48,7 @@ public class IMRUHdfsTest {
             cmdline += "-host localhost -port 3099 -debug -disable-logging";
             cmdline += " -debugNodes 2";
             cmdline += " -hadoop-conf /home/wangrui/a/imru/hadoop-0.20.2/conf";
-            cmdline += " -example-paths /helloworld/hello0.txt,/helloworld/hello1.txt";
+            cmdline += " -input-paths /helloworld/hello0.txt,/helloworld/hello1.txt";
             System.out.println("Using command line: " + cmdline);
             args = cmdline.split(" ");
         }

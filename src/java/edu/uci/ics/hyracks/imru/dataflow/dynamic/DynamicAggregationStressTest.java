@@ -65,6 +65,7 @@ import edu.uci.ics.hyracks.imru.api.old.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.api.old.IMRUJob2Impl;
 import edu.uci.ics.hyracks.imru.data.SerializedFrames;
 import edu.uci.ics.hyracks.imru.dataflow.SpreadConnectorDescriptor;
+import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
 import edu.uci.ics.hyracks.imru.util.CreateDeployment;
 import edu.uci.ics.hyracks.imru.util.Rt;
@@ -166,7 +167,8 @@ public class DynamicAggregationStressTest {
                         ByteBuffer frame = ctx.allocateFrame();
                         ByteArrayOutputStream out = new ByteArrayOutputStream();
                         IMRUMapContext context = new IMRUMapContext(ctx, "",
-                                "", partition, nPartitions);
+                                new HDFSSplit(null, null, 0, 0, null, null),
+                                partition, nPartitions);
                         imru.map(context, null, "", out, 1024);
                         byte[] data = out.toByteArray();
                         //                            Rt.p("send " + MergedFrames.deserialize(data)

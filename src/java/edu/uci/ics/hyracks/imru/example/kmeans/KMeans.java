@@ -40,10 +40,10 @@ public class KMeans {
             if (useHDFS) {
                 // hadoop config path
                 cmdline += " -hadoop-conf " + System.getProperty("user.home") + "/hadoop-0.20.2/conf";
-                cmdline += " -example-paths /kmeans/kmeans0.txt,/kmeans/kmeans1.txt";
+                cmdline += " -input-paths /kmeans/kmeans0.txt,/kmeans/kmeans1.txt";
             } else {
                 String exampleData = System.getProperty("user.home") + "/hyracks/imru/imru-example/data/kmeans";
-                cmdline += " -example-paths " + exampleData + "/kmeans0.txt," + exampleData + "/kmeans1.txt";
+                cmdline += " -input-paths " + exampleData + "/kmeans0.txt," + exampleData + "/kmeans1.txt";
             }
             System.out.println("Using command line: " + cmdline);
             args = cmdline.split(" ");

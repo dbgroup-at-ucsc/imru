@@ -43,7 +43,7 @@ import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
-import edu.uci.ics.hyracks.imru.file.IMRUFileSplit;
+import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 import edu.uci.ics.hyracks.imru.jobgen.IMRUJobFactory;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
 import edu.uci.ics.hyracks.imru.util.Rt;
@@ -178,7 +178,7 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
                 iterationInfo = imruConnection.downloadDbgInfo(this
                         .getModelName());
             }
-            Rt.p("Iteration "+ iterationCount);
+            Rt.p("Iteration " + iterationCount);
             iterationInfo.printReport();
             if (model == null)
                 throw new Exception("Can't download model");
@@ -331,10 +331,8 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
         float rerunTime = 0;
         int optimalNodesForPartiallyRerun = 0;
         float partiallyRerunTime = 0;
-        for (Object path : info.allCompletedPaths) {
-            ImruSplitInfo splitInfo = new ImruSplitInfo();
-            splitInfo.path = (String) path;
-            completedRanges.add(splitInfo);
+        for (HDFSSplit split : info.allCompletedSplits) {
+            completedRanges.add(new ImruSplitInfo(split));
         }
         RecoveryAction action = imruSpec.onJobFailed(completedRanges, dataSize,
                 optimalNodesForRerun, rerunTime, optimalNodesForPartiallyRerun,
@@ -346,30 +344,33 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
             int iterationNum, String modelName) throws Exception {
         int finishedRecoveryIteration = 0;
         partialRerun: while (true) {
-            HashSet<String> completedPaths = new HashSet<String>();
-            for (Object path : info.allCompletedPaths) {
-                completedPaths.add((String) path);
+            HashSet<HDFSSplit> completedSplits = new HashSet<HDFSSplit>();
+            Vector<HDFSSplit> incompleteSplits = new Vector<HDFSSplit>();
+            for (HDFSSplit split : info.allCompletedSplits) {
+                completedSplits.add(split);
             }
             StringBuilder incompletedPaths = new StringBuilder();
-            for (IMRUFileSplit split : jobFactory.getSplits()) {
-                if (completedPaths.contains(split.getPath())) {
-                    completedPaths.remove(split.getPath());
+            for (HDFSSplit split : jobFactory.getSplits()) {
+                if (completedSplits.contains(split)) {
+                    completedSplits.remove(split);
                 } else {
+                    incompleteSplits.add(split);
                     if (incompletedPaths.length() > 0)
                         incompletedPaths.append(",");
-                    incompletedPaths.append(split.getPath());
+                    incompletedPaths.append(split);
                 }
             }
-            if (completedPaths.size() > 0) {
-                for (String s : completedPaths) {
+            if (completedSplits.size() > 0) {
+                for (HDFSSplit s : completedSplits) {
                     Rt.p(s);
                 }
                 throw new Error("Path conversion error");
             }
             Rt.p("recover job: " + incompletedPaths);
             IMRUJobFactory recoverFactory = new IMRUJobFactory(jobFactory,
-                    incompletedPaths.toString(),
-                    IMRUJobFactory.AGGREGATION.AUTO, dynamicAggr);
+                    incompleteSplits.toArray(new HDFSSplit[incompleteSplits
+                            .size()]), IMRUJobFactory.AGGREGATION.AUTO,
+                    dynamicAggr);
             JobSpecification job = recoverFactory.generateJob(imruSpec,
                     deploymentId, iterationNum, 0, finishedRecoveryIteration,
                     modelName, true);

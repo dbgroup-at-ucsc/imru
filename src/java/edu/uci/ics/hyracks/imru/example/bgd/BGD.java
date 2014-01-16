@@ -36,8 +36,8 @@ public class BGD {
 
             String exampleData = System.getProperty("user.home")
                     + "/hyracks/imru/imru-example/data/bgd/bgd.txt";
-            exampleData="/tmp/cache/bgd_data.txt";
-            cmdline += " -example-paths " + exampleData;
+//            exampleData="/tmp/cache/bgd_data.txt";
+            cmdline += " -input-paths " + exampleData;
 
             System.out.println("Using command line: " + cmdline);
             args = cmdline.split(" ");

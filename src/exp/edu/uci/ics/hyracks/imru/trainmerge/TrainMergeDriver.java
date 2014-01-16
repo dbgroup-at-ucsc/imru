@@ -34,6 +34,8 @@ import java.util.TimerTask;
 import java.util.UUID;
 import java.util.logging.Logger;
 
+import org.apache.hadoop.mapred.InputSplit;
+
 import edu.uci.ics.hyracks.api.client.IHyracksClientConnection;
 import edu.uci.ics.hyracks.api.constraints.PartitionConstraintHelper;
 import edu.uci.ics.hyracks.api.deployment.DeploymentId;
@@ -43,7 +45,7 @@ import edu.uci.ics.hyracks.api.job.JobSpecification;
 import edu.uci.ics.hyracks.api.job.JobStatus;
 import edu.uci.ics.hyracks.imru.dataflow.SpreadConnectorDescriptor;
 import edu.uci.ics.hyracks.imru.file.ConfigurationFactory;
-import edu.uci.ics.hyracks.imru.file.IMRUFileSplit;
+import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 import edu.uci.ics.hyracks.imru.file.IMRUInputSplitProvider;
 import edu.uci.ics.hyracks.imru.jobgen.ClusterConfig;
 import edu.uci.ics.hyracks.imru.jobgen.IMRUJobFactory;
@@ -60,7 +62,7 @@ public class TrainMergeDriver<Model extends Serializable> {
     private final TrainMergeJob<Model> trainMergejob;
     DeploymentId deploymentId;
     private Model model;
-    private String inputPaths;
+    private HDFSSplit[] splits;
     private final IHyracksClientConnection hcc;
     private final IMRUConnection imruConnection;
     private final ConfigurationFactory confFactory;
@@ -71,18 +73,18 @@ public class TrainMergeDriver<Model extends Serializable> {
     public TrainMergeDriver(IHyracksClientConnection hcc,
             DeploymentId deploymentId, IMRUConnection imruConnection,
             TrainMergeJob<Model> trainMergejob, Model initialModel,
-            String inputPaths, ConfigurationFactory confFactory) {
+            HDFSSplit[] splits, ConfigurationFactory confFactory) {
         this.trainMergejob = trainMergejob;
         this.model = initialModel;
         this.hcc = hcc;
         this.deploymentId = deploymentId;
         this.imruConnection = imruConnection;
-        this.inputPaths = inputPaths;
+        this.splits = splits;
         this.confFactory = confFactory;
     }
 
     public <Model extends Serializable> JobSpecification buildTrainMergeJob(
-            String modelFileName, IMRUFileSplit[] inputSplits,
+            String modelFileName, HDFSSplit[] inputSplits,
             String[] mapOperatorLocations, String[] mergeLocations)
             throws InterruptedException, IOException {
         JobSpecification job = new JobSpecification();
@@ -113,11 +115,11 @@ public class TrainMergeDriver<Model extends Serializable> {
     public JobStatus run() throws Exception {
         String modelFileName = this.modelFileName == null ? "TM-" + id
                 : this.modelFileName;
-        IMRUFileSplit[] inputSplits = IMRUInputSplitProvider.getInputSplits(
-                inputPaths, confFactory);
+        //        HDFSSplit[] inputSplits = IMRUInputSplitProvider.getInputSplits(splits,
+        //                confFactory);
         Random random = new Random(id.getLeastSignificantBits());
         String[] trainOperatorLocations = ClusterConfig.setLocationConstraint(
-                null, null, null, inputSplits, random);
+                null, null, splits, random);
         String[] mergeOperatorLocations = new HashSet<String>(Arrays
                 .asList(trainOperatorLocations)).toArray(new String[0]);
 
@@ -140,7 +142,7 @@ public class TrainMergeDriver<Model extends Serializable> {
             return JobStatus.FAILURE;
         LOGGER.info("Starting training");
         long loadStart = System.currentTimeMillis();
-        JobSpecification job = buildTrainMergeJob(modelFileName, inputSplits,
+        JobSpecification job = buildTrainMergeJob(modelFileName, splits,
                 trainOperatorLocations, mergeOperatorLocations);
         JobId jobId = hcc.startJob(deploymentId, job, EnumSet
                 .of(JobFlag.PROFILE_RUNTIME));

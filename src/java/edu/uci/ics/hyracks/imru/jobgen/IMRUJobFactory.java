@@ -67,7 +67,7 @@ import edu.uci.ics.hyracks.imru.dataflow.dynamic.ImruSendOD;
 import edu.uci.ics.hyracks.imru.dataflow.dynamic.DynamicAggregationStressTest;
 import edu.uci.ics.hyracks.imru.file.ConfigurationFactory;
 import edu.uci.ics.hyracks.imru.file.IMRUInputSplitProvider;
-import edu.uci.ics.hyracks.imru.file.IMRUFileSplit;
+import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
 
 /**
@@ -88,8 +88,8 @@ public class IMRUJobFactory {
     };
 
     public final ConfigurationFactory confFactory;
-    String inputPaths;
-    IMRUFileSplit[] inputSplits;
+    //    String inputPaths;
+    HDFSSplit[] inputSplits;
     String[] mapOperatorLocations;
     String[] mapNodesLocations;
     String[] mapAndUpdateNodesLocations;
@@ -105,11 +105,12 @@ public class IMRUJobFactory {
     public int maxWaitTimeBeforeSwap = 1000;
     public boolean dynamicDebug;
 
-    public IMRUJobFactory(IMRUConnection imruConnection, String inputPaths,
-            ConfigurationFactory confFactory, String type, int fanIn,
-            int reducerCount, ImruParameters parameters, boolean dynamicAggr)
-            throws IOException, InterruptedException {
-        this(imruConnection, inputPaths, confFactory, aggType(type), fanIn,
+    public IMRUJobFactory(IMRUConnection imruConnection,
+            HDFSSplit[] inputSplits, ConfigurationFactory confFactory,
+            String type, int fanIn, int reducerCount,
+            ImruParameters parameters, boolean dynamicAggr) throws IOException,
+            InterruptedException {
+        this(imruConnection, inputSplits, confFactory, aggType(type), fanIn,
                 reducerCount, parameters, dynamicAggr);
     }
 
@@ -125,10 +126,10 @@ public class IMRUJobFactory {
         }
     }
 
-    public IMRUJobFactory(IMRUJobFactory f, String incompletedPaths,
+    public IMRUJobFactory(IMRUJobFactory f, HDFSSplit[] incompletedSplits,
             AGGREGATION aggType, boolean dynamicAggr) throws IOException,
             InterruptedException {
-        this(f.imruConnection, incompletedPaths, f.confFactory, aggType,
+        this(f.imruConnection, incompletedSplits, f.confFactory, aggType,
                 f.fanIn, f.reducerCount, f.parameters, dynamicAggr);
     }
 
@@ -147,23 +148,21 @@ public class IMRUJobFactory {
      * @throws InterruptedException
      * @throws HyracksException
      */
-    public IMRUJobFactory(IMRUConnection imruConnection, String inputPaths,
-            ConfigurationFactory confFactory, AGGREGATION aggType, int fanIn,
-            int reducerCount, ImruParameters parameters, boolean dynamicAggr)
-            throws IOException, InterruptedException {
+    public IMRUJobFactory(IMRUConnection imruConnection,
+            HDFSSplit[] inputSplits, ConfigurationFactory confFactory,
+            AGGREGATION aggType, int fanIn, int reducerCount,
+            ImruParameters parameters, boolean dynamicAggr) throws IOException,
+            InterruptedException {
         this.imruConnection = imruConnection;
         this.confFactory = confFactory;
-        this.inputPaths = inputPaths;
+        this.inputSplits = inputSplits;
         this.parameters = parameters;
         this.dynamicAggr = dynamicAggr;
-        inputSplits = IMRUInputSplitProvider.getInputSplits(inputPaths,
-                confFactory);
         // For repeatability of the partition assignments, seed the
         // source of
         // randomness using the job id.
         Random random = new Random(id.getLeastSignificantBits());
         mapOperatorLocations = ClusterConfig.setLocationConstraint(null, null,
-                confFactory.useHDFS() ? this.getInputSplits() : null,
                 inputSplits, random);
         HashSet<String> hashSet = new HashSet<String>(Arrays
                 .asList(mapOperatorLocations));
@@ -208,15 +207,19 @@ public class IMRUJobFactory {
         return conf;
     }
 
-    public IMRUFileSplit[] getSplits() {
+    public HDFSSplit[] getSplits() {
         return inputSplits;
     }
 
     public InputSplit[] getInputSplits() throws IOException {
-        JobConf conf = getConf();
-        FileInputFormat.setInputPaths(conf, inputPaths);
-        conf.setInputFormat(HDFSBlockFormat.class);
-        return conf.getInputFormat().getSplits(conf, 1);
+        //            JobConf conf = getConf();
+        //            FileInputFormat.setInputPaths(conf, inputPaths);
+        //            conf.setInputFormat(HDFSBlockFormat.class);
+        //            return conf.getInputFormat().getSplits(conf, 1);
+        InputSplit[] splits = new InputSplit[inputSplits.length];
+        for (int i = 0; i < splits.length; i++)
+            splits[i] = inputSplits[i].getMapredSplit();
+        return splits;
     }
 
     @SuppressWarnings("rawtypes")

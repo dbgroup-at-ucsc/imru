@@ -19,7 +19,7 @@ import edu.uci.ics.hyracks.dataflow.common.comm.util.FrameUtils;
 import edu.uci.ics.hyracks.dataflow.std.base.AbstractSingleActivityOperatorDescriptor;
 import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryOutputSourceOperatorNodePushable;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
-import edu.uci.ics.hyracks.imru.file.IMRUFileSplit;
+import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
@@ -28,7 +28,7 @@ import edu.uci.ics.hyracks.imru.util.Rt;
  */
 public class TrainOD<Model extends Serializable> extends
         AbstractSingleActivityOperatorDescriptor {
-    protected final IMRUFileSplit[] inputSplits;
+    protected final HDFSSplit[] inputSplits;
     TrainMergeJob<Model> trainMergejob;
     int[] mergerIds;
     int totalMerger;
@@ -36,7 +36,7 @@ public class TrainOD<Model extends Serializable> extends
     String jobId;
 
     public TrainOD(JobSpecification spec, TrainMergeJob<Model> trainMergejob,
-            IMRUFileSplit[] inputSplits, int[] mergerIds, int totalMerger,
+            HDFSSplit[] inputSplits, int[] mergerIds, int totalMerger,
             IMRUConnection imruConnection, String jobId) {
         super(spec, 0, 1);
         recordDescriptors[0] = new RecordDescriptor(

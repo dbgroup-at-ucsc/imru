@@ -20,7 +20,7 @@ public class ImruEC2TrainMerge extends ImruEC2 {
         cmdline += "-host " + ccHostName;
         cmdline += " -port 3099";
         cmdline += " -app " + appName;
-        cmdline += " -example-paths " + paths;
+        cmdline += " -input-paths " + paths;
         cmdline += " -model-file-name helloworld";
         cmdline = cmdline.trim();
         System.out.println("Using command line: " + cmdline);

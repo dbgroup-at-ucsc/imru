@@ -29,7 +29,7 @@ import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.api.TupleReader;
 import edu.uci.ics.hyracks.imru.api.old.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.file.ConfigurationFactory;
-import edu.uci.ics.hyracks.imru.file.IMRUFileSplit;
+import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 /**
@@ -43,10 +43,10 @@ public class HDFSOD extends IMRUOperatorDescriptor<Serializable,Serializable> {
     private static final long serialVersionUID = 1L;
 
     protected final ConfigurationFactory confFactory;
-    protected final IMRUFileSplit[] inputSplits;
+    protected final HDFSSplit[] inputSplits;
 
     public HDFSOD(JobSpecification spec, ImruStream<Serializable,Serializable> imruSpec,
-            IMRUFileSplit[] inputSplits, ConfigurationFactory confFactory) {
+            HDFSSplit[] inputSplits, ConfigurationFactory confFactory) {
         super(spec, 1, 0, "parse", imruSpec);
         this.inputSplits = inputSplits;
         this.confFactory = confFactory;
