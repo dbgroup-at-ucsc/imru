@@ -1,4 +1,4 @@
-package exp.imruVsSpark.kmeans;
+package exp;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -23,18 +23,16 @@ import edu.uci.ics.hyracks.imru.dataflow.IMRUDebugger;
 import edu.uci.ics.hyracks.imru.example.utils.Client;
 import edu.uci.ics.hyracks.imru.example.utils.ImruEC2;
 import edu.uci.ics.hyracks.imru.util.Rt;
-import exp.ClusterMonitor;
-import exp.ImruDebugMonitor;
-import exp.ImruExperimentTimeoutException;
+import exp.experiments.DataPointsPerNode;
+import exp.experiments.FanInAndK;
+import exp.experiments.KmeansFigs;
 import exp.imruVsSpark.LocalCluster;
 import exp.imruVsSpark.VirtualBox;
 import exp.imruVsSpark.data.DataGenerator;
-import exp.imruVsSpark.kmeans.exp.DataPointsPerNode;
-import exp.imruVsSpark.kmeans.exp.FanInAndK;
-import exp.imruVsSpark.kmeans.exp.KmeansFigs;
 import exp.imruVsSpark.kmeans.imru.IMRUKMeans;
 import exp.imruVsSpark.kmeans.spark.SparkKMeans;
 import exp.test0.GnuPlot;
+import exp.types.ImruExperimentTimeoutException;
 
 public class VirtualBoxExperiments {
     String rsync = "rsync -e \"ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no\" -vrultzCc";
@@ -51,7 +49,6 @@ public class VirtualBoxExperiments {
     int aggArg;
     File resultDir;
     File figDir;
-    public static String resultFolder = "result";
     public static ClusterMonitor monitor;
     public static boolean MONITOR_MEMORY_USAGE = true;
     public static int MAX_NODES_STARTUP_TIME = 5 * 60 * 1000;
@@ -60,6 +57,8 @@ public class VirtualBoxExperiments {
     public static boolean disableSwapping = false;
     public static boolean dynamicDebug = false;
     public static int straggler = 0;
+    public static String experiment = "lr";
+    public static String resultFolder = "result_" + experiment;
 
     public VirtualBoxExperiments(LocalCluster cluster, String name, int k,
             int iterations, int batchStart, int batchStep, int batchEnd,
@@ -114,75 +113,68 @@ public class VirtualBoxExperiments {
         return null;
     }
 
-    void generateData() throws Exception {
-        HyracksNode.verbose = false;
-        cluster.cluster.startHyrackCluster();
-        Thread.sleep(2000);
-        cluster.checkHyracks();
-
-        if (MONITOR_MEMORY_USAGE)
-            monitor.start(figDir, "generateData", nodes);
-        PrintStream ps = new PrintStream(
-                new File(resultDir, "generateTime.txt"));
-        for (int sizePerNode = batchStart; sizePerNode <= batchEnd; sizePerNode += batchStep) {
-            int pointPerNode = sizePerNode * batchSize;
-            int dataSize = pointPerNode * nodes.length;
-
-            long start = System.currentTimeMillis();
-            Rt.p("generating data " + pointPerNode + " " + nodes.length);
-            //            DataGenerator.main(new String[] { "/home/ubuntu/test/data.txt" });
-            IMRUKMeans.generateData(controller.publicIp, pointPerNode,
-                    nodes.length, new File("/home/" + cluster.user
-                            + "/test/exp_data/product_name"), KmeansExperiment
-                            .getImruDataPath(sizePerNode, nodes.length, "%d"),
-                    KmeansExperiment
-                            .getSparkDataPath(sizePerNode, nodes.length));
-            long dataTime = System.currentTimeMillis() - start;
-            Rt.p(sizePerNode + "\t" + dataTime / 1000.0);
-            ps.println(sizePerNode + "\t" + dataTime / 1000.0);
-        }
-        ps.close();
-        if (MONITOR_MEMORY_USAGE)
-            monitor.stop();
-        //        cluster.cluster.printLogs(-1, 100);
-        //        cluster.cluster.stopHyrackCluster();
-        for (HyracksNode node : nodes) {
-            //            SSH ssh = node.ssh();
-            //            Rt.p(node.getName());
-            //            ssh.execute("ls -l -h " + KmeansExperiment.dataPath);
-            //            ssh.close();
-        }
-    }
+    //    void generateData() throws Exception {
+    //        HyracksNode.verbose = false;
+    //        cluster.cluster.startHyrackCluster();
+    //        Thread.sleep(2000);
+    //        cluster.checkHyracks();
+    //
+    //        if (MONITOR_MEMORY_USAGE)
+    //            monitor.start(figDir, "generateData", nodes);
+    //        PrintStream ps = new PrintStream(
+    //                new File(resultDir, "generateTime.txt"));
+    //        for (int sizePerNode = batchStart; sizePerNode <= batchEnd; sizePerNode += batchStep) {
+    //            int pointPerNode = sizePerNode * batchSize;
+    //            int dataSize = pointPerNode * nodes.length;
+    //
+    //            long start = System.currentTimeMillis();
+    //            Rt.p("generating data " + pointPerNode + " " + nodes.length);
+    //            //            DataGenerator.main(new String[] { "/home/ubuntu/test/data.txt" });
+    //            IMRUKMeans.generateData(controller.publicIp, pointPerNode,
+    //                    nodes.length, new File("/home/" + cluster.user
+    //                            + "/test/exp_data/product_name"), KmeansExperiment
+    //                            .getImruDataPath(sizePerNode, nodes.length, "%d"),
+    //                    KmeansExperiment.getDataPath(sizePerNode, nodes.length));
+    //            long dataTime = System.currentTimeMillis() - start;
+    //            Rt.p(sizePerNode + "\t" + dataTime / 1000.0);
+    //            ps.println(sizePerNode + "\t" + dataTime / 1000.0);
+    //        }
+    //        ps.close();
+    //        if (MONITOR_MEMORY_USAGE)
+    //            monitor.stop();
+    //        //        cluster.cluster.printLogs(-1, 100);
+    //        //        cluster.cluster.stopHyrackCluster();
+    //        for (HyracksNode node : nodes) {
+    //            //            SSH ssh = node.ssh();
+    //            //            Rt.p(node.getName());
+    //            //            ssh.execute("ls -l -h " + KmeansExperiment.dataPath);
+    //            //            ssh.close();
+    //        }
+    //    }
 
     void generateSharedData() throws Exception {
         for (int sizePerNode = batchStart; sizePerNode <= batchEnd; sizePerNode += batchStep) {
             int pointPerNode = sizePerNode * batchSize;
             int dataSize = pointPerNode * nodes.length;
-            String imruPath = "/data"
-                    + KmeansExperiment.getImruDataPath(sizePerNode,
-                            nodes.length, "%d");
-            String sparkPath = "/data"
-                    + KmeansExperiment.getSparkDataPath(sizePerNode,
+            String dataPath = "/data"
+                    + ElasticImruExperimentEntry.getDataPath(sizePerNode,
                             nodes.length);
             int count = pointPerNode;
             int splits = nodes.length;
             File templateDir = new File("exp_data/product_name");
-            File sparkFile = new File(sparkPath);
-            if (sparkFile.exists())
+            File dataFile = new File(dataPath);
+            if (dataFile.exists())
                 continue;
-            sparkFile.getParentFile().mkdirs();
-            PrintStream psSpark = new PrintStream(new BufferedOutputStream(
-                    new FileOutputStream(sparkFile), 1024 * 1024));
+            dataFile.getParentFile().mkdirs();
+            PrintStream ps = new PrintStream(new BufferedOutputStream(
+                    new FileOutputStream(dataFile), 1024 * 1024));
             DataGenerator dataGenerator = new DataGenerator(dataSize,
                     templateDir);
             for (int i = 0; i < splits; i++) {
-                File imruFile = new File(String.format(imruPath, i));
-                PrintStream psImru = new PrintStream(new BufferedOutputStream(
-                        new FileOutputStream(imruFile), 1024 * 1024));
-                dataGenerator.generate(false, count, psSpark, psImru);
-                psImru.close();
+                File infoFile = new File(dataPath + ".dims");
+                dataGenerator.generate(true, count, ps, infoFile);
             }
-            psSpark.close();
+            ps.close();
         }
     }
 
@@ -222,7 +214,8 @@ public class VirtualBoxExperiments {
     boolean runExperiment(SSH ssh, String job) {
         String arg = "-master " + controller.internalIp;
         arg += " -nodeCount " + nodes.length;
-        arg += " -type " + job;
+        arg += " -method " + job;
+        arg += " -experiment " + experiment;
         arg += " -k " + k;
         arg += " -iterations " + iterations;
         arg += " -batchStart " + batchStart;
@@ -241,8 +234,7 @@ public class VirtualBoxExperiments {
             arg += " -dynamic-debug";
         ssh.maxFreezeTime = MAX_EXPERIMENT_FREEZE_TIME;
         try {
-            ssh.execute("sh st.sh exp.imruVsSpark.kmeans.KmeansExperiment "
-                    + arg);
+            ssh.execute("sh st.sh exp.ElasticImruExperimentEntry " + arg);
         } catch (Error e) {
             if (!e.getMessage().startsWith("timeout"))
                 throw e;
@@ -294,7 +286,7 @@ public class VirtualBoxExperiments {
         }
         if (MONITOR_MEMORY_USAGE)
             monitor.stop();
-//        System.exit(0);
+        //        System.exit(0);
         //        cluster.cluster.printLogs(-1, 100);
         //        cluster.cluster.stopHyrackCluster();
     }

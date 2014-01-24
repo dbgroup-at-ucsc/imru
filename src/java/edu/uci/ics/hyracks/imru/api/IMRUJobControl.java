@@ -68,11 +68,11 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
         }
     }
 
-    public HDFSSplit[] getSplits(String inputPaths, long minSplitSize,
-            long maxSplitSize) throws HyracksDataException,
+    public HDFSSplit[] getSplits(String inputPaths, int numSplits,
+            long minSplitSize, long maxSplitSize) throws HyracksDataException,
             InterruptedException {
         return IMRUInputSplitProvider.getInputSplits(inputPaths, confFactory,
-                minSplitSize, maxSplitSize);
+                numSplits,minSplitSize, maxSplitSize);
     }
 
     public void selectNoAggregation(HDFSSplit[] splits) throws IOException,

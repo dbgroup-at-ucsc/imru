@@ -63,15 +63,16 @@ public class IMRUInputSplitProvider implements Serializable {
      * @throws InterruptedException
      */
     public IMRUInputSplitProvider(String inputPaths,
-            ConfigurationFactory confFactory, long minSplitSize,
-            long maxSplitSize) throws InterruptedException {
+            ConfigurationFactory confFactory, int requestedSplits,
+            long minSplitSize, long maxSplitSize) throws InterruptedException {
         try {
             String[] ss = inputPaths.split(",");
             //            if (confFactory == null || !confFactory.useHDFS()) {
             //                splits = HDFSSplit.get(ss);
             //            } else {
             //disable file split to avoid record boundary
-            splits = HDFSSplit.get(confFactory, ss, minSplitSize, maxSplitSize);
+            splits = HDFSSplit.get(confFactory, ss, requestedSplits,
+                    minSplitSize, maxSplitSize);
             //            }
             numSplits = splits.size();
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -84,17 +85,17 @@ public class IMRUInputSplitProvider implements Serializable {
         }
     }
 
-//    public static HDFSSplit[] getInputSplits(String inputPaths)
-//            throws HyracksDataException, InterruptedException {
-//        return getInputSplits(inputPaths, null);
-//    }
+    //    public static HDFSSplit[] getInputSplits(String inputPaths)
+    //            throws HyracksDataException, InterruptedException {
+    //        return getInputSplits(inputPaths, null);
+    //    }
 
     public static HDFSSplit[] getInputSplits(String inputPaths,
-            ConfigurationFactory confFactory, long minSplitSize,
+            ConfigurationFactory confFactory, int numSplits, long minSplitSize,
             long maxSplitSize) throws HyracksDataException,
             InterruptedException {
         IMRUInputSplitProvider inputSplitProvider = new IMRUInputSplitProvider(
-                inputPaths, confFactory, minSplitSize, maxSplitSize);
+                inputPaths, confFactory, numSplits, minSplitSize, maxSplitSize);
         List<HDFSSplit> inputSplits = inputSplitProvider.getInputSplits();
         return inputSplits.toArray(new HDFSSplit[inputSplits.size()]);
     }

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-package exp.imruVsSpark.kmeans;
+package exp.types;
 
 import java.io.Serializable;
 import java.util.Arrays;

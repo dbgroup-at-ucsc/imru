@@ -27,6 +27,9 @@ import java.util.Random;
 
 import eu.stratosphere.pact.common.type.Value;
 import exp.imruVsSpark.data.DataGenerator;
+import exp.types.FilledVector;
+import exp.types.FilledVectors;
+import exp.types.SparseVector;
 
 /**
  * IMRU model which will be used in map() and updated in update()

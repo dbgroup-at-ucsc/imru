@@ -118,8 +118,8 @@ public class HDFSSplit implements Serializable {
     }
 
     public static List<HDFSSplit> get(ConfigurationFactory confFactory,
-            String[] paths, long minSplitSize, long maxSplitSize)
-            throws IOException, InterruptedException {
+            String[] paths, int requestedSplits, long minSplitSize,
+            long maxSplitSize) throws IOException, InterruptedException {
         Vector<HDFSSplit> list = new Vector<HDFSSplit>(paths.length);
         for (String path : paths) {
             Hashtable<String, String> params = null;
@@ -131,6 +131,15 @@ public class HDFSSplit implements Serializable {
                     params.put(kv[0], kv[1]);
                 }
                 path = path.substring(0, t);
+            }
+            if (paths.length == 1 && requestedSplits > 1) {
+                Configuration conf = confFactory.createConfiguration();
+                FileSystem dfs = FileSystem.get(conf);
+                long length = dfs.getFileStatus(new Path(path)).getLen();
+                minSplitSize = (int) Math
+                        .ceil((float) length / requestedSplits);
+                maxSplitSize = (int) Math
+                        .ceil((float) length / requestedSplits);
             }
             // Use a dummy input format to create a list of
             // InputSplits for the input files
@@ -154,6 +163,9 @@ public class HDFSSplit implements Serializable {
                 }
             }
         }
+        if (paths.length == 1 && requestedSplits > 1
+                && list.size() != requestedSplits)
+            throw new Error();
         return list;
     }
 

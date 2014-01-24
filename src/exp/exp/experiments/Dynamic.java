@@ -1,4 +1,4 @@
-package exp.imruVsSpark.kmeans.exp;
+package exp.experiments;
 
 import java.io.File;
 import java.util.EnumSet;
@@ -16,9 +16,9 @@ import edu.uci.ics.hyracks.imru.dataflow.dynamic.ImruSendOperator;
 import edu.uci.ics.hyracks.imru.dataflow.dynamic.DynamicAggregationStressTest;
 import edu.uci.ics.hyracks.imru.util.CreateDeployment;
 import edu.uci.ics.hyracks.imru.util.Rt;
+import exp.VirtualBoxExperiments;
 import exp.imruVsSpark.LocalCluster;
 import exp.imruVsSpark.VirtualBox;
-import exp.imruVsSpark.kmeans.VirtualBoxExperiments;
 import exp.test0.GnuPlot;
 
 public class Dynamic {
@@ -133,7 +133,7 @@ public class Dynamic {
         plot.scale = false;
         plot.colored = true;
         Exp[] exps = new Exp[100];
-        for (int id = 0; ; id++) {
+        for (int id = 0;; id++) {
             File dir = new File(prefix + id + postfix);
             if (!dir.exists())
                 break;
@@ -168,17 +168,12 @@ public class Dynamic {
     }
 
     public static void main(String[] args) throws Exception {
-        //        for (int i = 0; i < 10; i++)
-        //            runExp("result/dynamic_aggr/" + i);
-        //        KmeansFigs.figsDir=new File("resultD3_delay60s");
-        //        KmeansFigs.figsDir = new File("resultD3_all_dynamic/resultD3_delay60s2");
-        String folder = "result/dynamic_aggr/";
-//                plot("straggler", folder, "/resultDelay60s").show();
+        VirtualBoxExperiments.experiment = "lr";
+        String resultFolder = "result_" + VirtualBoxExperiments.experiment;
+        for (int i = 0; i < 10; i++)
+            runExp(resultFolder + "/dynamic_aggr/" + 3);
+        String folder = resultFolder + "/dynamic_aggr/";
+        //                plot("straggler", folder, "/resultDelay60s").show();
         plot("normal", folder, "/resultNoDelay").show();
-        //        KmeansFigs.figsDir=new File("resultD3_no_delay");
-        //        KmeansFigs.figsDir = new File("resultD3_no_delay2");
-        //        plot("together");
-
-        //        System.exit(0);
     }
 }

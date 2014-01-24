@@ -35,10 +35,10 @@ public class LR {
         return y1 + mean;
     }
 
-    public static DataPoint[] generateData() {
-        DataPoint[] ds = new DataPoint[N];
+    public static ImruLR.DataPoint[] generateData() {
+        ImruLR.DataPoint[] ds = new ImruLR.DataPoint[N];
         for (int i = 0; i < N; i++) {
-            DataPoint point = new DataPoint();
+            ImruLR.DataPoint point = new ImruLR.DataPoint();
             point.y = i % 2 == 0 ? -1 : 1;
             for (int j = 0; j < point.values.length; j++) {
                 point.fieldIds[j] = D == V ? j : rand.nextInt(D);
@@ -51,9 +51,9 @@ public class LR {
 
     public static void generateDataFile() throws IOException {
         Rt.p("generating data " + N + " " + D);
-        DataPoint[] ps = generateData();
+        ImruLR.DataPoint[] ps = generateData();
         PrintStream ps2 = new PrintStream(LR.datafile);
-        for (DataPoint p : ps) {
+        for (ImruLR.DataPoint p : ps) {
             ps2.print(p.y);
             for (int i = 0; i < p.values.length; i++)
                 ps2.print(" " + p.fieldIds[i] + ":" + p.values[i]);
@@ -70,16 +70,16 @@ public class LR {
         return ws;
     }
 
-    public static DataPoint[] loadData(File file) throws IOException {
+    public static ImruLR.DataPoint[] loadData(File file) throws IOException {
         BufferedReader br = new BufferedReader(new FileReader(file));
         return loadData(br);
     }
 
     static Pattern pattern = Pattern.compile(":");
 
-    public static DataPoint parseData(String line) {
+    public static ImruLR.DataPoint parseData(String line) {
         StringTokenizer tok = new StringTokenizer(line, " ");
-        DataPoint p = new DataPoint();
+        ImruLR.DataPoint p = new ImruLR.DataPoint();
         p.y = Double.parseDouble(tok.nextToken());
         for (int j = 0; j < V; j++) {
             String s = tok.nextToken();
@@ -90,17 +90,19 @@ public class LR {
         return p;
     }
 
-    public static DataPoint[] loadData(BufferedReader br) throws IOException {
-        Vector<DataPoint> ps = new Vector<DataPoint>();
+    public static ImruLR.DataPoint[] loadData(BufferedReader br)
+            throws IOException {
+        Vector<ImruLR.DataPoint> ps = new Vector<ImruLR.DataPoint>();
         for (String line = br.readLine(); line != null; line = br.readLine())
             ps.add(parseData(line));
         br.close();
-        return ps.toArray(new DataPoint[ps.size()]);
+        return ps.toArray(new ImruLR.DataPoint[ps.size()]);
     }
 
-    public static void verify(DataPoint[] ps, double[] ws) throws Exception {
+    public static void verify(ImruLR.DataPoint[] ps, double[] ws)
+            throws Exception {
         int correct = 0;
-        for (DataPoint p : ps) {
+        for (ImruLR.DataPoint p : ps) {
             float innerProduct = 0;
             for (int j = 0; j < V; j++)
                 innerProduct += ws[p.fieldIds[j]] * p.values[j];
@@ -114,19 +116,19 @@ public class LR {
     public LR() throws Exception {
         if (!datafile.exists())
             generateDataFile();
-        DataPoint[] ps = loadData(datafile);
+        ImruLR.DataPoint[] ps = loadData(datafile);
 
         double[] ws = LR.generateWeights();
         for (int iteration = 0; iteration < ITERATIONS; iteration++) {
-            double[] gradient = new double[D];
+            ImruLR.Gradient gradient = new ImruLR.Gradient(D);
             int correct = 0;
             for (int i = 0; i < ps.length; i++) {
-                DataPoint p = ps[i];
+                ImruLR.DataPoint p = ps[i];
                 if (p.addGradient(ws, gradient))
                     correct++;
             }
             for (int j = 0; j < D; j++)
-                ws[j] -= gradient[j];
+                ws[j] += gradient.w[j];
             Rt.p(correct);
         }
         verify(ps, ws);

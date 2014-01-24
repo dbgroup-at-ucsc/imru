@@ -1,9 +1,9 @@
-package exp.imruVsSpark.kmeans.exp;
+package exp.experiments;
 
 import java.io.File;
 
+import exp.VirtualBoxExperiments;
 import exp.imruVsSpark.VirtualBox;
-import exp.imruVsSpark.kmeans.VirtualBoxExperiments;
 import exp.test0.GnuPlot;
 
 public class DataPointsPerNode {

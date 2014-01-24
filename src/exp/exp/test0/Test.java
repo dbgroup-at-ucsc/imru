@@ -1,4 +1,4 @@
-package exp.imruVsSpark.kmeans;
+package exp.test0;
 
 import edu.uci.ics.hyracks.imru.example.helloworld.HelloWorldJob;
 import edu.uci.ics.hyracks.imru.example.utils.Client;

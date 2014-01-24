@@ -9,6 +9,7 @@ import java.net.SocketException;
 import edu.uci.ics.hyracks.ec2.HyracksNode;
 import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.test0.GnuPlot;
+import exp.types.ImruExperimentTimeoutException;
 
 public class ClusterMonitor {
     DatagramSocket serverSocket;

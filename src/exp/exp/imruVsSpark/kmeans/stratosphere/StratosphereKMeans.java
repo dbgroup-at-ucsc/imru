@@ -27,9 +27,9 @@ import eu.stratosphere.pact.common.type.base.PactDouble;
 import eu.stratosphere.pact.common.type.base.PactInteger;
 import eu.stratosphere.pact.generic.contract.BulkIteration;
 import exp.imruVsSpark.data.DataGenerator;
-import exp.imruVsSpark.kmeans.FilledVectors;
 import exp.imruVsSpark.kmeans.SKMeansModel;
-import exp.imruVsSpark.kmeans.SparseVector;
+import exp.types.FilledVectors;
+import exp.types.SparseVector;
 
 /**
  */

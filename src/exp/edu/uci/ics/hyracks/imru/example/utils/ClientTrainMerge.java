@@ -106,8 +106,8 @@ public class ClientTrainMerge<Model extends Serializable> extends Client {
         client.init();
 
         HDFSSplit[] splits = client.control.getSplits(
-                client.options.inputPaths, client.options.minSplitSize,
-                client.options.maxSplitSize);
+                client.options.inputPaths, client.options.numSplits,
+                client.options.minSplitSize, client.options.maxSplitSize);
         TrainMergeDriver<Model> driver = new TrainMergeDriver<Model>(
                 client.hcc, client.deploymentId, client.control.imruConnection,
                 job, initialModel, splits, client.control.confFactory);

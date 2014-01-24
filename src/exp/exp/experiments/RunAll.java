@@ -1,4 +1,4 @@
-package exp.imruVsSpark.kmeans.exp;
+package exp.experiments;
 
 import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.imruVsSpark.VirtualBox;

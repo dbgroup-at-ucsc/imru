@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-package exp.imruVsSpark.kmeans;
+package exp.types;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -21,9 +21,12 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.regex.Pattern;
 
+import edu.uci.ics.hyracks.imru.util.Rt;
 import eu.stratosphere.pact.common.type.Value;
+import exp.imruVsSpark.lr.imru.ImruLRGradient;
 
 public class SparseVector implements Serializable, Value {
+    public boolean positive;
     public int[] keys;
     public float[] values;
 
@@ -34,12 +37,13 @@ public class SparseVector implements Serializable, Value {
         Pattern p = Pattern.compile("[ |\\t]+");
         Pattern p2 = Pattern.compile(":");
         String[] ss = p.split(line);
-        keys = new int[ss.length];
-        values = new float[ss.length];
-        for (int i = 0; i < ss.length; i++) {
+        keys = new int[ss.length - 1];
+        values = new float[ss.length - 1];
+        positive = "1".equals(ss[0]);
+        for (int i = 1; i < ss.length; i++) {
             String[] kv = p2.split(ss[i]);
-            keys[i] = Integer.parseInt(kv[0]);
-            values[i] = Integer.parseInt(kv[1]);
+            keys[i - 1] = Integer.parseInt(kv[0]);
+            values[i - 1] = Float.parseFloat(kv[1]);
         }
     }
 
@@ -68,5 +72,20 @@ public class SparseVector implements Serializable, Value {
             out.writeInt(keys[i]);
             out.writeFloat(values[i]);
         }
+    }
+
+    public void addGradient(double[] w, ImruLRGradient gradient) {
+        float innerProduct = 0;
+        for (int j = 0; j < keys.length; j++)
+            innerProduct += w[keys[j]] * values[j];
+
+        if ((innerProduct > 0) == positive)
+            gradient.correct++;
+        gradient.total++;
+        int y = (positive ? 1 : -1);
+        double di = (1 / (1 + Math.exp(-y * innerProduct)) - 1) * y;
+        for (int j = 0; j < keys.length; j++)
+            gradient.w[keys[j]] -= di * values[j];
+        gradient.totalExamples++;
     }
 }

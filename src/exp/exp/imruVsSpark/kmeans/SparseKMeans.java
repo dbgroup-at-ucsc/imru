@@ -10,6 +10,8 @@ import java.util.Vector;
 
 import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.imruVsSpark.data.DataGenerator;
+import exp.types.FilledVectors;
+import exp.types.SparseVector;
 
 public class SparseKMeans {
     public static void run(String path) throws Exception {

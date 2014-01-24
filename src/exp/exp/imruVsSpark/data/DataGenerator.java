@@ -14,10 +14,6 @@ import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class DataGenerator {
     public static String TEMPLATE = "exp_data/product_name";
-
-    //    public static int DEBUG_DATA_POINTS = 1000000;
-    //    public static int DEBUG_K = 3;
-    //    public static int DEBUG_ITERATIONS = 5;
     public File templateDir;
     public double numOfDataPoints;
     public int dims;
@@ -69,10 +65,10 @@ public class DataGenerator {
         ps.close();
     }
 
-    public void generate(boolean hasLabel, int n, PrintStream ps1,
-            PrintStream ps2) throws Exception {
+    public void generate(boolean hasLabel, int n, PrintStream ps, File infoFile)
+            throws Exception {
+        int numOfDims = dims_distribution.get();
         for (int i = 0; i < n; i++) {
-            int numOfDims = dims_distribution.get();
             StringBuilder sb = new StringBuilder();
             if (hasLabel)
                 sb.append(random.nextBoolean() ? 1 : 0 + " ");
@@ -83,10 +79,9 @@ public class DataGenerator {
                 sb.append(":");
                 sb.append(value_distribution.get());
             }
-            ps1.println(sb);
-            if (ps2 != null)
-                ps2.println(sb);
+            ps.println(sb);
         }
+        Rt.write(infoFile, ("" + numOfDims).getBytes());
     }
 
     public static void main(String[] args) throws Exception {

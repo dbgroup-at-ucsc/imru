@@ -32,8 +32,8 @@ public class TestHdfs {
         FileSystem dfs = FileSystem.get(confFactory.createConfiguration());
         {
             List<HDFSSplit> splits = HDFSSplit.get(confFactory, new String[] {
-                    "/tmp/cache/testhdfs.txt", "/tmp/cache/testhdfs.txt", }, 0,
-                    20);
+                    "/tmp/cache/testhdfs.txt", "/tmp/cache/testhdfs.txt", }, 1,
+                    0, 20);
             Rt.p(splits.size());
             for (int i = 0; i < splits.size(); i++) {
                 InputStream is = splits.get(i).getInputStream();
@@ -43,8 +43,8 @@ public class TestHdfs {
         }
         {
             List<HDFSSplit> splits = HDFSSplit.get(confFactory, new String[] {
-                    "/tmp/cache/testhdfs.txt", "/tmp/cache/testhdfs.txt", }, 0,
-                    1024 * 1024);
+                    "/tmp/cache/testhdfs.txt", "/tmp/cache/testhdfs.txt", }, 1,
+                    0, 1024 * 1024);
             Rt.p(splits.size());
             for (int i = 0; i < splits.size(); i++) {
                 InputStream is = splits.get(i).getInputStream();
@@ -55,7 +55,7 @@ public class TestHdfs {
         {
             List<HDFSSplit> splits = HDFSSplit.get(confFactory,
                     new String[] { "/home/wangrui/b/data/imru/spark1.txt", },
-                    0, 1024 * 1024 + 1);
+                    1, 0, 1024 * 1024 + 1);
             Rt.p(splits.size());
             for (int i = 0; i < 2; i++) {
                 InputStream is = splits.get(i).getInputStream();
@@ -68,7 +68,7 @@ public class TestHdfs {
     public static void testImruHDFS() throws Exception {
         //        generateData();
         byte[] bs = new byte[5];
-        for (int i = 0; i < bs.length; i ++) {
+        for (int i = 0; i < bs.length; i++) {
             bs[i] = (byte) ('a' + i);
         }
         File file = new File("/tmp/cache/testhdfs.txt");
@@ -80,13 +80,14 @@ public class TestHdfs {
         // debugging mode, everything run in one process
         cmdline += "-host localhost -port 3099 -debug -disable-logging";
         cmdline += " -debugNodes " + totalNodes;
+        cmdline += " -num-split 3";
         cmdline += " -min-split-size 1";
         cmdline += " -max-split-size 1";
         cmdline += " -frame-size 256";
 
         System.out.println("Starting hyracks cluster");
-        cmdline += " -input-paths " + file.getAbsolutePath() + "?id=0,"
-                + file.getAbsolutePath() + "?id=1";
+        cmdline += " -input-paths " + file.getAbsolutePath() + "?id=0";
+//                + file.getAbsolutePath() + "?id=1";
         System.out.println("Using command line: " + cmdline);
         String[] args = cmdline.split(" ");
 

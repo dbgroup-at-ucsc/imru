@@ -15,24 +15,14 @@
 
 package exp.imruVsSpark.kmeans.imru;
 
-import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.PrintStream;
-import java.util.Random;
 
-import edu.uci.ics.hyracks.imru.api.IIMRUDataGenerator;
-import edu.uci.ics.hyracks.imru.api.IMRUContext;
-import edu.uci.ics.hyracks.imru.dataflow.dynamic.ImruSendOperator;
 import edu.uci.ics.hyracks.imru.example.utils.Client;
 import edu.uci.ics.hyracks.imru.util.CreateDeployment;
 import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.imruVsSpark.data.DataGenerator;
-import exp.imruVsSpark.data.Distribution;
 import exp.imruVsSpark.kmeans.SKMeansModel;
-import exp.imruVsSpark.kmeans.spark.SparkKMeans;
+import exp.types.ImruExpParameters;
 
 /**
  * Sparse K-means
@@ -54,22 +44,20 @@ public class IMRUKMeans {
                 cmdline += " -no-disk-cache";
             cmdline += " -dynamic";
             cmdline += " -dynamic-swap-time 0";
-//            cmdline += " -dynamic-debug";
+            //            cmdline += " -dynamic-debug";
             System.out.println("Starting hyracks cluster");
         }
 
         cmdline += " -agg-tree-type nary -fan-in 2";
         //        cmdline += " -frame-size " + (16 * 1024 * 1024);
-        cmdline += " -input-paths"
-                + " NC0:/data/b/data/imru/productName.txt,"
+        cmdline += " -input-paths" + " NC0:/data/b/data/imru/productName.txt,"
                 + "NC1:/data/b/data/imru/productName.txt,"
                 + "NC2:/data/b/data/imru/productName.txt,"
                 + "NC3:/data/b/data/imru/productName.txt,"
                 + "NC4:/data/b/data/imru/productName.txt,"
                 + "NC5:/data/b/data/imru/productName.txt,"
                 + "NC6:/data/b/data/imru/productName.txt,"
-                + "NC7:/data/b/data/imru/productName.txt"
-                ;
+                + "NC7:/data/b/data/imru/productName.txt";
         System.out.println("Using command line: " + cmdline);
         String[] args = cmdline.split(" ");
 
@@ -81,111 +69,79 @@ public class IMRUKMeans {
         Rt.p("Total examples: " + finalModel.totalExamples);
     }
 
-    public static int runEc2(String cc, int nodes, int size, String path,
-            boolean memCache, boolean noDiskCache, int k, int iterations,
-            String aggType, int aggArg, boolean dynamic, boolean dynamicD,
-            int stragger, File logDir,boolean dynamicDebug) throws Exception {
+    public static int runVM(ImruExpParameters p) throws Exception {
         CreateDeployment.uploadJarFiles = false;
         DataGenerator.TEMPLATE = "/home/ubuntu/test/exp_data/product_name";
         if (!new File(DataGenerator.TEMPLATE).exists())
             DataGenerator.TEMPLATE = "/home/wangrui/test/exp_data/product_name";
-
-        String cmdline = "";
-        cmdline += "-host " + cc + " -port 3099";
-        //        cmdline += " -frame-size " + (16 * 1024 * 1024);
-        if (aggType == null)
-            cmdline += " -agg-tree-type nary -fan-in 2";
-        else
-            cmdline += " -agg-tree-type " + aggType + " -agg-count " + aggArg
-                    + " -fan-in " + aggArg;
         System.out.println("Connecting to " + Client.getLocalIp());
-        //            cmdline += "-host localhost -port 3099 -debug -disable-logging";
-        if (memCache)
-            cmdline += " -mem-cache";
-        if (noDiskCache)
-            cmdline += " -no-disk-cache";
-        if (dynamic)
-            cmdline += " -dynamic";
-        if (dynamicD)
-            cmdline += " -dynamic-disable";
-        if (dynamicDebug)
-            cmdline += " -dynamic-debug";
-
-        cmdline += " -input-paths ";
-        for (int i = 0; i < nodes; i++) {
-            if (i > 0)
-                cmdline += ",";
-            cmdline += String.format("NC" + i + ":" + path, i);
-        }
-        System.out.println("Using command line: " + cmdline);
-        String[] args = cmdline.split(" ");
-
         File templateDir = new File(DataGenerator.TEMPLATE);
-        DataGenerator dataGenerator = new DataGenerator(size, templateDir);
-        SKMeansModel initModel = new SKMeansModel(k, dataGenerator, iterations);
-        SKMeansModel finalModel = Client.run(new SKMeansJob(logDir, k,
-                dataGenerator.dims, stragger), initModel, args);
+        DataGenerator dataGenerator = new DataGenerator(p.dataSize, templateDir);
+        SKMeansModel initModel = new SKMeansModel(p.k, dataGenerator,
+                p.iterations);
+        SKMeansModel finalModel = Client.run(new SKMeansJob(p.logDir, p.k,
+                dataGenerator.dims, p.stragger), initModel, p.getClientOptions());
         Rt.p("Total examples: " + finalModel.totalExamples);
         return finalModel.totalExamples;
     }
 
-    public static void generateData(String host, final int count,
-            final int splits, final File templateDir, String imruPath,
-            final String sparkPath) throws Exception {
-        String cmdline = "";
-        //        if (Client.isServerAvailable(Client.getLocalIp(), 3099)) {
-        //            cmdline += "-host " + Client.getLocalIp() + " -port 3099";
-        //            System.out.println("Connecting to " + Client.getLocalIp());
-        //        } else {
-        cmdline += "-host " + host + " -port 3099";
-        System.out.println("Starting hyracks cluster");
-        //        }
-
-        CreateDeployment.uploadJarFiles = false;
-        cmdline += " -input-paths ";
-        for (int i = 0; i < splits; i++) {
-            if (i > 0)
-                cmdline += ",";
-            cmdline += String.format("NC" + i + ":" + imruPath, i);
-        }
-        System.out.println("Using command line: " + cmdline);
-        String[] args = cmdline.split(" ");
-
-        Rt.p("generating " + splits + " " + count);
-        Client.generateData(new IIMRUDataGenerator() {
-            @Override
-            public void generate(IMRUContext ctx, OutputStream output)
-                    throws IOException {
-                try {
-                    String nodeId = ctx.getNodeId();
-                    if (!nodeId.startsWith("NC"))
-                        throw new Error();
-                    int id = Integer.parseInt(nodeId.substring(2));
-                    PrintStream psSpark = new PrintStream(
-                            new BufferedOutputStream(new FileOutputStream(
-                                    new File(sparkPath)), 1024 * 1024));
-                    PrintStream psImru = new PrintStream(
-                            new BufferedOutputStream(output, 1024 * 1024));
-                    DataGenerator dataGenerator = new DataGenerator(count
-                            * splits, templateDir);
-                    for (int i = 0; i < splits; i++) {
-                        dataGenerator.generate(false, count, psSpark,
-                                i == id ? psImru : null);
-                    }
-                    psSpark.close();
-                    psImru.close();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }, args);
-        Rt.p("generate data complete");
-    }
+    //    public static void generateData(String host, final int count,
+    //            final int splits, final File templateDir, String imruPath,
+    //            final String sparkPath) throws Exception {
+    //        String cmdline = "";
+    //        //        if (Client.isServerAvailable(Client.getLocalIp(), 3099)) {
+    //        //            cmdline += "-host " + Client.getLocalIp() + " -port 3099";
+    //        //            System.out.println("Connecting to " + Client.getLocalIp());
+    //        //        } else {
+    //        cmdline += "-host " + host + " -port 3099";
+    //        System.out.println("Starting hyracks cluster");
+    //        //        }
+    //
+    //        CreateDeployment.uploadJarFiles = false;
+    //        cmdline += " -input-paths ";
+    //        for (int i = 0; i < splits; i++) {
+    //            if (i > 0)
+    //                cmdline += ",";
+    //            cmdline += String.format("NC" + i + ":" + imruPath, i);
+    //        }
+    //        System.out.println("Using command line: " + cmdline);
+    //        String[] args = cmdline.split(" ");
+    //
+    //        Rt.p("generating " + splits + " " + count);
+    //        Client.generateData(new IIMRUDataGenerator() {
+    //            @Override
+    //            public void generate(IMRUContext ctx, OutputStream output)
+    //                    throws IOException {
+    //                try {
+    //                    String nodeId = ctx.getNodeId();
+    //                    if (!nodeId.startsWith("NC"))
+    //                        throw new Error();
+    //                    int id = Integer.parseInt(nodeId.substring(2));
+    //                    PrintStream psSpark = new PrintStream(
+    //                            new BufferedOutputStream(new FileOutputStream(
+    //                                    new File(sparkPath)), 1024 * 1024));
+    //                    PrintStream psImru = new PrintStream(
+    //                            new BufferedOutputStream(output, 1024 * 1024));
+    //                    DataGenerator dataGenerator = new DataGenerator(count
+    //                            * splits, templateDir);
+    //                    for (int i = 0; i < splits; i++) {
+    //                        dataGenerator.generate(false, count, psSpark,
+    //                                i == id ? psImru : null);
+    //                    }
+    //                    psSpark.close();
+    //                    psImru.close();
+    //                } catch (Exception e) {
+    //                    e.printStackTrace();
+    //                }
+    //            }
+    //        }, args);
+    //        Rt.p("generate data complete");
+    //    }
 
     public static void main(String[] args) throws Exception {
         //        generateData(1000, 2);
         try {
-//            ImruSendOperator.debug=true;
+            //            ImruSendOperator.debug=true;
             run(true, false, 1, 1, 10, 5000);
         } catch (Throwable e) {
             e.printStackTrace();

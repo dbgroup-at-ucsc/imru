@@ -1,4 +1,4 @@
-package exp.imruVsSpark.kmeans;
+package exp.test0.ec2;
 
 import java.io.File;
 

@@ -1,12 +1,12 @@
-package exp.imruVsSpark.kmeans.exp;
+package exp.experiments;
 
 import java.io.File;
 
 import edu.uci.ics.hyracks.ec2.SSH;
 import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.ClusterMonitor;
+import exp.VirtualBoxExperiments;
 import exp.imruVsSpark.VirtualBox;
-import exp.imruVsSpark.kmeans.VirtualBoxExperiments;
 
 public class UpdateTemplate {
     public static void main(String[] args) throws Exception {

@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Iterator;
-import java.util.List;
 import java.util.regex.Pattern;
 
 import edu.uci.ics.hyracks.imru.api.DataWriter;
@@ -29,13 +28,10 @@ import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
 import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruObject;
-import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
-import edu.uci.ics.hyracks.imru.api.RecoveryAction;
-import edu.uci.ics.hyracks.imru.api.old.IIMRUJob;
 import edu.uci.ics.hyracks.imru.util.Rt;
-import exp.imruVsSpark.kmeans.FilledVectors;
 import exp.imruVsSpark.kmeans.SKMeansModel;
-import exp.imruVsSpark.kmeans.SparseVector;
+import exp.types.FilledVectors;
+import exp.types.SparseVector;
 
 public class SKMeansJob extends
         ImruObject<SKMeansModel, SparseVector, FilledVectors> {
@@ -67,21 +63,23 @@ public class SKMeansJob extends
             DataWriter<SparseVector> output) throws IOException {
         try {
             Rt.p("%,d", input.available());
-            Pattern p = Pattern.compile("[ |\\t]+");
-            Pattern p2 = Pattern.compile(":");
+//            Pattern p = Pattern.compile("[ |\\t]+");
+//            Pattern p2 = Pattern.compile(":");
             BufferedReader reader = new BufferedReader(new InputStreamReader(
                     input));
             while (true) {
                 String line = reader.readLine();
                 if (line == null)
                     break;
-                String[] ss = p.split(line);
-                SparseVector dataPoint = new SparseVector(ss.length);
-                for (int i = 0; i < ss.length; i++) {
-                    String[] kv = p2.split(ss[i]);
-                    dataPoint.keys[i] = Integer.parseInt(kv[0]);
-                    dataPoint.values[i] = Integer.parseInt(kv[1]);
-                }
+//                String[] ss = p.split(line);
+                SparseVector dataPoint = new SparseVector(line);
+//                for (int i = 1; i < ss.length; i++) {
+//                    String[] kv = p2.split(ss[i]);
+//                    if (kv.length < 2)
+//                        continue;
+//                    dataPoint.keys[i] = Integer.parseInt(kv[0]);
+//                    dataPoint.values[i] = Integer.parseInt(kv[1]);
+//                }
                 output.addData(dataPoint);
             }
             reader.close();

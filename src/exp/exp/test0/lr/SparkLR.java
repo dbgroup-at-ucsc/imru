@@ -30,37 +30,44 @@ public class SparkLR {
         zip2.finish();
         Rt.write(new File("tmp/simple-project-1.0.jar"), memory.toByteArray());
 
-        JavaSparkContext sc = new JavaSparkContext("local", "JavaLR", "/data/b/soft/spark-0.7.0",
+        JavaSparkContext sc = new JavaSparkContext("local", "JavaLR",
+                "/data/b/soft/spark-0.7.0",
                 new String[] { "tmp/simple-project-1.0.jar" });
         JavaRDD<String> lines = sc.textFile(LR.datafile.getAbsolutePath());
-        JavaRDD<DataPoint> points = lines.map(new Function<String, DataPoint>() {
-            public DataPoint call(String line) {
-                return LR.parseData(line);
-            }
-        }).cache();
+        JavaRDD<ImruLR.DataPoint> points = lines.map(
+                new Function<String, ImruLR.DataPoint>() {
+                    public ImruLR.DataPoint call(String line) {
+                        return LR.parseData(line);
+                    }
+                }).cache();
 
         final double[] w = LR.generateWeights();
 
         for (int i = 1; i <= LR.ITERATIONS; i++) {
             System.out.println("On iteration " + i);
 
-            double[] gradient = points.map(new Function<DataPoint, double[]>() {
-                public double[] call(DataPoint p) {
-                    double[] gradient = new double[LR.D];
-                    p.addGradient(w, gradient);
-                    return gradient;
-                }
-            }).reduce(new Function2<double[], double[], double[]>() {
-                public double[] call(double[] a, double[] b) {
-                    double[] result = new double[LR.D];
-                    for (int j = 0; j < LR.D; j++)
-                        result[j] = a[j] + b[j];
-                    return result;
-                }
-            });
+            ImruLR.Gradient gradient = points
+                    .map(new Function<ImruLR.DataPoint, ImruLR.Gradient>() {
+                        public ImruLR.Gradient call(ImruLR.DataPoint p) {
+                            ImruLR.Gradient gradient = new ImruLR.Gradient(LR.D);
+                            p.addGradient(w, gradient);
+                            return gradient;
+                        }
+                    })
+                    .reduce(
+                            new Function2<ImruLR.Gradient, ImruLR.Gradient, ImruLR.Gradient>() {
+                                public ImruLR.Gradient call(ImruLR.Gradient a,
+                                        ImruLR.Gradient b) {
+                                    ImruLR.Gradient result = new ImruLR.Gradient(
+                                            LR.D);
+                                    for (int j = 0; j < LR.D; j++)
+                                        result.w[j] = a.w[j] + b.w[j];
+                                    return result;
+                                }
+                            });
 
             for (int j = 0; j < LR.D; j++)
-                w[j] -= gradient[j];
+                w[j] -= gradient.w[j];
         }
         sc.stop();
         LR.verify(LR.loadData(LR.datafile), w);

@@ -145,6 +145,9 @@ public class Client<Model extends Serializable, Data extends Serializable> {
         @Option(name = "-input-paths", usage = "HDFS path to hold input data. Or local file in the format of [nodeId]:<path>")
         public String inputPaths;
 
+        @Option(name = "-num-split", usage = "Number of splits. Use when there is only one file")
+        public int numSplits = 1;
+
         @Option(name = "-min-split-size", usage = "Minimum size of each split")
         public long minSplitSize = 0;
 
@@ -195,6 +198,10 @@ public class Client<Model extends Serializable, Data extends Serializable> {
     public Client(String[] args) throws CmdLineException {
         CmdLineParser parser = new CmdLineParser(options);
         parser.parseArgument(args);
+    }
+
+    public Client(Options options) {
+        this.options = options;
     }
 
     /**
@@ -264,7 +271,7 @@ public class Client<Model extends Serializable, Data extends Serializable> {
         conf = control.confFactory.createConfiguration();
         // set aggregation type
         HDFSSplit[] splits = control.getSplits(options.inputPaths,
-                options.minSplitSize, options.maxSplitSize);
+                options.numSplits, options.minSplitSize, options.maxSplitSize);
         if (options.aggTreeType == null) {
             if (splits.length < 3)
                 control.selectNoAggregation(splits);
@@ -527,24 +534,37 @@ public class Client<Model extends Serializable, Data extends Serializable> {
     public static <M extends Serializable, D extends Serializable, R extends Serializable> M run(
             ImruObject<M, D, R> job, M initialModel, String[] args)
             throws Exception {
-        // create a client object, which handles everything
         Client<M, D> client = new Client<M, D>(args);
+        return client.initAndRun(job, initialModel);
+    }
+
+    public static <M extends Serializable, D extends Serializable, R extends Serializable> M run(
+            ImruObject<M, D, R> job, M initialModel, Options options)
+            throws Exception {
+        Client<M, D> client = new Client<M, D>(options);
+        return client.initAndRun(job, initialModel);
+    }
+
+    public <R extends Serializable> Model initAndRun(
+            ImruObject<Model, Data, R> job, Model initialModel)
+            throws Exception {
+        // create a client object, which handles everything
         try {
 
-            client.init();
+            init();
 
             // run job
-            JobStatus status = client.run(job, initialModel);
+            JobStatus status = run(job, initialModel);
             if (status == JobStatus.FAILURE) {
                 System.err.println("Job failed; see CC and NC logs");
                 System.exit(-1);
             }
 
-            client.uninit();
+            uninit();
             // System.out.println("Terminated after "
             // + client.control.getIterationCount() + " iterations");
 
-            return client.getModel();
+            return getModel();
         } finally {
             //            if (client.options.debug)
             //                System.exit(0);
