@@ -1,13 +1,22 @@
 package exp.types;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.io.Serializable;
 
+import edu.uci.ics.hyracks.imru.api.ImruOptions;
+import edu.uci.ics.hyracks.imru.dataflow.IMRUSerialize;
 import edu.uci.ics.hyracks.imru.example.utils.Client;
+import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.ElasticImruExperimentEntry;
 
-public class ImruExpParameters {
+public class ImruExpParameters implements Serializable {
+    public static final long serialVersionUID = 1;
+    public static String defExperiment = "lr";
     public String method; //imruMem, imruDisk, spark, stratosphere
-    public String experiment; //kmeans, lr
+    public String experiment=defExperiment; //kmeans, lr
     public int batchStart;
     public int batchEnd;
     public int batchStep;
@@ -15,6 +24,7 @@ public class ImruExpParameters {
     public String master;
     public int nodeCount;
     public int dataSize;
+    public int numOfDimensions = -1;
     public String path;
     public boolean memCache;
     public boolean noDiskCache;
@@ -22,39 +32,58 @@ public class ImruExpParameters {
     public int iterations;
     public String aggType;
     public int aggArg;
-    public boolean dynamic;
-    public boolean dynamicDisable;
-    public int stragger;
+    public boolean dynamicAggr;
+    public boolean dynamicDisableSwapping;
+    public int straggler;
     public File logDir;
+    public String resultFolder; //on the developer machine
     public boolean dynamicDebug;
+
+    //for virtualbox experiments
+    public int memory; //memory per node
+    public int network; //network limit
+    public String cpu;
+    public boolean monitorMemoryUsage = true;
+    public int maxNodesStartupTime = 5 * 60 * 1000;
+    public int maxExperimentFreezeTime = 30 * 60 * 1000;
 
     public ImruExpParameters() {
     }
 
-    public ImruExpParameters(ElasticImruExperimentEntry.Options options) {
-        ImruExpParameters p = this;
-        p.method = options.method;
-        p.experiment = options.experiment;
-        p.batchStart = options.batchStart;
-        p.batchEnd = options.batchEnd;
-        p.batchStep = options.batchStep;
-        p.batchSize = options.batchSize;
-        p.master = options.master;
-        p.nodeCount = options.nodeCount;
-        p.k = options.k;
-        p.iterations = options.iterations;
-        p.aggType = options.aggTreeType;
-        p.aggArg = "generic".equals(options.aggTreeType) ? options.aggCount
-                : options.fanIn;
-        p.dynamic = options.dynamic;
-        p.dynamicDisable = options.dynamicDisable;
-        p.stragger = options.straggler;
-        p.dynamicDebug = options.dynamicDebug;
+    public static ImruExpParameters load(File file) throws Exception {
+        byte[] bs = Rt.readFileByte(file);
+        return (ImruExpParameters) IMRUSerialize.deserialize(bs);
     }
 
-    public Client.Options getClientOptions() {
+    public byte[] toByteArray() {
+        return IMRUSerialize.serialize(this);
+    }
+
+    public File getResultFolder() {
         ImruExpParameters p = this;
-        Client.Options options = new Client.Options();
+        String level1 = "k" + p.k + "i" + p.iterations + "b" + p.batchStart
+                + "s" + p.batchStep + "e" + p.batchEnd + "b" + p.batchSize
+                + "d" + p.numOfDimensions;
+        String level2 = "local"
+                + p.memory
+                + "M"
+                + p.cpu
+                + "coreN"
+                + p.network
+                + "_"
+                + p.nodeCount
+                + "nodes_"
+                + p.aggType
+                + "_"
+                + p.aggArg
+                + (p.dynamicAggr ? "_d" + (p.dynamicDisableSwapping ? "s" : "")
+                        : "");
+        return new File(p.resultFolder + "/" + level1 + "/" + level2);
+    }
+
+    public ImruOptions getClientOptions() {
+        ImruExpParameters p = this;
+        ImruOptions options = new ImruOptions();
         options.host = p.master;
         options.port = 3099;
         //         options.frameSize=16 * 1024 * 1024;
@@ -73,13 +102,47 @@ public class ImruExpParameters {
             options.memCache = true;
         if (p.noDiskCache)
             options.noDiskCache = true;
-        if (p.dynamic)
+        if (p.dynamicAggr)
             options.dynamicAggr = true;
-        if (p.dynamicDisable)
+        if (p.dynamicDisableSwapping)
             options.dynamicDisable = true;
         if (p.dynamicDebug)
             options.dynamicDebug = true;
         options.inputPaths = p.path;
         return options;
+    }
+
+    @Override
+    public String toString() {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        PrintStream ps = new PrintStream(out);
+        ps.println("method=" + method);
+        ps.println("experiment=" + experiment);
+        ps.format("numOfPoints[start=%,d, end=%,d, step=%,d, batch=%,d]\n",
+                batchStart, batchEnd, batchStep, batchSize);
+        ps.println("master=" + master);
+        ps.println("nodeCount=" + nodeCount);
+        ps.println("dataSize=" + dataSize);
+        ps.println("numOfDimensions=" + numOfDimensions);
+        ps.println("path=" + path);
+        ps.println("memCache=" + memCache);
+        ps.println("noDiskCache=" + noDiskCache);
+        ps.println("iterations=" + iterations);
+        ps.println("aggType=" + aggType);
+        ps.println("aggArg=" + aggArg);
+        ps.println("dynamicAggr=" + dynamicAggr);
+        ps.println("dynamicDisableSwapping=" + dynamicDisableSwapping);
+        ps.println("dynamicDebug=" + dynamicDebug);
+        ps.println("stragger=" + straggler);
+        ps.println("logDir=" + logDir);
+        ps.println("kmeans_k=" + k);
+        ps.println("node_memory=" + memory);
+        ps.println("node_network=" + network);
+        ps.println("node_cpu=" + cpu);
+        ps.println("monitorMemoryUsage=" + monitorMemoryUsage);
+        ps.println("maxNodesStartupTime=" + maxNodesStartupTime);
+        ps.println("maxExperimentFreezeTime=" + maxExperimentFreezeTime);
+        ps.println("resultFolder=" + getResultFolder());
+        return new String(out.toByteArray());
     }
 }

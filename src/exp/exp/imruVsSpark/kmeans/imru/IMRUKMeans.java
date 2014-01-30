@@ -29,7 +29,8 @@ import exp.types.ImruExpParameters;
  */
 public class IMRUKMeans {
     public static void run(boolean memCache, boolean noDiskCache, int k,
-            int iterations, int dataPoints, int stragger) throws Exception {
+            int iterations, int dataPoints, int numOfDimensions, int stragger)
+            throws Exception {
         String cmdline = "";
         if (Client.isServerAvailable(Client.getLocalIp(), 3099)) {
             // hostname of cluster controller
@@ -62,10 +63,11 @@ public class IMRUKMeans {
         String[] args = cmdline.split(" ");
 
         File templateDir = new File(DataGenerator.TEMPLATE);
-        DataGenerator dataGenerator = new DataGenerator(dataPoints, templateDir);
+        DataGenerator dataGenerator = new DataGenerator(dataPoints,
+                numOfDimensions, templateDir);
         SKMeansModel initModel = new SKMeansModel(k, dataGenerator, iterations);
         SKMeansModel finalModel = Client.run(new SKMeansJob(null, k,
-                dataGenerator.dims, stragger), initModel, args);
+                dataGenerator.numOfDims, stragger), initModel, args);
         Rt.p("Total examples: " + finalModel.totalExamples);
     }
 
@@ -76,11 +78,13 @@ public class IMRUKMeans {
             DataGenerator.TEMPLATE = "/home/wangrui/test/exp_data/product_name";
         System.out.println("Connecting to " + Client.getLocalIp());
         File templateDir = new File(DataGenerator.TEMPLATE);
-        DataGenerator dataGenerator = new DataGenerator(p.dataSize, templateDir);
+        DataGenerator dataGenerator = new DataGenerator(p.dataSize,
+                p.numOfDimensions, templateDir);
         SKMeansModel initModel = new SKMeansModel(p.k, dataGenerator,
                 p.iterations);
         SKMeansModel finalModel = Client.run(new SKMeansJob(p.logDir, p.k,
-                dataGenerator.dims, p.stragger), initModel, p.getClientOptions());
+                dataGenerator.numOfDims, p.straggler), initModel, p
+                .getClientOptions());
         Rt.p("Total examples: " + finalModel.totalExamples);
         return finalModel.totalExamples;
     }
@@ -142,7 +146,7 @@ public class IMRUKMeans {
         //        generateData(1000, 2);
         try {
             //            ImruSendOperator.debug=true;
-            run(true, false, 1, 1, 10, 5000);
+            run(true, false, 1, 1, 10, 1000000,5000);
         } catch (Throwable e) {
             e.printStackTrace();
         }

@@ -2,9 +2,11 @@ package exp.experiments;
 
 import java.io.File;
 
+import exp.ImruExpFigs;
 import exp.VirtualBoxExperiments;
 import exp.imruVsSpark.VirtualBox;
 import exp.test0.GnuPlot;
+import exp.types.ImruExpParameters;
 
 public class FanInAndK {
     public static void runExp() throws Exception {
@@ -16,32 +18,32 @@ public class FanInAndK {
         //        regenerateResults();
         try {
             //            System.exit(0);
-            int nodeCount = 16;
-            int memory = 1500;
-            int k = 3;
-            int iterations = 5;
-            int batchStart = 1;
-            int batchStep = 3;
-            int batchEnd = 1;
-            int batchSize = 100000;
-            int network = 0;
-            String cpu = "0.25";
-            int fanIn = 2;
+            ImruExpParameters p = new ImruExpParameters();
+            p.nodeCount = 16;
+            p.memory = 1500;
+            p.k = 3;
+            p.iterations = 5;
+            p.batchStart = 1;
+            p.batchStep = 3;
+            p.batchEnd = 1;
+            p.batchSize = 100000;
+            p.numOfDimensions = 1000000;
+            p.network = 0;
+            p.cpu = "0.25";
+            p.aggArg = 2;
 
-            iterations = 5;
+            p.iterations = 5;
 
-            for (fanIn = 2; fanIn <= 7; fanIn++) {
-                if (fanIn == 1)
+            for (p.aggArg = 2; p.aggArg <= 7; p.aggArg++) {
+                if (p.aggArg == 1)
                     continue;
-                for (k = 1; k <= 5; k++) {
+                for (p.k = 1; p.k <= 5; p.k++) {
                     //                File outputFile = new File("result/fan16_" + fanIn + "_" + k
                     //                        + ".txt");
                     //                if (outputFile.exists() && outputFile.length() > 0)
                     //                    continue;
                     VirtualBoxExperiments.IMRU_ONLY = true;
-                    VirtualBoxExperiments.runExperiment(nodeCount, memory, k,
-                            iterations, batchStart, batchStep, batchEnd,
-                            batchSize, network, cpu, fanIn);
+                    VirtualBoxExperiments.runExperiment(p);
                 }
             }
         } catch (Throwable e) {
@@ -59,13 +61,13 @@ public class FanInAndK {
         String name = "local2000M0.5coreN0_8nodes_";
         name = "local1500M0.25coreN0_12nodes_";
         name = "local1500M0.25coreN0_16nodes_";
-        File file = new File(KmeansFigs.figsDir, "k2i" + KmeansFigs.ITERATIONS
+        File file = new File(ImruExpFigs.figsDir, "k2i" + ImruExpFigs.ITERATIONS
                 + "b1s3e1b100000/" + name + "nary_2");
-        KmeansFigs f = new KmeansFigs(file);
+        ImruExpFigs f = new ImruExpFigs(file);
         plotMem.extra = "set title \"K-means" + " 10^6 points/node"
-                + " Iteration=" + f.iterations + "\\n cpu=" + f.core
-                + "core/node*" + f.nodeCount + " memory=" + f.memory
-                + "MB/node*" + f.nodeCount + " \"";
+                + " Iteration=" + f.p.iterations + "\\n cpu=" + f.p.cpu
+                + "core/node*" + f.p.nodeCount + " memory=" + f.p.memory
+                + "MB/node*" + f.p.nodeCount + " \"";
         GnuPlot[] ps = { plotMem, plotDisk };
         for (GnuPlot p : ps) {
             p.setPlotNames("no aggregation", "nary=2", "nary=3", "nary=4",
@@ -82,8 +84,8 @@ public class FanInAndK {
             plotDisk.startNewX(nary);
             for (int k = 2; k < 6; k++) {
                 try {
-                    f = new KmeansFigs(new File(KmeansFigs.figsDir, "k" + k
-                            + "i" + KmeansFigs.ITERATIONS + "b1s3e1b100000/"
+                    f = new ImruExpFigs(new File(ImruExpFigs.figsDir, "k" + k
+                            + "i" + ImruExpFigs.ITERATIONS + "b1s3e1b100000/"
                             + name + "nary_" + nary));
                 } catch (Throwable e) {
                     e.printStackTrace();
@@ -96,7 +98,7 @@ public class FanInAndK {
             }
         }
         plotMem.finish();
-//        plotDisk.finish();
+        //        plotDisk.finish();
         return plotMem;
     }
 

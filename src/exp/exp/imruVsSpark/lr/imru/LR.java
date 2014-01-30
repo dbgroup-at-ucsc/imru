@@ -16,7 +16,7 @@ import exp.types.SparseVector;
 
 public class LR {
     static int N = 10000; // Number of data points
-//    static int D = 100; // Numer of dimensions
+    static int D = 100; // Numer of dimensions
     static int V = 10; // Numer of dimensions which have values
     static float R = 0.7f; // Scaling factor
     static int ITERATIONS = 5;
@@ -50,10 +50,10 @@ public class LR {
 
     public static int generateDataFile() throws Exception {
         Rt.p("generating data " + N);
-        DataGenerator d = new DataGenerator(N,
+        DataGenerator d = new DataGenerator(N,D,
                 new File("exp_data/product_name"));
         d.generate(true, LR.datafile);
-        return d.dims;
+        return d.numOfDims;
         //        SparseVector[] ps = generateData();
         //        PrintStream ps2 = new PrintStream(LR.datafile);
         //        for (SparseVector p : ps) {

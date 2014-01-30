@@ -16,14 +16,15 @@ import exp.types.SparseVector;
 public class SparseKMeans {
     public static void run(String path) throws Exception {
         int points = 1000000;
+        int numOfDimensions = 1000000;
         final int k = 3;
         int iteration = 5;
         System.setProperty("spark.akka.frameSize", "16");
         File templateDir = new File(DataGenerator.TEMPLATE);
         final DataGenerator dataGenerator = new DataGenerator(points,
-                templateDir);
+                numOfDimensions, templateDir);
 
-        final int dimensions = dataGenerator.dims;
+        final int dimensions = dataGenerator.numOfDims;
         final SKMeansModel model = new SKMeansModel(k, dataGenerator, 20);
         Vector<SparseVector> data = new Vector<SparseVector>(points);
 

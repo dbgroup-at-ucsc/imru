@@ -10,11 +10,11 @@ import exp.imruVsSpark.VirtualBox;
 
 public class UpdateTemplate {
     public static void main(String[] args) throws Exception {
-        Rt.runAndShowCommand("mvn package -DskipTests=true", new File(
-                "/data/a/imru/hyracks10/hyracks"));
-        Rt.p(Rt.lastResult);
-        if (Rt.lastResult!=0)
-            throw new Error();
+        //        Rt.runAndShowCommand("mvn package -DskipTests=true", new File(
+        //                "/data/a/imru/hyracks10/hyracks"));
+        //        Rt.p(Rt.lastResult);
+        //        if (Rt.lastResult != 0)
+        //            throw new Error();
         ClusterMonitor monitor = new ClusterMonitor();
         VirtualBox.remove();
         VirtualBox.startTemplate();

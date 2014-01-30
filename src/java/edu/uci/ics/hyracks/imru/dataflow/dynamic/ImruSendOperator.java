@@ -10,6 +10,7 @@ import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.Stack;
 import java.util.Vector;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import edu.uci.ics.hyracks.api.comm.IFrameWriter;
 import edu.uci.ics.hyracks.api.context.IHyracksTaskContext;
@@ -136,6 +137,9 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
     IncomingMessageProcessor incomingMessageProcessor = new IncomingMessageProcessor(
             this);
     int[] partitionWriter; //Mapping between partition and writer
+    BitSet receivedIdentifications = new BitSet();
+    int receivedIdentificationCorrections = 0;
+    Object receivedIdentificationSync = new Object();
 
     public ImruSendOperator(IHyracksTaskContext ctx, int curPartition,
             int nPartitions, int[] targetPartitions,
@@ -173,17 +177,32 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
         return partitionWriter[partitionId];
     }
 
+    void sendObjToWriter(int targetPartition, SwapCommand cmd)
+            throws IOException {
+        if (debug)
+            Rt.p(curPartition + " send to " + targetPartition + " " + cmd);
+        if (targetPartition < 0 || targetPartition >= nPartitions)
+            throw new Error("" + targetPartition);
+        //        if (partitionToWriter(targetPartition) != targetPartition) {
+        //            Rt.p("correct address: " + targetPartition + " -> "
+        //                    + partitionToWriter(targetPartition));
+        //        }
+        SerializedFrames.serializeSwapCmd(imruContext, writer, cmd,
+                curPartition, targetPartition, targetPartition);
+    }
+
     void sendObj(int targetPartition, SwapCommand cmd) throws IOException {
         if (debug)
             Rt.p(curPartition + " send to " + targetPartition + " " + cmd);
         if (targetPartition < 0 || targetPartition >= nPartitions)
             throw new Error("" + targetPartition);
-//        if (partitionToWriter(targetPartition) != targetPartition) {
-//            Rt.p("correct address: " + targetPartition + " -> "
-//                    + partitionToWriter(targetPartition));
-//        }
+        //        if (partitionToWriter(targetPartition) != targetPartition) {
+        //            Rt.p("correct address: " + targetPartition + " -> "
+        //                    + partitionToWriter(targetPartition));
+        //        }
         SerializedFrames.serializeSwapCmd(imruContext, writer, cmd,
-                curPartition,targetPartition, partitionToWriter(targetPartition));
+                curPartition, targetPartition,
+                partitionToWriter(targetPartition));
     }
 
     IFrameWriter getWriter() {
@@ -380,11 +399,33 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
             // Find out the relationship between writers and partitions.
             for (int i = 0; i < nPartitions; i++) {
                 try {
-                    sendObj(i, new IdentifyRequest(curPartition, i));
+                    sendObjToWriter(i, new IdentifyRequest(curPartition, i));
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
+        }
+        if (true) {
+            long startTime = System.currentTimeMillis();
+            while (true) {
+                if (receivedIdentificationCorrections >= nPartitions)
+                    break;
+                try {
+                    synchronized (receivedIdentificationSync) {
+                        receivedIdentificationSync.wait(1000);
+                    }
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                    break;
+                }
+                if (System.currentTimeMillis() - startTime > 10000) {
+                    Rt
+                            .p(this.curPartition
+                                    + " still waiting for "
+                                    + (nPartitions - receivedIdentificationCorrections));
+                }
+            }
+            //            Rt.p(this.curPartition + " ready to go");
         }
         //        io = new ASyncIO<byte[]>(1);
         //        future = IMRUSerialize.threadPool.submit(new Runnable() {

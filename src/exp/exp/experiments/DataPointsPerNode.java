@@ -2,29 +2,31 @@ package exp.experiments;
 
 import java.io.File;
 
+import exp.ImruExpFigs;
 import exp.VirtualBoxExperiments;
 import exp.imruVsSpark.VirtualBox;
 import exp.test0.GnuPlot;
+import exp.types.ImruExpParameters;
 
 public class DataPointsPerNode {
     public static void runExp() throws Exception {
         try {
             VirtualBox.remove();
-            int nodeCount = 8;
-            int memory = 2000;
-            int k = 3;
-            int iterations = 5;
-            int batchStart = 1;
-            int batchStep = 1;
-            int batchEnd = 8;
-            int batchSize = 100000;
-            int network = 0;
-            String cpu = "0.5";
-            int fanIn = 2;
+            ImruExpParameters p = new ImruExpParameters();
+            p.nodeCount = 8;
+            p.memory = 2000;
+            p.k = 3;
+            p.iterations = 5;
+            p.batchStart = 1;
+            p.batchStep = 1;
+            p.batchEnd = 8;
+            p.batchSize = 100000;
+            p.numOfDimensions = 1000000;
+            p.network = 0;
+            p.cpu = "0.5";
+            p.aggArg = 2;
 
-            VirtualBoxExperiments.runExperiment(nodeCount, memory, k,
-                    iterations, batchStart, batchStep, batchEnd, batchSize,
-                    network, cpu, fanIn);
+            VirtualBoxExperiments.runExperiment(p);
         } catch (Throwable e) {
             e.printStackTrace();
             System.exit(0);
@@ -35,20 +37,21 @@ public class DataPointsPerNode {
     public static GnuPlot plot() throws Exception {
         GnuPlot plot = new GnuPlot(new File("/tmp/cache"), "kmeansSplitSize",
                 "10^5 points/node", "Time (seconds)");
-        File file = new File(KmeansFigs.figsDir, "k3i" + KmeansFigs.ITERATIONS
+        File file = new File(ImruExpFigs.figsDir, "k3i"
+                + ImruExpFigs.ITERATIONS
                 + "b1s1e8b100000/local2000M0.5coreN0_8nodes_nary_2");
-        KmeansFigs f = new KmeansFigs(file);
+        ImruExpFigs f = new ImruExpFigs(file);
         plot.extra = "set title \"K-means"
                 //+ " 10^5 points/node*" + f.nodeCount
-                + " Iteration=" + f.iterations + "\\n cpu=" + f.core
-                + "core/node*" + f.nodeCount + " memory=" + f.memory
-                + "MB/node*" + f.nodeCount + " \"";
+                + " Iteration=" + f.p.iterations + "\\n cpu=" + f.p.cpu
+                + "core/node*" + f.p.nodeCount + " memory=" + f.p.memory
+                + "MB/node*" + f.p.nodeCount + " \"";
         plot.setPlotNames("Spark", "IMRU-disk", "IMRU-mem");
         plot.startPointType = 1;
         plot.pointSize = 1;
         plot.scale = false;
         plot.colored = true;
-        for (int batchSize = f.begin; batchSize < f.end; batchSize += f.step) {
+        for (int batchSize = f.p.batchStart; batchSize <= f.p.batchEnd; batchSize += f.p.batchStep) {
             plot.startNewX(batchSize);
             plot.addY(f.get("spark" + batchSize));
             plot.addY(f.get("imruDisk" + batchSize));

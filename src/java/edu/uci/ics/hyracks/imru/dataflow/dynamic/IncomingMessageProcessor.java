@@ -63,10 +63,22 @@ public class IncomingMessageProcessor {
                 so.aggrSync.notifyAll();
             }
         } else if (object instanceof IdentifyRequest) {
+            IdentificationCorrection c = new IdentificationCorrection(
+                    so.curPartition, thisPartition);
+            for (int i = 0; i < so.nPartitions; i++) {
+                so.sendObjToWriter(i, c);
+            }
         } else if (object instanceof IdentificationCorrection) {
             IdentificationCorrection ic = (IdentificationCorrection) object;
-//            Rt.p("correct "+so.curPartition+" "+ic);
+            Rt.p("correct " + so.curPartition + " " + ic);
             so.partitionWriter[ic.partition] = ic.writer;
+            synchronized (so.receivedIdentificationSync) {
+                if (!so.receivedIdentifications.get(ic.partition)) {
+                    so.receivedIdentifications.set(ic.partition);
+                    so.receivedIdentificationCorrections++;
+                    so.receivedIdentificationSync.notifyAll();
+                }
+            }
         } else
             throw new Error();
     }

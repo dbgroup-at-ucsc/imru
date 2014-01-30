@@ -84,19 +84,13 @@ public class ImruRecvOD<Model extends Serializable> extends
                             Serializable receivedObject = (Serializable) jobSerDe
                                     .deserialize(f.data);
                             if (receivedObject instanceof IdentifyRequest) {
-                                IdentificationCorrection c = new IdentificationCorrection(
-                                        sendOperator.curPartition,
-                                        f.targetParition);
-                                for (int i = 0; i < sendOperator.nPartitions; i++) {
-                                    sendOperator.sendObj(i, c);
-                                }
                             } else if (receivedObject instanceof IdentificationCorrection) {
                             } else {
                                 Rt.p("ERROR: " + sendOperator.curPartition
                                         + " recv wrong message from="
                                         + f.srcPartition + " to="
-                                        + f.targetParition + " "
-                                        + receivedObject);
+                                        + f.targetParition + " ["
+                                        + receivedObject+"]");
                                 return;
                             }
                             // redeliver

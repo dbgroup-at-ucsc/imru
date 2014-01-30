@@ -53,6 +53,7 @@ import edu.uci.ics.hyracks.control.nc.NodeControllerService;
 import edu.uci.ics.hyracks.imru.api.IIMRUDataGenerator;
 import edu.uci.ics.hyracks.imru.api.IMRUJobControl;
 import edu.uci.ics.hyracks.imru.api.ImruObject;
+import edu.uci.ics.hyracks.imru.api.ImruOptions;
 import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.data.DataSpreadDriver;
 import edu.uci.ics.hyracks.imru.file.HDFSSplit;
@@ -84,98 +85,6 @@ import edu.uci.ics.hyracks.imru.util.Rt;
  *            used in update()
  */
 public class Client<Model extends Serializable, Data extends Serializable> {
-    public static class Options {
-        @Option(name = "-debug", usage = "Start cluster controller and node controller in this process for debugging")
-        public boolean debug;
-
-        @Option(name = "-debugNodes", usage = "Number of nodes started for debugging")
-        public int numOfNodes = 2;
-
-        @Option(name = "-disable-logging", usage = "Disable logging. So console output can be seen when debugging")
-        public boolean disableLogging;
-
-        @Option(name = "-host", usage = "Hyracks Cluster Controller Host name", required = true)
-        public String host;
-
-        @Option(name = "-port", usage = "Hyracks Cluster Controller Port (default: 1099)")
-        public int port = 3099;
-
-        @Option(name = "-clusterport", usage = "Hyracks Cluster Controller Port (default: 3099)")
-        public int clusterPort = 1099;
-
-        @Option(name = "-imru-port", usage = "IMRU web service port for uploading and downloading models. (default: 3288)")
-        public int imruPort = 3288;
-
-        @Option(name = "-mem-cache", usage = "Load all data into memory")
-        public boolean memCache = false;
-
-        @Option(name = "-dynamic", usage = "Dynamically alter aggregation tree")
-        public boolean dynamicAggr = false;
-
-        @Option(name = "-dynamic-disable", usage = "Use the dynamically mechanism only")
-        public boolean dynamicDisable = false;
-
-        @Option(name = "-dynamic-swap-time", usage = "Swap nodes after freezed for this time")
-        public int dynamicSwapTime = 1000;
-
-        @Option(name = "-dynamic-debug", usage = "Show debugging information of dynamic aggregation")
-        public boolean dynamicDebug = false;
-
-        @Option(name = "-no-disk-cache", usage = "Don't cache data on local disk (only works with local data)")
-        public boolean noDiskCache = false;
-
-        @Option(name = "-hadoop-conf", usage = "Path to Hadoop configuration")
-        public String hadoopConfPath;
-
-        @Option(name = "-cluster-conf", usage = "Path to Hyracks cluster configuration")
-        public String clusterConfPath = "conf/cluster.conf";
-
-        @Option(name = "-cc-temp-path", usage = "Path on cluster controller for models")
-        public String ccTempPath = "/tmp/imru-cc-models";
-
-        @Option(name = "-nc-temp-path", usage = "Path on each node for cached data")
-        public String ncTempPath = "/tmp/imru-nc-models";
-
-        @Option(name = "-save-intermediate-models", usage = "If specified, save intermediate models to this directory.")
-        public String localIntermediateModelPath;
-
-        @Option(name = "-model-file-name", usage = "Name of the model file")
-        public String modelFileNameHDFS;
-
-        @Option(name = "-input-paths", usage = "HDFS path to hold input data. Or local file in the format of [nodeId]:<path>")
-        public String inputPaths;
-
-        @Option(name = "-num-split", usage = "Number of splits. Use when there is only one file")
-        public int numSplits = 1;
-
-        @Option(name = "-min-split-size", usage = "Minimum size of each split")
-        public long minSplitSize = 0;
-
-        @Option(name = "-max-split-size", usage = "Maximum size of each split")
-        public long maxSplitSize = Long.MAX_VALUE;
-
-        @Option(name = "-agg-tree-type", usage = "The aggregation tree type (none, nary, or generic)")
-        public String aggTreeType;
-
-        @Option(name = "-agg-count", usage = "The number of aggregators to use, if using an aggregation tree")
-        public int aggCount = -1;
-
-        @Option(name = "-fan-in", usage = "The fan-in, if using an nary aggregation tree")
-        public int fanIn = -1;
-
-        @Option(name = "-model-file", usage = "Local file to write the final weights to")
-        public String modelFilename;
-
-        @Option(name = "-frame-size", usage = "Hyracks frame size")
-        public int frameSize = 0;
-
-        @Option(name = "-compress-after-iterations", usage = "Compress itermediate results after N iterations")
-        public int compressAfterNIterations = 10;
-
-        //        @Option(name = "-num-rounds", usage = "The number of iterations to perform")
-        //        public int numRounds = 5;
-    }
-
     public static String IMRU_PREFIX = "hyracks-auto-deploy-";
     public static int FRAME_SIZE = 65536;
 
@@ -185,7 +94,7 @@ public class Client<Model extends Serializable, Data extends Serializable> {
     protected DeploymentId deploymentId;
 
     public IMRUJobControl<Model, Data> control;
-    public Options options = new Options();
+    public ImruOptions options = new ImruOptions();
     Configuration conf;
     private static boolean alreadyStartedDebug = false;
 
@@ -200,7 +109,7 @@ public class Client<Model extends Serializable, Data extends Serializable> {
         parser.parseArgument(args);
     }
 
-    public Client(Options options) {
+    public Client(ImruOptions options) {
         this.options = options;
     }
 
@@ -257,14 +166,8 @@ public class Client<Model extends Serializable, Data extends Serializable> {
      * @throws Exception
      */
     public void connect() throws Exception {
-        this.control = new IMRUJobControl<Model, Data>();
+        this.control = new IMRUJobControl<Model, Data>(options);
         control.parameters.compressIntermediateResultsAfterNIterations = options.compressAfterNIterations;
-        control.localIntermediateModelPath = options.localIntermediateModelPath;
-        control.modelFileName = options.modelFileNameHDFS;
-        control.dynamicAggr = options.dynamicAggr;
-        control.memCache = options.memCache;
-        control.noDiskCache = options.noDiskCache;
-        control.frameSize = options.frameSize;
         control.connect(options.host, options.port, options.imruPort,
                 options.hadoopConfPath, options.clusterConfPath);
         hcc = control.hcc;
@@ -539,7 +442,7 @@ public class Client<Model extends Serializable, Data extends Serializable> {
     }
 
     public static <M extends Serializable, D extends Serializable, R extends Serializable> M run(
-            ImruObject<M, D, R> job, M initialModel, Options options)
+            ImruObject<M, D, R> job, M initialModel, ImruOptions options)
             throws Exception {
         Client<M, D> client = new Client<M, D>(options);
         return client.initAndRun(job, initialModel);

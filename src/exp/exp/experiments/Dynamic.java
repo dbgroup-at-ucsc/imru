@@ -16,10 +16,12 @@ import edu.uci.ics.hyracks.imru.dataflow.dynamic.ImruSendOperator;
 import edu.uci.ics.hyracks.imru.dataflow.dynamic.DynamicAggregationStressTest;
 import edu.uci.ics.hyracks.imru.util.CreateDeployment;
 import edu.uci.ics.hyracks.imru.util.Rt;
+import exp.ImruExpFigs;
 import exp.VirtualBoxExperiments;
 import exp.imruVsSpark.LocalCluster;
 import exp.imruVsSpark.VirtualBox;
 import exp.test0.GnuPlot;
+import exp.types.ImruExpParameters;
 
 public class Dynamic {
     public static void disableLogging() throws Exception {
@@ -46,40 +48,55 @@ public class Dynamic {
         });
     }
 
-    public static void runExp(String folder) throws Exception {
+    public static void runExp(String folder, boolean lr) throws Exception {
         try {
             //            VirtualBox.remove();
-            int nodeCount = 8;
-            int memory = 2000;
-            int k = 3;
-            int iterations = 5;
-            int batchStart = 1;
-            int batchStep = 3;
-            int batchEnd = 1;
-            int batchSize = 100000;
-            int network = 0;
-            String cpu = "0.5";
-            int fanIn = 2;
+            ImruExpParameters p = new ImruExpParameters();
+            p.experiment="lr";
+            p.nodeCount = 8;
+            p.memory = 2000;
+            p.k = 3;
+            p.iterations = 5;
+            p.batchStart = 1;
+            p.batchStep = 3;
+            p.batchEnd = 1;
+            p.batchSize = 100000;
+            p.network = 0;
+            p.cpu = "0.5";
+            p.aggArg = 2;
+            int startK = 2;
+            int endK = 14;
+            int startDims = 100000;
+            int stepDims = 300000;
+            int endDims = 1000000;
+
+            if (lr) {
+                //for logistic regression
+                p.iterations = 1;
+                p.batchStart = 10;
+                p.batchStep = 10;
+                p.batchEnd = 10;
+                startK = 0;
+                endK = 0;
+            }
 
             for (int type = 0; type < 2; type++) {
                 //                VirtualBoxExperiments.dynamicDebug=true;
                 if (type == 0) {
-                    VirtualBoxExperiments.resultFolder = folder
-                            + "/resultDelay60s";
-                    VirtualBoxExperiments.straggler = 60000;
+                    p.resultFolder = folder + "/resultDelay60s";
+                    p.straggler = 60000;
                 } else {
-                    VirtualBoxExperiments.resultFolder = folder
-                            + "/resultNoDelay";
-                    VirtualBoxExperiments.straggler = 0;
+                    p.resultFolder = folder + "/resultNoDelay";
+                    p.straggler = 0;
                 }
                 VirtualBoxExperiments.IMRU_ONLY = true;
-                for (k = 2; k <= 14; k += 2) {
-                    for (int i = 0; i < 3; i++) {
-                        VirtualBoxExperiments.dynamicAggr = i < 2;
-                        VirtualBoxExperiments.disableSwapping = (i == 1);
-                        VirtualBoxExperiments.runExperiment(nodeCount, memory,
-                                k, iterations, batchStart, batchStep, batchEnd,
-                                batchSize, network, cpu, fanIn);
+                for (p.k = startK; p.k <= endK; p.k += 2) {
+                    for (p.numOfDimensions = startDims; p.numOfDimensions <= endDims; p.numOfDimensions += stepDims) {
+                        for (int i = 0; i < 3; i++) {
+                            p.dynamicAggr = i < 2;
+                            p.dynamicDisableSwapping = (i == 1);
+                            VirtualBoxExperiments.runExperiment(p);
+                        }
                     }
                 }
             }
@@ -119,13 +136,13 @@ public class Dynamic {
         GnuPlot plot = new GnuPlot(new File("/tmp/cache"), name,
                 "Model size (MB)", "Time (seconds)");
         File file = new File(new File(prefix + "0" + postfix), "k2i"
-                + KmeansFigs.ITERATIONS
+                + ImruExpFigs.ITERATIONS
                 + "b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2_d");
-        KmeansFigs f = new KmeansFigs(file);
-        plot.extra = "set title \"K-means" + " 10^5 points/node*" + f.nodeCount
-                + " Iteration=" + f.iterations + "\\n cpu=" + f.core
-                + "core/node*" + f.nodeCount + " memory=" + f.memory
-                + "MB/node*" + f.nodeCount + " \"";
+        ImruExpFigs f = new ImruExpFigs(file);
+        plot.extra = "set title \"K-means" + " 10^5 points/node*"
+                + f.p.nodeCount + " Iteration=" + f.p.iterations + "\\n cpu="
+                + f.p.cpu + "core/node*" + f.p.nodeCount + " memory="
+                + f.p.memory + "MB/node*" + f.p.nodeCount + " \"";
         plot.setPlotNames("Original IMRU", "Fixed aggregation",
                 "Dynamic aggregation");
         plot.startPointType = 1;
@@ -137,20 +154,20 @@ public class Dynamic {
             File dir = new File(prefix + id + postfix);
             if (!dir.exists())
                 break;
-            KmeansFigs.figsDir = dir;
+            ImruExpFigs.figsDir = dir;
             for (int k = 2; k <= 16; k += 2) {
                 if (exps[k] == null)
                     exps[k] = new Exp();
-                f = new KmeansFigs(new File(KmeansFigs.figsDir, "k" + k + "i"
-                        + KmeansFigs.ITERATIONS
+                f = new ImruExpFigs(new File(ImruExpFigs.figsDir, "k" + k + "i"
+                        + ImruExpFigs.ITERATIONS
                         + "b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2"));
                 exps[k].org.add(f.get("imruMem1"));
-                f = new KmeansFigs(new File(KmeansFigs.figsDir, "k" + k + "i"
-                        + KmeansFigs.ITERATIONS
+                f = new ImruExpFigs(new File(ImruExpFigs.figsDir, "k" + k + "i"
+                        + ImruExpFigs.ITERATIONS
                         + "b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2_ds"));
                 exps[k].fixed.add(f.get("imruMem1"));
-                f = new KmeansFigs(new File(KmeansFigs.figsDir, "k" + k + "i"
-                        + KmeansFigs.ITERATIONS
+                f = new ImruExpFigs(new File(ImruExpFigs.figsDir, "k" + k + "i"
+                        + ImruExpFigs.ITERATIONS
                         + "b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2_d"));
                 exps[k].dynamic.add(f.get("imruMem1"));
             }
@@ -168,10 +185,10 @@ public class Dynamic {
     }
 
     public static void main(String[] args) throws Exception {
-        VirtualBoxExperiments.experiment = "lr";
-        String resultFolder = "result_" + VirtualBoxExperiments.experiment;
+        ImruExpParameters.defExperiment = "lr";
+        String resultFolder = "result_" + ImruExpParameters.defExperiment;
         for (int i = 0; i < 10; i++)
-            runExp(resultFolder + "/dynamic_aggr/" + 3);
+            runExp(resultFolder + "/dynamic_aggr/" + i, true);
         String folder = resultFolder + "/dynamic_aggr/";
         //                plot("straggler", folder, "/resultDelay60s").show();
         plot("normal", folder, "/resultNoDelay").show();

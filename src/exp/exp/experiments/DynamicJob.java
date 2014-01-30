@@ -30,7 +30,7 @@ public class DynamicJob {
 
         try {
             JobSpecification job = DynamicAggregationStressTest.createJob(did,
-                    nodes, null, null, disableSwapping);
+                    nodes, null, null, disableSwapping, false);
             JobId jobId = hcc.startJob(did, job, EnumSet.noneOf(JobFlag.class));
             hcc.waitForCompletion(jobId);
             Rt.p("finished");
@@ -47,6 +47,6 @@ public class DynamicJob {
             args = new String[] { "192.168.56.102" };
         //        args = new String[] { "localhost" };
         //connect to hyracks
-        run(args[0],false);
+        run(args[0], false);
     }
 }

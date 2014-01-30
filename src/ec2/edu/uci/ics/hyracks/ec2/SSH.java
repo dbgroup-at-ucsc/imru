@@ -164,11 +164,12 @@ public class SSH implements Runnable {
     public long lastOutputTime = 0;
     public long maxFreezeTime = 0;
 
-    public synchronized String execute(String cmd) {
+    public synchronized String execute(String cmd) throws IOException {
         return execute(cmd, false);
     }
 
-    public synchronized String execute(String cmd, boolean needInput) {
+    public synchronized String execute(String cmd, boolean needInput)
+            throws IOException {
         result = null;
         if (needInput)
             input = new StringBuilder();
@@ -176,7 +177,7 @@ public class SSH implements Runnable {
             input = null;
         this.cmd = cmd;
         long start = System.currentTimeMillis();
-        lastOutputTime=System.currentTimeMillis();
+        lastOutputTime = System.currentTimeMillis();
         while (result == null) {
             Rt.sleep(50);
             if (timeout > 0) {
@@ -186,10 +187,11 @@ public class SSH implements Runnable {
                     throw new Error("timeout");
                 }
             }
-            if (maxFreezeTime>0&&System.currentTimeMillis() > lastOutputTime
-                    + maxFreezeTime) {
+            if (maxFreezeTime > 0
+                    && System.currentTimeMillis() > lastOutputTime
+                            + maxFreezeTime) {
                 Rt.p(new Date(lastOutputTime));
-                throw new Error("timeout "+cmd);
+                throw new IOException("timeout " + cmd);
             }
         }
         // R.np("["+cmd+"] finished");

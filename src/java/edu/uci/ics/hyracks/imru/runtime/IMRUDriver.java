@@ -40,6 +40,7 @@ import edu.uci.ics.hyracks.api.job.JobSpecification;
 import edu.uci.ics.hyracks.api.job.JobStatus;
 import edu.uci.ics.hyracks.imru.api.IIMRUDataGenerator;
 import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
+import edu.uci.ics.hyracks.imru.api.ImruOptions;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
@@ -55,6 +56,7 @@ import edu.uci.ics.hyracks.imru.util.Rt;
  *            The class used to represent the global model that is
  *            persisted between iterations.
  * @author Josh Rosen
+ * @author Rui Wang
  */
 public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
     private final static Logger LOGGER = Logger.getLogger(IMRUDriver.class
@@ -70,11 +72,12 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
     public boolean dynamicAggr;
 
     private int iterationCount;
-    public boolean memCache = false;
-    public boolean noDiskCache = false;
-    public int frameSize;
-    public String modelFileName;
-    public String localIntermediateModelPath;
+    public ImruOptions options;
+    //    public boolean memCache = false;
+    //    public boolean noDiskCache = false;
+    //    public int frameSize;
+    //    public String modelFileName;
+    //    public String localIntermediateModelPath;
     ImruIterInfo iterationInfo = null;
 
     /**
@@ -98,7 +101,8 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
      */
     public IMRUDriver(HyracksConnection hcc, DeploymentId deploymentId,
             IMRUConnection imruConnection, ImruStream<Model, Data> imruSpec,
-            Model initialModel, IMRUJobFactory jobFactory, Configuration conf) {
+            Model initialModel, IMRUJobFactory jobFactory, Configuration conf,
+            ImruOptions options) {
         this.imruSpec = imruSpec;
         this.model = initialModel;
         this.hcc = hcc;
@@ -106,14 +110,15 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
         this.imruConnection = imruConnection;
         this.jobFactory = jobFactory;
         this.conf = conf;
+        this.options = options;
         id = jobFactory.getId();
         iterationCount = 0;
     }
 
     public String getModelName() {
         String s;
-        if (modelFileName != null)
-            s = modelFileName;
+        if (options.modelFileNameHDFS != null)
+            s = options.modelFileNameHDFS;
         else
             s = "IMRU-" + id;
         s = s.replaceAll(Pattern.quote("${NODE_ID}"), "CC");
@@ -136,14 +141,15 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
 
         // For the first round, the initial model is written by the
         // driver.
-        if (localIntermediateModelPath != null)
-            writeModelToFile(model, new File(localIntermediateModelPath,
-                    getModelName() + "-iter" + 0));
+        if (options.localIntermediateModelPath != null)
+            writeModelToFile(model, new File(
+                    options.localIntermediateModelPath, getModelName()
+                            + "-iter" + 0));
 
         imruConnection.uploadModel(this.getModelName(), model);
 
         // Data load
-        if (!noDiskCache || jobFactory.confFactory.useHDFS()) {
+        if (!options.noDiskCache || jobFactory.confFactory.useHDFS()) {
             LOGGER.info("Starting data load");
             long loadStart = System.currentTimeMillis();
             JobStatus status = runDataLoad();
@@ -182,9 +188,10 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
             iterationInfo.printReport();
             if (model == null)
                 throw new Exception("Can't download model");
-            if (localIntermediateModelPath != null)
-                writeModelToFile(model, new File(localIntermediateModelPath,
-                        getModelName() + "-iter" + iterationCount));
+            if (options.localIntermediateModelPath != null)
+                writeModelToFile(model, new File(
+                        options.localIntermediateModelPath, getModelName()
+                                + "-iter" + iterationCount));
 
             // TODO: clean up temporary files
         } while (!imruSpec.shouldTerminate(model, iterationInfo));
@@ -220,7 +227,7 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
      */
     private JobStatus runDataLoad() throws Exception {
         JobSpecification job = jobFactory.generateDataLoadJob(imruSpec,
-                memCache);
+                options.memCache);
         //                byte[] bs=JavaSerializationUtils.serialize(job);
         //                Rt.p("Dataload job size: "+bs.length);
         JobId jobId = hcc.startJob(deploymentId, job, EnumSet
@@ -276,10 +283,10 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
 
         int rerunCount = 0;
         JobSpecification job = jobFactory.generateJob(imruSpec, deploymentId,
-                iterationNum, -1, rerunCount, modelName, noDiskCache);
+                iterationNum, -1, rerunCount, modelName, options.noDiskCache);
         job.setMaxReattempts(0); //Let IMRU handle fault tolerance
-        if (frameSize != 0)
-            job.setFrameSize(frameSize);
+        if (options.frameSize != 0)
+            job.setFrameSize(options.frameSize);
         LOGGER.info("job frame size " + job.getFrameSize());
         //                byte[] bs=JavaSerializationUtils.serialize(job);
         //              Rt.p("IMRU job size: "+bs.length);
@@ -316,7 +323,7 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
                         rerunCount++;
                         job = jobFactory.generateJob(imruSpec, deploymentId,
                                 iterationNum, -1, rerunCount, modelName,
-                                noDiskCache);
+                                options.noDiskCache);
                         continue rerun;
                     }
                 }
@@ -375,8 +382,8 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
                     deploymentId, iterationNum, 0, finishedRecoveryIteration,
                     modelName, true);
             job.setMaxReattempts(0); //Let IMRU handle fault tolerance
-            if (frameSize != 0)
-                job.setFrameSize(frameSize);
+            if (options.frameSize != 0)
+                job.setFrameSize(options.frameSize);
             JobId jobId = null;
             boolean failed = false;
             try {

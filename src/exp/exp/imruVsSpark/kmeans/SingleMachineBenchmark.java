@@ -29,6 +29,7 @@ public class SingleMachineBenchmark {
         //            plot.vs.get(i).set(0, plot.vs.get(i).get(0) / 100000);
         plot.finish();
         System.exit(0);
+        int numOfDimensions = 1000000;
         for (int points = 100000; points <= 1000000; points += 100000) {
             long start = System.currentTimeMillis();
             DataGenerator.main(args);
@@ -39,21 +40,24 @@ public class SingleMachineBenchmark {
             long bareTime = System.currentTimeMillis() - start;
 
             start = System.currentTimeMillis();
-            IMRUKMeans.run(true, false, k, iterations, points, 0);
+            IMRUKMeans.run(true, false, k, iterations, points, numOfDimensions,
+                    0);
             long imruMemTime = System.currentTimeMillis() - start;
 
             start = System.currentTimeMillis();
-            IMRUKMeans.run(false, true, k, iterations, points, 0);
+            IMRUKMeans.run(false, true, k, iterations, points, numOfDimensions,
+                    0);
             long imruParseTime = System.currentTimeMillis() - start;
 
             start = System.currentTimeMillis();
-            IMRUKMeans.run(false, false, k, iterations, points, 0);
+            IMRUKMeans.run(false, false, k, iterations, points,
+                    numOfDimensions, 0);
             long imruDiskTime = System.currentTimeMillis() - start;
 
             start = System.currentTimeMillis();
             String host = "192.168.56.101";
             host = "10.243.74.41";
-            SparkKMeans.run(host, points, "/data/b/soft/spark-0.7.0",
+            SparkKMeans.run(host, points, numOfDimensions,"/data/b/soft/spark-0.7.0",
                     "/data/b/data/imru/productName.txt", 1, k, iterations);
             long sparkTime = System.currentTimeMillis() - start;
 

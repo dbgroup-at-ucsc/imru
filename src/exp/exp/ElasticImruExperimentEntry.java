@@ -2,12 +2,7 @@ package exp;
 
 import java.io.File;
 
-import org.kohsuke.args4j.CmdLineParser;
-import org.kohsuke.args4j.Option;
-
 import edu.uci.ics.hyracks.api.util.JavaSerializationUtils;
-import edu.uci.ics.hyracks.imru.example.utils.Client;
-import edu.uci.ics.hyracks.imru.example.utils.Client.Options;
 import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.imruVsSpark.data.DataGenerator;
 import exp.imruVsSpark.kmeans.SKMeansModel;
@@ -19,8 +14,10 @@ import exp.test0.GnuPlot;
 import exp.types.ImruExpParameters;
 
 public class ElasticImruExperimentEntry {
-    public static String getDataPath(int sizePerNode, int nodeCount) {
-        return "/data/size" + sizePerNode + "/nodes" + nodeCount + "/data.txt";
+    public static String getDataPath(int batchSize, int batchesPerNode,
+            int nodeCount, int dims) {
+        return "/data/batch" + batchSize + "/" + batchesPerNode + "/nodes"
+                + nodeCount + "/dims" + dims + ".txt";
     }
 
     public static void exp(ImruExpParameters p) throws Exception {
@@ -50,17 +47,18 @@ public class ElasticImruExperimentEntry {
         {
             File templateDir = new File(DataGenerator.TEMPLATE);
             final DataGenerator dataGenerator = new DataGenerator(maxDataSize
-                    * p.nodeCount, templateDir);
+                    * p.nodeCount, p.numOfDimensions, templateDir);
             final SKMeansModel model = new SKMeansModel(p.k, dataGenerator, 20);
             byte[] bs = JavaSerializationUtils.serialize(model);
             Rt.p("Max model size: %,d", bs.length);
         }
         for (int sizePerNode = p.batchStart; sizePerNode <= p.batchEnd; sizePerNode += p.batchStep) {
             int pointPerNode = sizePerNode * p.batchSize;
-            int dataSize = pointPerNode * p.nodeCount;
+            p.dataSize = pointPerNode * p.nodeCount;
 
             long start = System.currentTimeMillis();
-            p.path = getDataPath(sizePerNode, p.nodeCount);
+            p.path = getDataPath(p.batchSize, sizePerNode, p.nodeCount,
+                    p.numOfDimensions);
             //            Rt.p("generating data");
             //            DataGenerator.main(new String[] { "/home/ubuntu/test/data.txt" });
             //            IMRUKMeans.generateData(master, pointPerNode,
@@ -111,11 +109,13 @@ public class ElasticImruExperimentEntry {
             } else if ("spark".equals(p.method)) {
                 Rt.p("running spark " + sizePerNode);
                 start = System.currentTimeMillis();
-                String path = getDataPath(sizePerNode, p.nodeCount);
+                String path = getDataPath(p.batchSize, sizePerNode,
+                        p.nodeCount, p.numOfDimensions);
                 int processed = -1;
                 if ("kmeans".equals(p.experiment))
-                    processed = SparkKMeans.run(p.master, dataSize, "/home/"
-                            + user + "/spark-0.8.0-incubating", path,
+                    processed = SparkKMeans.run(p.master, p.dataSize,
+                            p.numOfDimensions, "/home/" + user
+                                    + "/spark-0.8.0-incubating", path,
                             p.nodeCount, p.k, p.iterations);
                 else
                     throw new Error(p.experiment);
@@ -127,11 +127,13 @@ public class ElasticImruExperimentEntry {
             } else if ("stratosphere".equals(p.method)) {
                 Rt.p("running stratosphere " + sizePerNode);
                 start = System.currentTimeMillis();
-                String path = getDataPath(sizePerNode, p.nodeCount);
+                String path = getDataPath(p.batchSize, sizePerNode,
+                        p.nodeCount, p.numOfDimensions);
                 int processed = -1;
                 if ("kmeans".equals(p.experiment))
-                    processed = StratosphereKMeans.run(p.master, dataSize,
-                            "/home/" + user + "/spark-0.8.0-incubating", path,
+                    processed = StratosphereKMeans.run(p.master, p.dataSize,
+                            p.numOfDimensions, "/home/" + user
+                                    + "/spark-0.8.0-incubating", path,
                             p.nodeCount, p.k, p.iterations);
                 else
                     throw new Error(p.experiment);
@@ -148,51 +150,57 @@ public class ElasticImruExperimentEntry {
         System.exit(0);
     }
 
-    public static class Options {
-        @Option(name = "-method", required = true)
-        public String method;
-        @Option(name = "-experiment", required = true)
-        public String experiment;
-        @Option(name = "-master", required = true)
-        public String master;
-        @Option(name = "-nodeCount", required = true)
-        public int nodeCount;
-        @Option(name = "-k", required = true)
-        public int k;
-        @Option(name = "-iterations", required = true)
-        public int iterations;
-        @Option(name = "-batchStart", required = true)
-        public int batchStart;
-        @Option(name = "-batchEnd", required = true)
-        public int batchEnd;
-        @Option(name = "-batchStep", required = true)
-        public int batchStep;
-        @Option(name = "-batchSize", required = true)
-        public int batchSize;
-        @Option(name = "-agg-tree-type", usage = "The aggregation tree type (none, nary, or generic)")
-        public String aggTreeType;
-        @Option(name = "-agg-count", usage = "The number of aggregators to use, if using an aggregation tree")
-        public int aggCount = -1;
-        @Option(name = "-fan-in", usage = "The fan-in, if using an nary aggregation tree")
-        public int fanIn = -1;
-        @Option(name = "-dynamic")
-        public boolean dynamic;
-        @Option(name = "-dynamic-disable")
-        public boolean dynamicDisable;
-        @Option(name = "-dynamic-debug")
-        public boolean dynamicDebug;
-        @Option(name = "-straggler")
-        public int straggler;
-    }
+    //    public static class Options {
+    //        @Option(name = "-method", required = true)
+    //        public String method;
+    //        @Option(name = "-experiment", required = true)
+    //        public String experiment;
+    //        @Option(name = "-master", required = true)
+    //        public String master;
+    //        @Option(name = "-nodeCount", required = true)
+    //        public int nodeCount;
+    //        @Option(name = "-k", required = true)
+    //        public int k;
+    //        @Option(name = "-iterations", required = true)
+    //        public int iterations;
+    //        @Option(name = "-batchStart", required = true)
+    //        public int batchStart;
+    //        @Option(name = "-batchEnd", required = true)
+    //        public int batchEnd;
+    //        @Option(name = "-batchStep", required = true)
+    //        public int batchStep;
+    //        @Option(name = "-batchSize", required = true)
+    //        public int batchSize;
+    //        @Option(name = "-dims", required = true)
+    //        public int numOfDimensions;
+    //        @Option(name = "-agg-tree-type", usage = "The aggregation tree type (none, nary, or generic)")
+    //        public String aggTreeType;
+    //        @Option(name = "-agg-count", usage = "The number of aggregators to use, if using an aggregation tree")
+    //        public int aggCount = -1;
+    //        @Option(name = "-fan-in", usage = "The fan-in, if using an nary aggregation tree")
+    //        public int fanIn = -1;
+    //        @Option(name = "-dynamic")
+    //        public boolean dynamic;
+    //        @Option(name = "-dynamic-disable")
+    //        public boolean dynamicDisable;
+    //        @Option(name = "-dynamic-debug")
+    //        public boolean dynamicDebug;
+    //        @Option(name = "-straggler")
+    //        public int straggler;
+    //    }
 
     public static void main(String[] args) throws Exception {
         if (args.length == 0) {
-            args = "-master 192.168.56.104 -nodeCount 2 -type imruMem -k 6 -iterations 1 -batchStart 1 -batchStep 3 -batchEnd 1 -batchSize 100000 -agg-tree-type nary -agg-count 2 -fan-in 2"
-                    .split(" ");
+            //            args = "-master 192.168.56.104 -nodeCount 2 -type imruMem -k 6 -iterations 1 -batchStart 1 -batchStep 3 -batchEnd 1 -batchSize 100000 -agg-tree-type nary -agg-count 2 -fan-in 2"
+            //                    .split(" ");
+            throw new Error();
         }
-        Options options = new Options();
-        CmdLineParser parser = new CmdLineParser(options);
-        parser.parseArgument(args);
-        exp(new ImruExpParameters(options));
+        //        Options options = new Options();
+        //        CmdLineParser parser = new CmdLineParser(options);
+        //        parser.parseArgument(args);
+        ImruExpParameters p = ImruExpParameters.load(new File(args[0]));
+        if (p.numOfDimensions < 0)
+            throw new Error();
+        exp(p);
     }
 }

@@ -39,9 +39,17 @@ public class SparseVector implements Serializable, Value {
         String[] ss = p.split(line);
         keys = new int[ss.length - 1];
         values = new float[ss.length - 1];
+        if (ss[0].length() > 1) {
+            //invalid data due to splitting            
+            keys = new int[0];
+            values = new float[0];
+            return;
+        }
         positive = "1".equals(ss[0]);
         for (int i = 1; i < ss.length; i++) {
             String[] kv = p2.split(ss[i]);
+            if (kv.length < 2)
+                break;
             keys[i - 1] = Integer.parseInt(kv[0]);
             values[i - 1] = Float.parseFloat(kv[1]);
         }

@@ -4,6 +4,8 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -43,14 +45,26 @@ public class IMRUSerialize {
         return bout.toByteArray();
     }
 
-    //    public static Object deserialize(byte[] bs) throws Exception {
-    //        ByteArrayInputStream in = new ByteArrayInputStream(bs);
-    //        ObjectInputStream objIn = new ObjectInputStream(in);
-    //        Object obj = objIn.readObject();
-    //        objIn.close();
-    //        in.close();
-    //        return obj;
-    //    }
+    public static byte[] serialize(Serializable object) {
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            ObjectOutputStream ois = new ObjectOutputStream(out);
+            ois.writeObject(object);
+            return out.toByteArray();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static Object deserialize(byte[] bs) throws Exception {
+        ByteArrayInputStream in = new ByteArrayInputStream(bs);
+        ObjectInputStream objIn = new ObjectInputStream(in);
+        Object obj = objIn.readObject();
+        objIn.close();
+        in.close();
+        return obj;
+    }
 
     @SuppressWarnings("unchecked")
     public static byte[] deserializeFromChunks(IMRUContext ctx,

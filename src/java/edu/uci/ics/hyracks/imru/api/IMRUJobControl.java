@@ -39,13 +39,12 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
     public ConfigurationFactory confFactory;
     public IMRUJobFactory jobFactory;
     IMRUDriver<Model, Data> driver;
-    public String localIntermediateModelPath;
-    public String modelFileName;
-    public boolean dynamicAggr = false;
-    public boolean memCache = false;
-    public boolean noDiskCache = false;
-    public int frameSize;
+    ImruOptions options;
     public ImruParameters parameters = new ImruParameters();
+
+    public IMRUJobControl(ImruOptions options) {
+        this.options = options;
+    }
 
     public void connect(String ccHost, int ccPort, int imruPort,
             String hadoopConfPath, String clusterConfPath) throws Exception {
@@ -72,13 +71,14 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
             long minSplitSize, long maxSplitSize) throws HyracksDataException,
             InterruptedException {
         return IMRUInputSplitProvider.getInputSplits(inputPaths, confFactory,
-                numSplits,minSplitSize, maxSplitSize);
+                numSplits, minSplitSize, maxSplitSize);
     }
 
     public void selectNoAggregation(HDFSSplit[] splits) throws IOException,
             InterruptedException {
         jobFactory = new IMRUJobFactory(imruConnection, splits, confFactory,
-                IMRUJobFactory.AGGREGATION.NONE, 0, 0, parameters, dynamicAggr);
+                IMRUJobFactory.AGGREGATION.NONE, 0, 0, parameters,
+                options.dynamicAggr);
     }
 
     public void selectGenericAggregation(HDFSSplit[] splits, int aggCount)
@@ -88,7 +88,7 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
                     "Must specify a nonnegative aggregator count using the -agg-count option");
         jobFactory = new IMRUJobFactory(imruConnection, splits, confFactory,
                 IMRUJobFactory.AGGREGATION.GENERIC, 0, aggCount, parameters,
-                dynamicAggr);
+                options.dynamicAggr);
     }
 
     public void selectNAryAggregation(HDFSSplit[] splits, int fanIn)
@@ -99,7 +99,7 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
         }
         jobFactory = new IMRUJobFactory(imruConnection, splits, confFactory,
                 IMRUJobFactory.AGGREGATION.NARY, fanIn, 0, parameters,
-                dynamicAggr);
+                options.dynamicAggr);
     }
 
     /**
@@ -116,24 +116,15 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
         //        Model initialModel = job2.initModel();
         driver = new IMRUDriver<Model, Data>(hcc, deploymentId, imruConnection,
                 job2, initialModel, jobFactory, confFactory
-                        .createConfiguration());
-        driver.memCache = memCache;
-        driver.noDiskCache = noDiskCache;
-        driver.modelFileName = modelFileName;
-        driver.frameSize = frameSize;
-        driver.localIntermediateModelPath = localIntermediateModelPath;
+                        .createConfiguration(), options);
         return driver.run();
     }
 
     public JobStatus generateData(DeploymentId deploymentId,
             IIMRUDataGenerator generator) throws Exception {
         driver = new IMRUDriver<Model, Data>(hcc, deploymentId, imruConnection,
-                null, null, jobFactory, confFactory.createConfiguration());
-        driver.dynamicAggr = dynamicAggr;
-        driver.memCache = memCache;
-        driver.noDiskCache = noDiskCache;
-        driver.modelFileName = modelFileName;
-        driver.localIntermediateModelPath = localIntermediateModelPath;
+                null, null, jobFactory, confFactory.createConfiguration(),
+                options);
         return driver.runDataGenerator(generator);
     }
 

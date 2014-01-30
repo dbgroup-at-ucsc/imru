@@ -16,25 +16,30 @@ public class DataGenerator {
     public static String TEMPLATE = "exp_data/product_name";
     public File templateDir;
     public double numOfDataPoints;
-    public int dims;
+    public int numOfDims;
     public Distribution dims_distribution;
     public Distribution value_distribution;
     Random random = new Random(1000);
 
-    public DataGenerator(double numOfDataPoints, File templateDir)
+    public DataGenerator(double numOfDataPoints, int numOfDims, File templateDir)
             throws Exception {
         this.numOfDataPoints = numOfDataPoints;
         this.templateDir = templateDir;
-        String formula = Rt.readFile(new File(templateDir, "dimensions.txt"));
-        ScriptEngineManager manager = new ScriptEngineManager();
-        com.sun.script.javascript.RhinoScriptEngine engine = (com.sun.script.javascript.RhinoScriptEngine) manager
-                .getEngineByName("JavaScript");
-        CompiledScript cs = engine.compile("var x=" + numOfDataPoints
-                / 1000000.0 + ";" + formula);
-        dims = (int) ((Double) cs.eval() * 1000000.0);
-        if (dims < 1000000)
-            dims = 1000000;
-        Rt.p("%,d", dims);
+        if (false) {
+            // Automatic estimate the number of dimensions based on data size
+            String formula = Rt
+                    .readFile(new File(templateDir, "dimensions.txt"));
+            ScriptEngineManager manager = new ScriptEngineManager();
+            com.sun.script.javascript.RhinoScriptEngine engine = (com.sun.script.javascript.RhinoScriptEngine) manager
+                    .getEngineByName("JavaScript");
+            CompiledScript cs = engine.compile("var x=" + numOfDataPoints
+                    / 1000000.0 + ";" + formula);
+            numOfDims = (int) ((Double) cs.eval() * 1000000.0);
+            if (numOfDims < 1000000)
+                numOfDims = 1000000;
+            Rt.p("%,d", numOfDims);
+        }
+        this.numOfDims = numOfDims;
         dims_distribution = new Distribution(random, new File(templateDir,
                 "non-empty-dims.txt"));
         value_distribution = new Distribution(random, new File(templateDir,
@@ -56,7 +61,7 @@ public class DataGenerator {
             for (int j = 0; j < numOfDims; j++) {
                 if (j > 0)
                     ps.print(" ");
-                ps.print((long) (random.nextDouble() * dims));
+                ps.print((long) (random.nextDouble() * numOfDims));
                 ps.print(":");
                 ps.print(value_distribution.get());
             }
@@ -67,15 +72,15 @@ public class DataGenerator {
 
     public void generate(boolean hasLabel, int n, PrintStream ps, File infoFile)
             throws Exception {
-        int numOfDims = dims_distribution.get();
         for (int i = 0; i < n; i++) {
+            int numOfDims = dims_distribution.get();
             StringBuilder sb = new StringBuilder();
             if (hasLabel)
                 sb.append(random.nextBoolean() ? 1 : 0 + " ");
             for (int j = 0; j < numOfDims; j++) {
                 if (j > 0)
                     sb.append(" ");
-                sb.append((long) (random.nextDouble() * dims));
+                sb.append((long) (random.nextDouble() * numOfDims));
                 sb.append(":");
                 sb.append(value_distribution.get());
             }
@@ -86,8 +91,9 @@ public class DataGenerator {
 
     public static void main(String[] args) throws Exception {
         int dataPoints = 1000000;
-        DataGenerator d = new DataGenerator(dataPoints, new File(
-                "exp_data/product_name"));
+        int numOfDimensions = 1000000;
+        DataGenerator d = new DataGenerator(dataPoints, numOfDimensions,
+                new File("exp_data/product_name"));
 
         long start = System.currentTimeMillis();
         if (args.length > 0)

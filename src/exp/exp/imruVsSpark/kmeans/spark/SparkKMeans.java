@@ -26,13 +26,13 @@ import exp.types.FilledVectors;
 import exp.types.SparseVector;
 
 public class SparkKMeans {
-    public static int run(String host, int dataSize, String sparkPath,
-            String dataPath, int nodeCount, final int k, int iterations)
-            throws Exception {
+    public static int run(String host, int dataSize, int numOfDimensions,
+            String sparkPath, String dataPath, int nodeCount, final int k,
+            int iterations) throws Exception {
         {
             File templateDir = new File(DataGenerator.TEMPLATE);
             final DataGenerator dataGenerator = new DataGenerator(dataSize
-                    * nodeCount, templateDir);
+                    * nodeCount, numOfDimensions, templateDir);
             final SKMeansModel model = new SKMeansModel(k, dataGenerator, 20);
             byte[] bs = JavaSerializationUtils.serialize(model);
             Rt.p("Model size: %,d", bs.length);
@@ -50,8 +50,8 @@ public class SparkKMeans {
         System.setProperty("SPARK_LOCAL_IP", host);
         File templateDir = new File(DataGenerator.TEMPLATE);
         final DataGenerator dataGenerator = new DataGenerator(dataSize,
-                templateDir);
-        final int dimensions = dataGenerator.dims;
+                numOfDimensions, templateDir);
+        final int dimensions = dataGenerator.numOfDims;
         final SKMeansModel model = new SKMeansModel(k, dataGenerator, 20);
 
         ByteArrayOutputStream memory = new ByteArrayOutputStream();
@@ -122,7 +122,7 @@ public class SparkKMeans {
     public static void main(String[] args) throws Exception {
         String host = "192.168.56.101";
         host = "wrvm";
-        run(host, 1000000, "/data/b/soft/spark-0.8.0-incubating",
+        run(host, 1000000, 1000000, "/data/b/soft/spark-0.8.0-incubating",
                 "/data/b/data/imru/productName.txt", 1, 3, 5);
         System.exit(0);
     }

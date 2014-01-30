@@ -292,9 +292,14 @@ public class HyracksCluster {
         }
     }
 
+    public HyracksNode getNode(int id) {
+        return nodeIdHash.get(id);
+    }
+
     public void printLogs(int id, final int lines) throws Exception {
         if (id < 0) {
-            System.out.println("----------------------------------------------");
+            System.out
+                    .println("----------------------------------------------");
             controller.printLogs(lines);
             final Object sync = new Object();
             executeOnAllNode(new NodeCallback() {
@@ -306,8 +311,11 @@ public class HyracksCluster {
                         String result = ssh.execute("tail -n " + lines
                                 + " /tmp/t2/logs/" + node.name + ".log", true);
                         synchronized (sync) {
-                            System.out.println("----------------------------------------------");
-                            Rt.p(node.name + " log: %s", result);
+                            System.out
+                                    .println("----------------------------------------------");
+                            Rt.p(
+                                    node.name + " " + node.internalIp
+                                            + " log: %s", result);
                         }
                     } finally {
                         ssh.close();

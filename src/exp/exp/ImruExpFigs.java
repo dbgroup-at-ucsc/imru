@@ -1,4 +1,4 @@
-package exp.experiments;
+package exp;
 
 import java.io.File;
 import java.io.IOException;
@@ -6,36 +6,46 @@ import java.util.Hashtable;
 
 import edu.uci.ics.hyracks.api.util.JavaSerializationUtils;
 import edu.uci.ics.hyracks.imru.util.Rt;
+import exp.experiments.DataPointsPerNode;
+import exp.experiments.FanInAndK;
+import exp.experiments.ModelSize;
+import exp.experiments.NumberOfNodes;
 import exp.imruVsSpark.data.DataGenerator;
 import exp.test0.GnuPlot;
+import exp.types.ImruExpParameters;
 
-public class KmeansFigs extends Hashtable<String, Double> {
+public class ImruExpFigs extends Hashtable<String, Double> {
     public static File figsDir = new File("result");
     public static int ITERATIONS = 5;
     public String name;
-    public int memory;
-    public String core;
-    public int nodeCount;
-    public int k, iterations, begin, step, end, batch;
+    public ImruExpParameters p;
 
-    public KmeansFigs(File resultDir) throws IOException {
+    //    public int memory;
+    //    public String core;
+    //    public int nodeCount;
+    //    public int k, iterations, begin, step, end, batch,dims;
+
+    public ImruExpFigs(File resultDir) throws Exception {
+        ImruExpParameters p = ImruExpParameters.load(new File(resultDir,
+                "parameters.obj"));
         name = resultDir.getName();
         Rt.p("reading " + resultDir);
-        memory = Integer.parseInt(name.substring(5, name.indexOf("M")));
-        core = name.substring(name.indexOf("M") + 1, name.indexOf("core"));
-        nodeCount = Integer.parseInt(name.substring(name.lastIndexOf("_", name
-                .lastIndexOf("nodes")) + 1, name.lastIndexOf("nodes")));
-        {
-            String s = resultDir.getParentFile().getName();
-            String[] ss = s.split("[kibse]");
-            int pos = 1;
-            k = Integer.parseInt(ss[pos++]);
-            iterations = Integer.parseInt(ss[pos++]);
-            begin = Integer.parseInt(ss[pos++]);
-            step = Integer.parseInt(ss[pos++]);
-            end = Integer.parseInt(ss[pos++]);
-            batch = Integer.parseInt(ss[pos++]);
-        }
+        //        memory = Integer.parseInt(name.substring(5, name.indexOf("M")));
+        //        core = name.substring(name.indexOf("M") + 1, name.indexOf("core"));
+        //        nodeCount = Integer.parseInt(name.substring(name.lastIndexOf("_", name
+        //                .lastIndexOf("nodes")) + 1, name.lastIndexOf("nodes")));
+        //        {
+        //            String s = resultDir.getParentFile().getName();
+        //            String[] ss = s.split("[kibsed]");
+        //            int pos = 1;
+        //            k = Integer.parseInt(ss[pos++]);
+        //            iterations = Integer.parseInt(ss[pos++]);
+        //            begin = Integer.parseInt(ss[pos++]);
+        //            step = Integer.parseInt(ss[pos++]);
+        //            end = Integer.parseInt(ss[pos++]);
+        //            batch = Integer.parseInt(ss[pos++]);
+        //            dims = Integer.parseInt(ss[pos++]);
+        //        }
         //        String[] data = Rt.readFile(new File(resultDir, "generateTime.txt"))
         //                .split("\n");
         File imruDiskFile = new File(resultDir, "imruDisk.txt");
@@ -89,7 +99,7 @@ public class KmeansFigs extends Hashtable<String, Double> {
                 double sparkTime = Double.parseDouble(ss2[1]);
                 if (!ss2[2].equals(processed[i]))
                     //                    throw new Error();
-                    Rt.p(k + " " + name + " " + ss2[2] + " " + processed[i]);
+                    Rt.p(p.k + " " + name + " " + ss2[2] + " " + processed[i]);
                 else
                     this.put("spark" + dataSizeInt, sparkTime);
 
@@ -109,19 +119,19 @@ public class KmeansFigs extends Hashtable<String, Double> {
     public static void mem() throws Exception {
         GnuPlot plot = new GnuPlot(new File("/tmp/cache"), "kmeans1m",
                 "Memory per node (MB)", "Time (seconds)");
-        KmeansFigs f = new KmeansFigs(new File(
+        ImruExpFigs f = new ImruExpFigs(new File(
                 "result/k3i5b1s3e10b100000/local1500M0.5core_8nodes"));
-        plot.extra = "set title \"K-means" + " 10^6 *" + f.nodeCount
-                + " data points\\n K=" + f.k + " Iteration=" + f.iterations
-                + " cpu=" + f.core + "core/node*" + f.nodeCount + "node \"";
+        plot.extra = "set title \"K-means" + " 10^6 *" + f.p.nodeCount
+                + " data points\\n K=" + f.p.k + " Iteration=" + f.p.iterations
+                + " cpu=" + f.p.cpu + "core/node*" + f.p.nodeCount + "node \"";
         plot.setPlotNames("Spark", "IMRU-disk", "IMRU-mem");
         plot.startPointType = 1;
         plot.pointSize = 1;
         plot.scale = false;
         plot.colored = true;
         for (int mem = 1500; mem <= 3000; mem += 500) {
-            f = new KmeansFigs(new File("result/k3i5b1s3e10b100000/local" + mem
-                    + "M0.5core_8nodes"));
+            f = new ImruExpFigs(new File("result/k3i5b1s3e10b100000/local"
+                    + mem + "M0.5core_8nodes"));
             plot.startNewX(mem);
             plot.addY(f.get("spark10"));
             plot.addY(f.get("imruDisk10"));
@@ -134,12 +144,12 @@ public class KmeansFigs extends Hashtable<String, Double> {
     public static void network() throws Exception {
         GnuPlot plot = new GnuPlot(new File("/tmp/cache"), "kmeansNetwork",
                 "Network Speed (MB/s)", "Time (seconds)");
-        KmeansFigs f = new KmeansFigs(new File(
+        ImruExpFigs f = new ImruExpFigs(new File(
                 "result/k3i5b1s3e10b100000/local2000M0.5coreN1_8nodes"));
         plot.extra = "set title \"K-means" + " 10^6 points/node"
-                + " Iteration=" + f.iterations + "\\n cpu=" + f.core
-                + "core/node*" + f.nodeCount + " memory=" + f.memory
-                + "MB/node*" + f.nodeCount + " \"";
+                + " Iteration=" + f.p.iterations + "\\n cpu=" + f.p.cpu
+                + "core/node*" + f.p.nodeCount + " memory=" + f.p.memory
+                + "MB/node*" + f.p.nodeCount + " \"";
         plot.setPlotNames("Spark", "IMRU-disk", "IMRU-mem");
         plot.startPointType = 1;
         plot.pointSize = 1;
@@ -147,7 +157,7 @@ public class KmeansFigs extends Hashtable<String, Double> {
         plot.colored = true;
         int[] networkSpeed = { 1, 2, 5, 10, 100 };
         for (int network : networkSpeed) {
-            f = new KmeansFigs(new File(
+            f = new ImruExpFigs(new File(
                     "result/k3i5b1s3e10b100000/local2000M0.5coreN" + network
                             + "_8nodes"));
             plot.startNewX(network);

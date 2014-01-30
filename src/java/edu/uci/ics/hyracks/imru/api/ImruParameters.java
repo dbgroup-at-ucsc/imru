@@ -8,9 +8,4 @@ public class ImruParameters implements Serializable {
      * after finished the following iterations.
      */
     public int compressIntermediateResultsAfterNIterations = 10;
-
-    /**
-     * Dynamically swap aggregation nodes to increase performance
-     */
-    public boolean dynamicallySwapAggregationNodes = true;
 }

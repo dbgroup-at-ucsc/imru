@@ -77,14 +77,14 @@
 	<classpathentry kind="lib" path="lib/stratosphere/pact-runtime-0.4-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="lib/stratosphere/pact-scala-core-0.4-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="lib/stratosphere/pact-scala-examples-0.4-SNAPSHOT.jar"/>
-	<classpathentry kind="lib" path="dist/lib/hyracks-api-0.2.11-SNAPSHOT.jar" sourcepath="/home/wangrui/a/imru/hyracks10/hyracks/hyracks/hyracks-api/src/main"/>
+	<classpathentry kind="lib" path="dist/lib/hyracks-api-0.2.11-SNAPSHOT.jar" sourcepath="/home/wangrui/a/imru/hyracks10/hyracks/hyracks/hyracks-api/src/main/java"/>
 	<classpathentry kind="lib" path="dist/lib/hyracks-comm-0.2.11-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="dist/lib/hyracks-control-cc-0.2.11-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="dist/lib/hyracks-control-common-0.2.11-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="dist/lib/hyracks-control-nc-0.2.11-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="dist/lib/hyracks-data-std-0.2.11-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="dist/lib/hyracks-dataflow-common-0.2.11-SNAPSHOT.jar"/>
-	<classpathentry kind="lib" path="dist/lib/hyracks-dataflow-std-0.2.11-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="dist/lib/hyracks-dataflow-std-0.2.11-SNAPSHOT.jar" sourcepath="/home/wangrui/a/imru/hyracks10/hyracks/hyracks/hyracks-dataflow-std/src/main/java"/>
 	<classpathentry kind="lib" path="dist/lib/hyracks-ec2-0.2.11-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="dist/lib/hyracks-hdfs-0.20.2-0.2.11-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="dist/lib/hyracks-hdfs-core-0.2.11-SNAPSHOT.jar"/>

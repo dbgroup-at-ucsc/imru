@@ -1,6 +1,7 @@
 package edu.uci.ics.hyracks.ec2;
 
 import java.io.File;
+import java.io.IOException;
 
 public abstract class HyracksNode {
     public static String NAME_PREFIX = "NC";
@@ -177,6 +178,15 @@ public abstract class HyracksNode {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public String getLog(SSH ssh, boolean cc, int lines) throws IOException {
+        if (cc)
+            return ssh.execute("tail -n " + lines + " /tmp/t1/logs/cc.log",
+                    true);
+        else
+            return ssh.execute("tail -n " + lines + " /tmp/t2/logs/" + name
+                    + ".log", true);
     }
 
     public void printOutputs() throws Exception {

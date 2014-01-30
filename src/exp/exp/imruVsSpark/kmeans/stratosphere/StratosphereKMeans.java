@@ -214,12 +214,12 @@ public class StratosphereKMeans implements PlanAssembler,
         return "Parameters: <numSubStasks> <dataPoints> <clusterCenters> <output> <numIterations>";
     }
 
-    public static int run(String host, int dataSize, String sparkPath,
-            String dataPath, int nodeCount, final int k, int iterations)
-            throws Exception {
+    public static int run(String host, int dataSize, int numOfDimensions,
+            String sparkPath, String dataPath, int nodeCount, final int k,
+            int iterations) throws Exception {
         File templateDir = new File(DataGenerator.TEMPLATE);
         final DataGenerator dataGenerator = new DataGenerator(dataSize
-                * nodeCount, templateDir);
+                * nodeCount, numOfDimensions, templateDir);
 
         File tmpFile = new File("/tmp/stratosphere_tmp.txt");
         File resultFile = new File("/tmp/stratosphere_result.txt");
@@ -229,7 +229,7 @@ public class StratosphereKMeans implements PlanAssembler,
                 "file://" + new File(dataPath).getAbsolutePath(),//
                 "file://" + tmpFile.getAbsolutePath(),//
                 "file://" + resultFile.getAbsolutePath(),//
-                "" + iterations, "" + dataGenerator.dims, "" + k);
+                "" + iterations, "" + dataGenerator.numOfDims, "" + k);
         File tmpJar = new File("/tmp/stratosphere_kmeans.jar");
         CreateDeployment.createJar(new File("bin"), tmpJar);
         PlanExecutor ex = new RemoteExecutor(host, 6123, tmpJar

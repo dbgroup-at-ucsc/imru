@@ -20,9 +20,11 @@ import exp.types.SparseVector;
 public class ImruLRJob extends
         ImruObject<ImruLRModel, SparseVector, ImruLRGradient> {
     int dimensions;
+    int straggler;
 
-    public ImruLRJob(int dimensions) {
+    public ImruLRJob(int dimensions, int straggler) {
         this.dimensions = dimensions;
+        this.straggler = straggler;
     }
 
     @Override
@@ -47,6 +49,8 @@ public class ImruLRJob extends
             SparseVector data = input.next();
             data.addGradient(model.w, gradient);
         }
+        if (ctx.getPartition() == ctx.getPartitions() - 1)
+            Rt.sleep(straggler);
         return gradient;
     }
 

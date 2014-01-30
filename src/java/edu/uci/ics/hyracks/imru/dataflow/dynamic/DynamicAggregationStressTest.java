@@ -189,8 +189,8 @@ public class DynamicAggregationStressTest {
 
     public static JobSpecification createJob(DeploymentId deploymentId,
             String[] mapOperatorLocations, String modelName,
-            IMRUConnection imruConnection, boolean disableSwapping)
-            throws InterruptedException, IOException {
+            IMRUConnection imruConnection, boolean disableSwapping,
+            boolean debug) throws InterruptedException, IOException {
         final ImruObject<String, String, String> imruSpec = new Job();
         int[] targets = getAggregationTree(mapOperatorLocations.length, 2);
 
@@ -201,7 +201,7 @@ public class DynamicAggregationStressTest {
                 mapOperatorLocations);
         ImruSendOD send = new ImruSendOD(job, targets, imruSpec, "abc",
                 parameters, modelName, imruConnection, disableSwapping, 0,
-                false);
+                debug);
         //        job.connect(new MToNReplicatingConnectorDescriptor(job), reader, 0,
         //                send, 0);
         job.connect(new OneToOneConnectorDescriptor(job), reader, 0, send, 0);
@@ -276,7 +276,7 @@ public class DynamicAggregationStressTest {
         return nodes;
     }
 
-    public static void main(String[] args) throws Exception {
+    public static void stressTest() throws Exception {
         int nodeCount = 16;
         //        ImruSendOperator.debug = true;
         ImruSendOperator.debugNodeCount = nodeCount;
@@ -290,7 +290,7 @@ public class DynamicAggregationStressTest {
                     3288);
             for (int i = 0; i < 10; i++) {
                 JobSpecification job = createJob(did, nodes, "model",
-                        imruConnection, false);
+                        imruConnection, false, false);
                 JobId jobId = hcc.startJob(did, job, EnumSet
                         .noneOf(JobFlag.class));
                 new Thread() {
@@ -325,5 +325,63 @@ public class DynamicAggregationStressTest {
             Thread.sleep(1000);
             System.exit(0);
         }
+    }
+
+    public static void functionalTest() throws Exception {
+        int nodeCount = 16;
+        ImruSendOperator.debug = true;
+        ImruSendOperator.debugNodeCount = nodeCount;
+        start(nodeCount);
+        HyracksConnection hcc = new HyracksConnection("localhost", 3099);
+        //        DeploymentId did = CreateDeployment.uploadApp(hcc);
+        DeploymentId did = hcc.deployBinary(null);
+        String[] nodes = CreateDeployment.listNodes(hcc);
+        try {
+            IMRUConnection imruConnection = new IMRUConnection("localhost",
+                    3288);
+            JobSpecification job = createJob(did, nodes, "model",
+                    imruConnection, false, true);
+            JobId jobId = hcc.startJob(did, job, EnumSet.noneOf(JobFlag.class));
+            new Thread() {
+                public void run() {
+                    try {
+                        Thread.sleep(500);
+                        synchronized (sync) {
+                            sync.notifyAll();
+                        }
+                        while (true) {
+                            if (System.in.available() > 0) {
+                                while (System.in.available() > 0)
+                                    System.in.read();
+                                ImruSendOperator.printAggrTree();
+                            }
+                            Thread.sleep(500);
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                };
+            }.start();
+            hcc.waitForCompletion(jobId);
+            String s = (String) imruConnection.downloadModel("model");
+            Rt.p(s);
+            if (!s.startsWith(nodeCount + " "))
+                throw new Error();
+        } catch (Throwable e) {
+            e.printStackTrace();
+        } finally {
+            Thread.sleep(1000);
+            System.exit(0);
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        functionalTest();
+        String[] nodes = new String[8];
+        for (int i = 0; i < nodes.length; i++)
+            nodes[i] = "NC" + i;
+        IMRUConnection imruConnection = new IMRUConnection("localhost", 3288);
+        JobSpecification job = createJob(null, nodes, "model", imruConnection,
+                false, true);
     }
 }

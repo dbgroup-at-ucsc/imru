@@ -14,7 +14,7 @@ public class ImruLRMain {
         cmdline += "-host localhost -port 3099 -debug -disable-logging";
         cmdline += " -input-paths " + LR.datafile.getAbsolutePath();
         int dims = LR.generateDataFile();
-        ImruLRModel model = Client.run(new ImruLRJob(dims), new ImruLRModel(
+        ImruLRModel model = Client.run(new ImruLRJob(dims, 0), new ImruLRModel(
                 dims, LR.ITERATIONS), cmdline.split(" "));
         LR.verify(LR.loadData(LR.datafile), model.w);
     }
@@ -26,10 +26,11 @@ public class ImruLRMain {
             DataGenerator.TEMPLATE = "/home/wangrui/test/exp_data/product_name";
         System.out.println("Connecting to " + Client.getLocalIp());
         File templateDir = new File(DataGenerator.TEMPLATE);
-        DataGenerator dataGenerator = new DataGenerator(p.dataSize, templateDir);
-        int dims = dataGenerator.dims;
-        ImruLRModel model = Client.run(new ImruLRJob(dims), new ImruLRModel(
-                dims, LR.ITERATIONS), p.getClientOptions());
+        DataGenerator dataGenerator = new DataGenerator(p.dataSize,
+                p.numOfDimensions, templateDir);
+        int dims = dataGenerator.numOfDims + 1000;
+        ImruLRModel model = Client.run(new ImruLRJob(dims, p.straggler),
+                new ImruLRModel(dims, p.iterations), p.getClientOptions());
         Rt.p("Total examples: " + model.totalExamples);
         return model.totalExamples;
     }
