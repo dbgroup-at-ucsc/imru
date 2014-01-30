@@ -15,7 +15,7 @@
 
 package edu.uci.ics.hyracks.imru.example.bgd;
 
-import edu.uci.ics.hyracks.imru.example.utils.Client;
+import edu.uci.ics.hyracks.imru.util.Client;
 
 /**
  * Batch Gradient Descent example

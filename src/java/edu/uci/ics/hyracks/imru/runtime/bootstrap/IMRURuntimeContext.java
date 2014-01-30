@@ -17,6 +17,7 @@ package edu.uci.ics.hyracks.imru.runtime.bootstrap;
 
 import java.io.Serializable;
 import java.util.Hashtable;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,6 +32,7 @@ import edu.uci.ics.hyracks.api.io.IWorkspaceFileFactory;
 import edu.uci.ics.hyracks.api.resources.IDeallocatable;
 import edu.uci.ics.hyracks.control.nc.io.IOManager;
 import edu.uci.ics.hyracks.control.nc.resources.DefaultDeallocatableRegistry;
+import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 
 /**
  * Provides context that is shared between all operators in the IMRU
@@ -86,6 +88,11 @@ public class IMRURuntimeContext implements IWorkspaceFileFactory {
     public int rerunNum = 0;
 
     public Hashtable<String, Object> userObjects = new Hashtable<String, Object>();
+
+    /**
+     * Data partitions for dynamic mapping
+     */
+    public LinkedList<HDFSSplit> queue = new LinkedList<HDFSSplit>();
 
     public Map<StateKey, IStateObject> getAppStateStore() {
         return appStateMap;

@@ -62,6 +62,7 @@ public class HDFSSplit implements Serializable {
         }
     }
 
+    public int uuid = -1;
     ConfigurationFactory confFactory;
     String path;
     long startOffset;

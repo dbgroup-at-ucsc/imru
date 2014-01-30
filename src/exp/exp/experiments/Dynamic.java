@@ -66,9 +66,9 @@ public class Dynamic {
             p.aggArg = 2;
             int startK = 2;
             int endK = 14;
-            int startDims = 100000;
-            int stepDims = 300000;
-            int endDims = 1000000;
+            int startDims = 1000000;
+            int stepDims = 3000000;
+            int endDims = 10000000;
 
             if (lr) {
                 //for logistic regression

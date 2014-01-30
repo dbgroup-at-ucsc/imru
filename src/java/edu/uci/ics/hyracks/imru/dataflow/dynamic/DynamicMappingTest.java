@@ -11,8 +11,7 @@ import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
 import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruObject;
 import edu.uci.ics.hyracks.imru.api.ImruOptions;
-import edu.uci.ics.hyracks.imru.example.helloworld.HelloWorldJob;
-import edu.uci.ics.hyracks.imru.example.utils.Client;
+import edu.uci.ics.hyracks.imru.util.Client;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class DynamicMappingTest {
@@ -119,7 +118,7 @@ public class DynamicMappingTest {
             option.frameSize = 256;
             option.inputPaths = "data/kmeans/kmeans0.txt";
             option.numSplits = 10;
-            option.dynamicMap = true;
+            option.dynamicMapping = true;
             option.dynamicMappersPerNode = 1;
             String finalModel = Client.run(new Job(), "", option);
             System.out.println("FinalModel: " + finalModel);

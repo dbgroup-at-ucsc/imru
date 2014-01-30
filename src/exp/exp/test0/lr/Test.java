@@ -3,7 +3,7 @@ package exp.test0.lr;
 import java.io.File;
 
 import edu.uci.ics.hyracks.ec2.Rt;
-import edu.uci.ics.hyracks.imru.example.utils.Client;
+import edu.uci.ics.hyracks.imru.util.Client;
 import exp.test0.GnuPlot;
 
 public class Test {

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-package edu.uci.ics.hyracks.imru.example.utils;
+package edu.uci.ics.hyracks.imru.util;
 
 import java.io.File;
 import java.io.IOException;
@@ -57,8 +57,6 @@ import edu.uci.ics.hyracks.imru.api.ImruOptions;
 import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.data.DataSpreadDriver;
 import edu.uci.ics.hyracks.imru.file.HDFSSplit;
-import edu.uci.ics.hyracks.imru.util.CreateDeployment;
-import edu.uci.ics.hyracks.imru.util.Rt;
 
 /**
  * This class wraps IMRU common functions.
@@ -168,6 +166,9 @@ public class Client<Model extends Serializable, Data extends Serializable> {
     public void connect() throws Exception {
         this.control = new IMRUJobControl<Model, Data>(options);
         control.parameters.compressIntermediateResultsAfterNIterations = options.compressAfterNIterations;
+        control.parameters.dynamicMapping = options.dynamicMapping;
+        control.parameters.useMemoryCache = options.memCache;
+        control.parameters.dynamicMappersPerNode = options.dynamicMappersPerNode;
         control.connect(options.host, options.port, options.imruPort,
                 options.hadoopConfPath, options.clusterConfPath);
         hcc = control.hcc;
@@ -175,6 +176,10 @@ public class Client<Model extends Serializable, Data extends Serializable> {
         // set aggregation type
         HDFSSplit[] splits = control.getSplits(options.inputPaths,
                 options.numSplits, options.minSplitSize, options.maxSplitSize);
+        for (int i = 0; i < splits.length; i++)
+            splits[i].uuid = i;
+        if (options.hadoopConfPath != null && options.dynamicMapping)
+            throw new Error("Can't handle dynamic HDFS loading");
         if (options.aggTreeType == null) {
             if (splits.length < 3)
                 control.selectNoAggregation(splits);

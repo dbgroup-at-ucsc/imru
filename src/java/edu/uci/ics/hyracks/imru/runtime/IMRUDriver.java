@@ -149,16 +149,18 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
         imruConnection.uploadModel(this.getModelName(), model);
 
         // Data load
-        if (!options.noDiskCache || jobFactory.confFactory.useHDFS()) {
-            LOGGER.info("Starting data load");
-            long loadStart = System.currentTimeMillis();
-            JobStatus status = runDataLoad();
-            long loadEnd = System.currentTimeMillis();
-            LOGGER.info("Finished data load in " + (loadEnd - loadStart)
-                    + " milliseconds");
-            if (status == JobStatus.FAILURE) {
-                LOGGER.severe("Failed during data load");
-                return JobStatus.FAILURE;
+        if (!options.dynamicMapping) {
+            if (!options.noDiskCache || jobFactory.confFactory.useHDFS()) {
+                LOGGER.info("Starting data load");
+                long loadStart = System.currentTimeMillis();
+                JobStatus status = runDataLoad();
+                long loadEnd = System.currentTimeMillis();
+                LOGGER.info("Finished data load in " + (loadEnd - loadStart)
+                        + " milliseconds");
+                if (status == JobStatus.FAILURE) {
+                    LOGGER.severe("Failed during data load");
+                    return JobStatus.FAILURE;
+                }
             }
         }
 
@@ -226,8 +228,7 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
      * @throws Exception
      */
     private JobStatus runDataLoad() throws Exception {
-        JobSpecification job = jobFactory.generateDataLoadJob(imruSpec,
-                options.memCache);
+        JobSpecification job = jobFactory.generateDataLoadJob(imruSpec);
         //                byte[] bs=JavaSerializationUtils.serialize(job);
         //                Rt.p("Dataload job size: "+bs.length);
         JobId jobId = hcc.startJob(deploymentId, job, EnumSet
@@ -283,7 +284,8 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
 
         int rerunCount = 0;
         JobSpecification job = jobFactory.generateJob(imruSpec, deploymentId,
-                iterationNum, -1, rerunCount, modelName, options.noDiskCache);
+                iterationNum, -1, rerunCount, modelName, options.noDiskCache,
+                options.dynamicMapping);
         job.setMaxReattempts(0); //Let IMRU handle fault tolerance
         if (options.frameSize != 0)
             job.setFrameSize(options.frameSize);
@@ -323,7 +325,7 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
                         rerunCount++;
                         job = jobFactory.generateJob(imruSpec, deploymentId,
                                 iterationNum, -1, rerunCount, modelName,
-                                options.noDiskCache);
+                                options.noDiskCache, options.dynamicMapping);
                         continue rerun;
                     }
                 }
@@ -380,7 +382,7 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
                     dynamicAggr);
             JobSpecification job = recoverFactory.generateJob(imruSpec,
                     deploymentId, iterationNum, 0, finishedRecoveryIteration,
-                    modelName, true);
+                    modelName, true, options.dynamicMapping);
             job.setMaxReattempts(0); //Let IMRU handle fault tolerance
             if (options.frameSize != 0)
                 job.setFrameSize(options.frameSize);

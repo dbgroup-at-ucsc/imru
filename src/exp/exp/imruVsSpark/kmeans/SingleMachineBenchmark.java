@@ -3,7 +3,7 @@ package exp.imruVsSpark.kmeans;
 import java.io.File;
 
 import edu.uci.ics.hyracks.ec2.Rt;
-import edu.uci.ics.hyracks.imru.example.utils.Client;
+import edu.uci.ics.hyracks.imru.util.Client;
 import exp.imruVsSpark.data.DataGenerator;
 import exp.imruVsSpark.kmeans.imru.IMRUKMeans;
 import exp.imruVsSpark.kmeans.spark.SparkKMeans;

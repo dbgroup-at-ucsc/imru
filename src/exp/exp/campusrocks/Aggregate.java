@@ -1,6 +1,6 @@
 package exp.campusrocks;
 
-import edu.uci.ics.hyracks.imru.example.utils.Client;
+import edu.uci.ics.hyracks.imru.util.Client;
 
 public class Aggregate {
     public static void main(String[] args) throws Exception {

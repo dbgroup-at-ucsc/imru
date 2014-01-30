@@ -8,7 +8,7 @@ import java.io.Serializable;
 
 import edu.uci.ics.hyracks.imru.api.ImruOptions;
 import edu.uci.ics.hyracks.imru.dataflow.IMRUSerialize;
-import edu.uci.ics.hyracks.imru.example.utils.Client;
+import edu.uci.ics.hyracks.imru.util.Client;
 import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.ElasticImruExperimentEntry;
 

@@ -3,8 +3,8 @@ package edu.uci.ics.hyracks.imru.example.kmeans;
 import java.io.File;
 
 import edu.uci.ics.hyracks.imru.example.helloworld.HelloWorldJob;
-import edu.uci.ics.hyracks.imru.example.utils.Client;
 import edu.uci.ics.hyracks.imru.example.utils.ImruEC2;
+import edu.uci.ics.hyracks.imru.util.Client;
 
 public class KMeansEC2 {
     public static void main(String[] args) throws Exception {

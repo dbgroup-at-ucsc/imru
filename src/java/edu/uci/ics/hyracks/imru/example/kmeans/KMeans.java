@@ -15,7 +15,7 @@
 
 package edu.uci.ics.hyracks.imru.example.kmeans;
 
-import edu.uci.ics.hyracks.imru.example.utils.Client;
+import edu.uci.ics.hyracks.imru.util.Client;
 
 /**
  * Start a local cluster within the process and run the kmeans example.

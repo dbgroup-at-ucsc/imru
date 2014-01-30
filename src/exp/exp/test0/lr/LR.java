@@ -11,7 +11,7 @@ import java.util.StringTokenizer;
 import java.util.Vector;
 import java.util.regex.Pattern;
 
-import edu.uci.ics.hyracks.imru.example.utils.Client;
+import edu.uci.ics.hyracks.imru.util.Client;
 import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.test0.lr.ImruLR.Job;
 import exp.test0.lr.ImruLR.Model;

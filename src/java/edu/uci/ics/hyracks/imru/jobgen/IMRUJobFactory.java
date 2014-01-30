@@ -18,8 +18,10 @@ package edu.uci.ics.hyracks.imru.jobgen;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.Random;
 import java.util.UUID;
+import java.util.Vector;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
@@ -48,6 +50,7 @@ import edu.uci.ics.hyracks.hdfs.api.IKeyValueParser;
 import edu.uci.ics.hyracks.hdfs.api.IKeyValueParserFactory;
 import edu.uci.ics.hyracks.hdfs.dataflow.HDFSReadOperatorDescriptor;
 import edu.uci.ics.hyracks.imru.api.IIMRUDataGenerator;
+import edu.uci.ics.hyracks.imru.api.ImruOptions;
 import edu.uci.ics.hyracks.imru.api.ImruParameters;
 import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.api.TupleWriter;
@@ -62,6 +65,7 @@ import edu.uci.ics.hyracks.imru.dataflow.ReduceOperatorDescriptor;
 import edu.uci.ics.hyracks.imru.dataflow.SpreadConnectorDescriptor;
 import edu.uci.ics.hyracks.imru.dataflow.SpreadOD;
 import edu.uci.ics.hyracks.imru.dataflow.UpdateOperatorDescriptor;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.DynamicMapOD;
 import edu.uci.ics.hyracks.imru.dataflow.dynamic.ImruRecvOD;
 import edu.uci.ics.hyracks.imru.dataflow.dynamic.ImruSendOD;
 import edu.uci.ics.hyracks.imru.dataflow.dynamic.DynamicAggregationStressTest;
@@ -90,6 +94,7 @@ public class IMRUJobFactory {
     public final ConfigurationFactory confFactory;
     //    String inputPaths;
     HDFSSplit[] inputSplits;
+    HDFSSplit[][] allocatedSplits;
     String[] mapOperatorLocations;
     String[] mapNodesLocations;
     String[] mapAndUpdateNodesLocations;
@@ -167,6 +172,30 @@ public class IMRUJobFactory {
         HashSet<String> hashSet = new HashSet<String>(Arrays
                 .asList(mapOperatorLocations));
         mapNodesLocations = hashSet.toArray(new String[0]);
+        if (parameters.dynamicMapping) {
+            String[] locations = mapOperatorLocations;
+            mapOperatorLocations = new String[mapNodesLocations.length
+                    * parameters.dynamicMappersPerNode];
+            Hashtable<String, Integer> nodeToPartition = new Hashtable<String, Integer>();
+            for (int i = 0; i < mapNodesLocations.length; i++) {
+                nodeToPartition.put(mapNodesLocations[i], i
+                        * parameters.dynamicMappersPerNode);
+                for (int j = 0; j < parameters.dynamicMappersPerNode; j++) {
+                    mapOperatorLocations[i * parameters.dynamicMappersPerNode
+                            + j] = mapNodesLocations[i];
+                }
+            }
+            Vector<HDFSSplit>[] vs = new Vector[mapOperatorLocations.length];
+            for (int i = 0; i < vs.length; i++)
+                vs[i] = new Vector<HDFSSplit>();
+            for (int i = 0; i < inputSplits.length; i++) {
+                Integer partition = nodeToPartition.get(locations[i]);
+                vs[partition].add(inputSplits[i]);
+            }
+            allocatedSplits = new HDFSSplit[mapOperatorLocations.length][];
+            for (int i = 0; i < vs.length; i++)
+                allocatedSplits[i] = vs[i].toArray(new HDFSSplit[vs[i].size()]);
+        }
         mapAndUpdateNodesLocations = hashSet.toArray(new String[0]);
         modelNode = mapNodesLocations[0];
         if (aggType == AGGREGATION.AUTO) {
@@ -245,8 +274,8 @@ public class IMRUJobFactory {
      * @throws IOException
      */
     @SuppressWarnings("rawtypes")
-    public JobSpecification generateDataLoadJob(ImruStream model,
-            boolean memCache) throws IOException {
+    public JobSpecification generateDataLoadJob(ImruStream model)
+            throws IOException {
         JobSpecification spec = new JobSpecification();
         if (confFactory.useHDFS()) {
             InputSplit[] splits = getInputSplits();
@@ -259,7 +288,7 @@ public class IMRUJobFactory {
                     readOperator, mapOperatorLocations);
 
             IOperatorDescriptor writer = new DataLoadOperatorDescriptor(spec,
-                    model, inputSplits, confFactory, true, memCache);
+                    model, inputSplits, confFactory, true, parameters);
             PartitionConstraintHelper.addAbsoluteLocationConstraint(spec,
                     readOperator, mapOperatorLocations);
 
@@ -267,7 +296,7 @@ public class IMRUJobFactory {
                     0, writer, 0);
         } else {
             IMRUOperatorDescriptor dataLoad = new DataLoadOperatorDescriptor(
-                    spec, model, inputSplits, confFactory, false, memCache);
+                    spec, model, inputSplits, confFactory, false, parameters);
             PartitionConstraintHelper.addAbsoluteLocationConstraint(spec,
                     dataLoad, mapOperatorLocations);
             spec.addRoot(dataLoad);
@@ -337,8 +366,8 @@ public class IMRUJobFactory {
     @SuppressWarnings( { "rawtypes", "unchecked" })
     public JobSpecification generateJob(ImruStream model,
             DeploymentId deploymentId, int roundNum, int recoverRoundNum,
-            int rerunNum, String modelName, boolean noDiskCache)
-            throws HyracksException {
+            int rerunNum, String modelName, boolean noDiskCache,
+            boolean dynamicMapping) throws HyracksException {
 
         JobSpecification spec = new JobSpecification();
         // Create operators
@@ -346,9 +375,16 @@ public class IMRUJobFactory {
 
         // IMRU Computation
         // We will have one Map operator per input file.
-        IMRUOperatorDescriptor mapOperator = new MapOperatorDescriptor(spec,
-                model, inputSplits, roundNum, recoverRoundNum, rerunNum, "map",
-                noDiskCache, parameters);
+        IMRUOperatorDescriptor mapOperator = null;
+        if (parameters.dynamicMapping) {
+            mapOperator = new DynamicMapOD(spec, model, allocatedSplits,
+                    roundNum, recoverRoundNum, rerunNum, "dmap", noDiskCache,
+                    parameters);
+        } else {
+            mapOperator = new MapOperatorDescriptor(spec, model, inputSplits,
+                    roundNum, recoverRoundNum, rerunNum, "map", noDiskCache,
+                    parameters);
+        }
         PartitionConstraintHelper.addAbsoluteLocationConstraint(spec,
                 mapOperator, mapOperatorLocations);
 

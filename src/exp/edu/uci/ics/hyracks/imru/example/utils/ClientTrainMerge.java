@@ -61,6 +61,7 @@ import edu.uci.ics.hyracks.imru.runtime.IMRUDriver;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
 import edu.uci.ics.hyracks.imru.trainmerge.TrainMergeDriver;
 import edu.uci.ics.hyracks.imru.trainmerge.TrainMergeJob;
+import edu.uci.ics.hyracks.imru.util.Client;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 /**

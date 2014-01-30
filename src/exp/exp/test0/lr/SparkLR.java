@@ -13,7 +13,7 @@ import java.util.StringTokenizer;
 import java.util.Random;
 import java.util.zip.ZipOutputStream;
 
-import edu.uci.ics.hyracks.imru.example.utils.Client;
+import edu.uci.ics.hyracks.imru.util.Client;
 import edu.uci.ics.hyracks.imru.util.CreateDeployment;
 import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.test0.lr.ImruLR.Job;

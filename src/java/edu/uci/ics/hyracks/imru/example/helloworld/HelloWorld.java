@@ -15,7 +15,7 @@
 
 package edu.uci.ics.hyracks.imru.example.helloworld;
 
-import edu.uci.ics.hyracks.imru.example.utils.Client;
+import edu.uci.ics.hyracks.imru.util.Client;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 /**

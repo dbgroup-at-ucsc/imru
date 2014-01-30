@@ -15,7 +15,7 @@
 
 package edu.uci.ics.hyracks.imru.example.debug;
 
-import edu.uci.ics.hyracks.imru.example.utils.Client;
+import edu.uci.ics.hyracks.imru.util.Client;
 
 /**
  * Demonstration of IMRU debugging information

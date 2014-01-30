@@ -35,6 +35,7 @@ import edu.uci.ics.hyracks.api.dataflow.value.IRecordDescriptorProvider;
 import edu.uci.ics.hyracks.api.dataflow.value.ISerializerDeserializer;
 import edu.uci.ics.hyracks.api.dataflow.value.RecordDescriptor;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
+import edu.uci.ics.hyracks.api.io.FileReference;
 import edu.uci.ics.hyracks.api.job.JobSpecification;
 import edu.uci.ics.hyracks.dataflow.common.io.RunFileReader;
 import edu.uci.ics.hyracks.dataflow.common.io.RunFileWriter;
@@ -121,12 +122,15 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
         return new AbstractUnaryOutputSourceOperatorNodePushable() {
             private final IHyracksTaskContext fileCtx;
             private final String name;
+            IMRUMapContext imruContext;
 
             {
                 this.name = MapOperatorDescriptor.this.getDisplayName()
                         + partition;
                 fileCtx = new RunFileContext(ctx, imruSpec
                         .getCachedDataFrameSize());
+                imruContext = new IMRUMapContext(ctx, name,
+                        inputSplits[partition], partition, nPartitions);
             }
 
             @SuppressWarnings("unchecked")
@@ -188,8 +192,7 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                     LOG.info("Reading cached input data in "
                             + (readInReverse ? "forwards" : "reverse")
                             + " direction");
-                    IMRUMapContext imruContext = new IMRUMapContext(ctx, name,
-                            inputSplits[partition], partition, nPartitions);
+
                     ByteArrayOutputStream out = new ByteArrayOutputStream();
                     ImruIterInfo info;
                     long mapStartTime = System.currentTimeMillis();

@@ -41,7 +41,7 @@ public class ImruOptions {
 
     //For dynamic mapping
     @Option(name = "-dynamicMap", usage = "Dynamically reallocate partitions. Need a proper -num-split to be effective.")
-    public boolean dynamicMap = false;
+    public boolean dynamicMapping = false;
 
     @Option(name = "-mappersPerNode", usage = "Limit the number of mappers per node for dynamic mapping")
     public int dynamicMappersPerNode = 1;

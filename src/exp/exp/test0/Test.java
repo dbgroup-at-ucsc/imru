@@ -1,7 +1,7 @@
 package exp.test0;
 
 import edu.uci.ics.hyracks.imru.example.helloworld.HelloWorldJob;
-import edu.uci.ics.hyracks.imru.example.utils.Client;
+import edu.uci.ics.hyracks.imru.util.Client;
 
 public class Test {
 
