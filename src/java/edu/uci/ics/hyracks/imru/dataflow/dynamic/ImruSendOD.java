@@ -25,6 +25,7 @@ import edu.uci.ics.hyracks.imru.api.ImruParameters;
 import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.api.old.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.dataflow.IMRUOperatorDescriptor;
+import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
@@ -38,16 +39,17 @@ public class ImruSendOD<Model extends Serializable, Data extends Serializable>
     ImruParameters parameters;
     String modelName;
     IMRUConnection imruConnection;
-    boolean disableSwapping = false;
-    int maxWaitTimeBeforeSwap = 1000;
-    boolean debug;
+    public HDFSSplit[][] allocatedSplits;
+
+    //    boolean disableSwapping = false;
+    //    int maxWaitTimeBeforeSwap = 1000;
+    //    boolean debug;
 
     public ImruSendOD(JobSpecification spec, int[] targets,
             ImruStream<Model, Data> imruSpec, String name,
             ImruParameters parameters, String modelName,
-            IMRUConnection imruConnection, boolean disableSwapping,
-            int maxWaitTimeBeforeSwap, boolean debug) {
-        super(spec, 1, 1, name, imruSpec);
+            IMRUConnection imruConnection) {
+        super(spec, parameters.dynamicMapping ? 0 : 1, 1, name, imruSpec);
         this.imruSpec = imruSpec;
         this.parameters = parameters;
         recordDescriptors[0] = new RecordDescriptor(
@@ -55,9 +57,9 @@ public class ImruSendOD<Model extends Serializable, Data extends Serializable>
         targetPartitions = targets;
         this.modelName = modelName;
         this.imruConnection = imruConnection;
-        this.maxWaitTimeBeforeSwap = maxWaitTimeBeforeSwap;
-        this.disableSwapping = disableSwapping;
-        this.debug = debug;
+        //        this.maxWaitTimeBeforeSwap = maxWaitTimeBeforeSwap;
+        //        this.disableSwapping = disableSwapping;
+        //        this.debug = debug;
     }
 
     @Override
@@ -66,9 +68,11 @@ public class ImruSendOD<Model extends Serializable, Data extends Serializable>
             IRecordDescriptorProvider recordDescProvider,
             final int curPartition, final int nPartitions)
             throws HyracksDataException {
-        ImruSendOperator.debug = debug;
-        return new ImruSendOperator<Model, Data>(ctx, curPartition,
+        ImruSendOperator<Model, Data> so=new ImruSendOperator<Model, Data>(ctx, curPartition,
                 nPartitions, targetPartitions, imruSpec, parameters, modelName,
-                imruConnection, disableSwapping, maxWaitTimeBeforeSwap);
+                imruConnection, allocatedSplits);
+//        if (parameters.dynamicMapping)
+//            return new ImruSendOperatorDynamic<Model, Data>(so);
+        return so;
     }
 }

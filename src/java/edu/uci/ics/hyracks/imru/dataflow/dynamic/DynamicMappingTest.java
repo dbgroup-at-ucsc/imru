@@ -7,6 +7,7 @@ import java.util.Iterator;
 import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
+import edu.uci.ics.hyracks.imru.api.IMRUMapContext;
 import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
 import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruObject;
@@ -30,7 +31,8 @@ public class DynamicMappingTest {
         @Override
         public void parse(IMRUContext ctx, InputStream input,
                 DataWriter<String> output) throws IOException {
-            output.addData("NC" + ctx.getPartition());
+            IMRUMapContext map = (IMRUMapContext) ctx;
+            output.addData("" + map.getSplit().uuid);
         }
 
         /**
@@ -112,14 +114,15 @@ public class DynamicMappingTest {
             option.port = 3099;
             option.debug = true;
             option.disableLogging = true;
-            option.numOfNodes = 2;
+            option.numOfNodes = 3;
             option.aggTreeType = "nary";
             option.fanIn = 3;
             option.frameSize = 256;
             option.inputPaths = "data/kmeans/kmeans0.txt";
             option.numSplits = 10;
             option.dynamicMapping = true;
-            option.dynamicMappersPerNode = 1;
+            option.dynamicMappersPerNode = 2;
+            option.dynamicAggr = true;
             String finalModel = Client.run(new Job(), "", option);
             System.out.println("FinalModel: " + finalModel);
         } catch (Throwable e) {

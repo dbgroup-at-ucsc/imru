@@ -26,8 +26,7 @@ public class ImruExpFigs extends Hashtable<String, Double> {
     //    public int k, iterations, begin, step, end, batch,dims;
 
     public ImruExpFigs(File resultDir) throws Exception {
-        ImruExpParameters p = ImruExpParameters.load(new File(resultDir,
-                "parameters.obj"));
+        p = ImruExpParameters.load(new File(resultDir, "parameters.obj"));
         name = resultDir.getName();
         Rt.p("reading " + resultDir);
         //        memory = Integer.parseInt(name.substring(5, name.indexOf("M")));

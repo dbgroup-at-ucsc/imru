@@ -21,13 +21,14 @@ import edu.uci.ics.hyracks.imru.api.ImruFrames;
 import edu.uci.ics.hyracks.imru.api.ImruParameters;
 import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.data.SerializedFrames;
+import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class ImruSendOperator<Model extends Serializable, Data extends Serializable>
         extends AbstractUnaryInputUnaryOutputOperatorNodePushable {
-    boolean disableSwapping = false;
-    int maxWaitTimeBeforeSwap = 1000;
+    //    boolean disableSwapping = false;
+    //    int maxWaitTimeBeforeSwap = 1000;
     public static boolean debug = false;
     public static int debugNetworkSpeed = 0;
     public static int debugNodeCount = 8;
@@ -141,12 +142,15 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
     int receivedIdentificationCorrections = 0;
     Object receivedIdentificationSync = new Object();
 
+    //for dynamic mapping
+    HDFSSplit[][] allocatedSplits;
+    AtomicInteger runningMappers;
+
     public ImruSendOperator(IHyracksTaskContext ctx, int curPartition,
             int nPartitions, int[] targetPartitions,
             ImruStream<Model, Data> imruSpec, ImruParameters parameters,
             String modelName, IMRUConnection imruConnection,
-            boolean diableSwapping, int maxWaitTimeBeforeSwap)
-            throws HyracksDataException {
+            HDFSSplit[][] allocatedSplits) throws HyracksDataException {
         this.ctx = ctx;
         this.curPartition = curPartition;
         this.nPartitions = nPartitions;
@@ -154,8 +158,9 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
         this.parameters = parameters;
         this.modelName = modelName;
         this.imruConnection = imruConnection;
-        this.disableSwapping = diableSwapping;
-        this.maxWaitTimeBeforeSwap = maxWaitTimeBeforeSwap;
+        this.allocatedSplits = allocatedSplits;
+        runningMappers = new AtomicInteger(parameters.dynamicMappersPerNode);
+        debug = parameters.dynamicDebug;
         debugSendOperators[curPartition] = this;
         targetPartition = targetPartitions[curPartition];
         this.log.append(targetPartition + ",");
@@ -241,7 +246,7 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
         r2.newTargetPartition = target;
         for (int id : lockingPartitions) {
             if (id < 0 || id >= nPartitions)
-                throw new Error("" + id);
+                throw new Error(id + " " + nPartitions);
             sendObj(id, r2);
         }
         this.lockingPartitions = lockingPartitions;
@@ -359,13 +364,39 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
     Object recvQueue;
     byte[] aggregatedResult;
 
-    @Override
-    public void open() throws HyracksDataException {
+    private void startup() throws HyracksDataException {
         this.name = "DR" + curPartition;
         imruContext = new IMRUReduceContext(ctx, name, false, -1, curPartition,
                 nPartitions);
         imruContext.setUserObject("sendOperator", this);
 
+        if (parameters.dynamicMapping) {
+            if (allocatedSplits == null)
+                throw new Error();
+            int start = this.curPartition * parameters.dynamicMappersPerNode;
+            for (int i = 0; i < parameters.dynamicMappersPerNode; i++) {
+                final int mapPartitionId = start + i;
+                new Thread("dmap" + mapPartitionId) {
+                    public void run() {
+                        try {
+                            new DynamicMapping(ImruSendOperator.this,
+                                    mapPartitionId);
+                        } catch (HyracksDataException e) {
+                            e.printStackTrace();
+                        } finally {
+                            int left = runningMappers.decrementAndGet();
+                            if (left <= 0) {
+                                try {
+                                    ImruSendOperator.this.close();
+                                } catch (HyracksDataException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        }
+                    }
+                }.start();
+            }
+        }
         writer.open();
 
         recvQueue = imruSpec.reduceInit(imruContext, new OutputStream() {
@@ -463,8 +494,24 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
     }
 
     @Override
+    public void initialize() throws HyracksDataException {
+        //called by dynamic mapping
+        startup();
+    }
+
+    @Override
+    public void open() throws HyracksDataException {
+        //called by regular mapping
+        startup();
+    }
+
+    /**
+     * Called by mapper
+     */
+    @Override
     public void nextFrame(ByteBuffer encapsulatedChunk)
             throws HyracksDataException {
+        //called by regular mapping
         try {
             SerializedFrames f = SerializedFrames.nextFrame(ctx.getFrameSize(),
                     encapsulatedChunk);
@@ -506,8 +553,16 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
 
     }
 
+    boolean closed = false;
+
+    /**
+     * Called by mapper
+     */
     @Override
     public void close() throws HyracksDataException {
+        if (closed)
+            Rt.p("Closed twice");
+        closed = true;
         //        Rt.p(curPartition + " close");
         try {
             boolean isRoot = dynamicAggregation.waitForAggregation();

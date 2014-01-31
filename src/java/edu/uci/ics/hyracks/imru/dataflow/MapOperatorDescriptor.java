@@ -79,10 +79,6 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
             new ISerializerDeserializer[1]);
 
     // private final String envInPath;
-    private final int roundNum;
-    int recoverRoundNum;
-    int rerunNum;
-    boolean useDiskCache;
     protected final HDFSSplit[] inputSplits;
     ImruParameters parameters;
 
@@ -102,14 +98,9 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
      */
     public MapOperatorDescriptor(JobSpecification spec,
             ImruStream<Model, Data> imruSpec, HDFSSplit[] inputSplits,
-            int roundNum, int recoverRoundNum, int rerunNum, String name,
-            boolean noDiskCache, ImruParameters parameters) {
+            String name, ImruParameters parameters) {
         super(spec, 0, 1, name, imruSpec);
         recordDescriptors[0] = dummyRecordDescriptor;
-        this.roundNum = roundNum;
-        this.recoverRoundNum = recoverRoundNum;
-        this.rerunNum = rerunNum;
-        this.useDiskCache = !noDiskCache;
         this.inputSplits = inputSplits;
         this.parameters = parameters;
     }
@@ -149,15 +140,15 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                             .getApplicationContext();
                     IMRURuntimeContext context = (IMRURuntimeContext) appContext
                             .getApplicationObject();
-                    context.currentRecoveryIteration = recoverRoundNum;
-                    context.rerunNum = rerunNum;
+                    context.currentRecoveryIteration = parameters.recoverRoundNum;
+                    context.rerunNum = parameters.rerunNum;
                     // final IMRUContext imruContext = new IMRUContext(ctx,
                     // name);
                     Model model = (Model) context.model;
                     if (model == null)
                         throw new HyracksDataException("model is not cached");
                     synchronized (context.envLock) {
-                        if (context.modelAge < roundNum)
+                        if (context.modelAge < parameters.roundNum)
                             throw new HyracksDataException(
                                     "Model was not spread to "
                                             + new IMRUContext(ctx, name,
@@ -168,7 +159,7 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                     // Load the examples.
                     MapTaskState state = (MapTaskState) IterationUtils
                             .getIterationState(ctx, partition);
-                    if (useDiskCache) {
+                    if (!parameters.noDiskCache) {
                         if (state == null) {
                             Rt.p("state=null");
                             System.exit(0);
@@ -186,7 +177,7 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                     // To improve the filesystem cache hit rate under a LRU
                     // replacement
                     // policy, alternate the read direction on each round.
-                    boolean readInReverse = roundNum % 2 != 0;
+                    boolean readInReverse = parameters.roundNum % 2 != 0;
                     LOG.info("Can't read in reverse direction");
                     readInReverse = false;
                     LOG.info("Reading cached input data in "
@@ -196,7 +187,7 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                     ByteArrayOutputStream out = new ByteArrayOutputStream();
                     ImruIterInfo info;
                     long mapStartTime = System.currentTimeMillis();
-                    if (useDiskCache) {
+                    if (!parameters.noDiskCache) {
                         RunFileWriter runFileWriter = state.getRunFileWriter();
                         if (runFileWriter != null) {
                             // Read from disk cache

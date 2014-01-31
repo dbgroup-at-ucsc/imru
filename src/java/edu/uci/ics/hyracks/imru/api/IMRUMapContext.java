@@ -16,6 +16,10 @@ public class IMRUMapContext extends IMRUContext {
         return split;
     }
 
+    public void setSplit(HDFSSplit split) {
+        this.split = split;
+    }
+
     public String getDataPath() {
         return split.getPath();
     }

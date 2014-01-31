@@ -34,7 +34,7 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
             }
         }
         so.swappingTarget = -1;
-        long swapTime = System.currentTimeMillis() + so.maxWaitTimeBeforeSwap;
+        long swapTime = System.currentTimeMillis() + so.parameters.maxWaitTimeBeforeSwap;
         while (true) {
             int unfinishedPartition = -1;
             synchronized (so.aggrSync) {
@@ -49,7 +49,7 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
                         hasMissingPartitions = true;
                     }
                 }
-                if (!so.disableSwapping && unfinishedPartition >= 0) {
+                if (!so.parameters.disableSwapping && unfinishedPartition >= 0) {
                     if (System.currentTimeMillis() < swapTime) {
                         int waitTime = (int) (swapTime - System
                                 .currentTimeMillis()) / 2;
@@ -170,8 +170,8 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
                 //                long start = System.currentTimeMillis();
                 info.currentIteration = so.imruContext.getIterationNumber();
                 info.dynamicAggregationEnabled = true;
-                info.swappingDisabled = so.disableSwapping;
-                info.maxWaitTimeBeforeSwap = so.maxWaitTimeBeforeSwap;
+                info.swappingDisabled = so.parameters.disableSwapping;
+                info.maxWaitTimeBeforeSwap = so.parameters.maxWaitTimeBeforeSwap;
                 so.imruConnection.uploadModel(so.modelName, updatedModel);
                 so.imruConnection.uploadDbgInfo(so.modelName, info);
                 //                long end = System.currentTimeMillis();

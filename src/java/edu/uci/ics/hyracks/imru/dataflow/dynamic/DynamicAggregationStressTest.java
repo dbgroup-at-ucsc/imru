@@ -199,9 +199,9 @@ public class DynamicAggregationStressTest {
         ImruParameters parameters = new ImruParameters();
         PartitionConstraintHelper.addAbsoluteLocationConstraint(job, reader,
                 mapOperatorLocations);
+        parameters.maxWaitTimeBeforeSwap = 0;
         ImruSendOD send = new ImruSendOD(job, targets, imruSpec, "abc",
-                parameters, modelName, imruConnection, disableSwapping, 0,
-                debug);
+                parameters, modelName, imruConnection);
         //        job.connect(new MToNReplicatingConnectorDescriptor(job), reader, 0,
         //                send, 0);
         job.connect(new OneToOneConnectorDescriptor(job), reader, 0, send, 0);

@@ -169,6 +169,10 @@ public class Client<Model extends Serializable, Data extends Serializable> {
         control.parameters.dynamicMapping = options.dynamicMapping;
         control.parameters.useMemoryCache = options.memCache;
         control.parameters.dynamicMappersPerNode = options.dynamicMappersPerNode;
+        control.parameters.dynamicAggr = options.dynamicAggr;
+        control.parameters.disableSwapping = options.dynamicDisable;
+        control.parameters.maxWaitTimeBeforeSwap = options.dynamicSwapTime;
+        control.parameters.dynamicDebug = options.dynamicDebug;
         control.connect(options.host, options.port, options.imruPort,
                 options.hadoopConfPath, options.clusterConfPath);
         hcc = control.hcc;
@@ -201,9 +205,6 @@ public class Client<Model extends Serializable, Data extends Serializable> {
         } else {
             throw new IllegalArgumentException("Invalid aggregation tree type");
         }
-        control.jobFactory.disableSwapping = options.dynamicDisable;
-        control.jobFactory.maxWaitTimeBeforeSwap = options.dynamicSwapTime;
-        control.jobFactory.dynamicDebug = options.dynamicDebug;
         // hyracks connection
     }
 

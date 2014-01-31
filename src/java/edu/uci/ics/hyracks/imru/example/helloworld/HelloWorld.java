@@ -59,10 +59,9 @@ public class HelloWorld {
                 for (int i = 1; i < n; i++)
                     cmdline += "," + exampleData + "/hello" + i + ".txt";
             } else {
-                cmdline += " -input-paths NC0:" + exampleData + "/hello0.txt";
+                cmdline += " -input-paths " + exampleData + "/hello0.txt";
                 for (int i = 1; i < n; i++)
-                    cmdline += ",NC" + (i % totalNodes) + ":" + exampleData
-                            + "/hello" + i + ".txt";
+                    cmdline += "," + exampleData + "/hello" + i + ".txt";
             }
             System.out.println("Using command line: " + cmdline);
             args = cmdline.split(" ");

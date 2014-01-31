@@ -283,9 +283,13 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
             return JobStatus.FAILURE;
 
         int rerunCount = 0;
+        jobFactory.parameters.roundNum = iterationNum;
+        jobFactory.parameters.recoverRoundNum = -1;
+        jobFactory.parameters.rerunNum = rerunCount;
+        jobFactory.parameters.noDiskCache = options.noDiskCache;
+        jobFactory.parameters.dynamicMapping = options.dynamicMapping;
         JobSpecification job = jobFactory.generateJob(imruSpec, deploymentId,
-                iterationNum, -1, rerunCount, modelName, options.noDiskCache,
-                options.dynamicMapping);
+                modelName);
         job.setMaxReattempts(0); //Let IMRU handle fault tolerance
         if (options.frameSize != 0)
             job.setFrameSize(options.frameSize);
@@ -323,9 +327,13 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
                     }
                     case Rerun: {
                         rerunCount++;
+                        jobFactory.parameters.roundNum = iterationNum;
+                        jobFactory.parameters.recoverRoundNum = -1;
+                        jobFactory.parameters.rerunNum = rerunCount;
+                        jobFactory.parameters.noDiskCache = options.noDiskCache;
+                        jobFactory.parameters.dynamicMapping = options.dynamicMapping;
                         job = jobFactory.generateJob(imruSpec, deploymentId,
-                                iterationNum, -1, rerunCount, modelName,
-                                options.noDiskCache, options.dynamicMapping);
+                                modelName);
                         continue rerun;
                     }
                 }
@@ -380,9 +388,14 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
                     incompleteSplits.toArray(new HDFSSplit[incompleteSplits
                             .size()]), IMRUJobFactory.AGGREGATION.AUTO,
                     dynamicAggr);
+            jobFactory.parameters.roundNum = iterationNum;
+            jobFactory.parameters.recoverRoundNum = 0;
+            jobFactory.parameters.rerunNum = finishedRecoveryIteration;
+            jobFactory.parameters.noDiskCache = true;
+            jobFactory.parameters.dynamicMapping = options.dynamicMapping;
+
             JobSpecification job = recoverFactory.generateJob(imruSpec,
-                    deploymentId, iterationNum, 0, finishedRecoveryIteration,
-                    modelName, true, options.dynamicMapping);
+                    deploymentId, modelName);
             job.setMaxReattempts(0); //Let IMRU handle fault tolerance
             if (options.frameSize != 0)
                 job.setFrameSize(options.frameSize);

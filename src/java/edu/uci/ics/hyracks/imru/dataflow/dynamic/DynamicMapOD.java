@@ -64,9 +64,9 @@ public class DynamicMapOD<Model extends Serializable, Data extends Serializable>
             new ISerializerDeserializer[1]);
 
     // private final String envInPath;
-    private final int roundNum;
-    int recoverRoundNum;
-    int rerunNum;
+    //    private final int roundNum;
+    //    int recoverRoundNum;
+    //    int rerunNum;
     boolean directParse;
     protected final HDFSSplit[][] allocatedSplits;
     ImruParameters parameters;
@@ -87,14 +87,13 @@ public class DynamicMapOD<Model extends Serializable, Data extends Serializable>
      */
     public DynamicMapOD(JobSpecification spec,
             ImruStream<Model, Data> imruSpec, HDFSSplit[][] allocatedSplits,
-            int roundNum, int recoverRoundNum, int rerunNum, String name,
-            boolean noDiskCache, ImruParameters parameters) {
+            String name, ImruParameters parameters) {
         super(spec, 0, 1, name, imruSpec);
         recordDescriptors[0] = dummyRecordDescriptor;
-        this.roundNum = roundNum;
-        this.recoverRoundNum = recoverRoundNum;
-        this.rerunNum = rerunNum;
-        this.directParse = noDiskCache;
+        //        this.roundNum = roundNum;
+        //        this.recoverRoundNum = recoverRoundNum;
+        //        this.rerunNum = rerunNum;
+        this.directParse = parameters.noDiskCache;
         this.allocatedSplits = allocatedSplits;
         this.parameters = parameters;
     }
@@ -159,12 +158,13 @@ public class DynamicMapOD<Model extends Serializable, Data extends Serializable>
                 long end = System.currentTimeMillis();
                 LOG.info("Parsed input data in " + (end - startTime)
                         + " milliseconds");
-                IterationUtils.setIterationState(ctx, partition, state);
+                IterationUtils.setIterationState(ctx, split.uuid, state);
                 return state;
             }
 
             void process(Model model, final HDFSSplit split) throws IOException {
                 // Load the examples.
+                imruContext.setSplit(split);
                 MapTaskState state = (MapTaskState) IterationUtils
                         .getIterationState(ctx, split.uuid);
                 if (!directParse) {
@@ -179,8 +179,8 @@ public class DynamicMapOD<Model extends Serializable, Data extends Serializable>
                         }
                     } else {
                         // Use the same state in the future iterations
-                        IterationUtils.removeIterationState(ctx, partition);
-                        IterationUtils.setIterationState(ctx, partition, state);
+                        IterationUtils.removeIterationState(ctx, split.uuid);
+                        IterationUtils.setIterationState(ctx, split.uuid, state);
                     }
                 }
 
@@ -189,7 +189,7 @@ public class DynamicMapOD<Model extends Serializable, Data extends Serializable>
                 // To improve the filesystem cache hit rate under a LRU
                 // replacement
                 // policy, alternate the read direction on each round.
-                boolean readInReverse = roundNum % 2 != 0;
+                boolean readInReverse = parameters.roundNum % 2 != 0;
                 LOG.info("Can't read in reverse direction");
                 readInReverse = false;
                 LOG.info("Reading cached input data in "
@@ -294,15 +294,15 @@ public class DynamicMapOD<Model extends Serializable, Data extends Serializable>
                     // are
                     // shared across all MapOperator partitions.
 
-                    context.currentRecoveryIteration = recoverRoundNum;
-                    context.rerunNum = rerunNum;
+                    context.currentRecoveryIteration = parameters.recoverRoundNum;
+                    context.rerunNum = parameters.rerunNum;
                     // final IMRUContext imruContext = new IMRUContext(ctx,
                     // name);
                     Model model = (Model) context.model;
                     if (model == null)
                         throw new HyracksDataException("model is not cached");
                     synchronized (context.envLock) {
-                        if (context.modelAge < roundNum)
+                        if (context.modelAge < parameters.roundNum)
                             throw new HyracksDataException(
                                     "Model was not spread to "
                                             + new IMRUContext(ctx, name,
@@ -318,8 +318,8 @@ public class DynamicMapOD<Model extends Serializable, Data extends Serializable>
                             split = queue.remove();
                             if (split.uuid < 0)
                                 throw new Error();
-                            process(model, split);
                         }
+                        process(model, split);
                     }
                     writer.close();
                 } catch (HyracksDataException e) {

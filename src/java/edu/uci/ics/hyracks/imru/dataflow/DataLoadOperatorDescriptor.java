@@ -45,6 +45,7 @@ import edu.uci.ics.hyracks.imru.api.ASyncInputStream;
 import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.FrameWriter;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
+import edu.uci.ics.hyracks.imru.api.IMRUMapContext;
 import edu.uci.ics.hyracks.imru.api.ImruOptions;
 import edu.uci.ics.hyracks.imru.api.ImruParameters;
 import edu.uci.ics.hyracks.imru.api.ImruStream;
@@ -113,7 +114,7 @@ public class DataLoadOperatorDescriptor extends
             MapTaskState state;
             RunFileWriter runFileWriter;
             DataWriter dataWriter;
-            IMRUContext imruContext;
+            IMRUMapContext imruContext;
             boolean initialized = false;
 
             {
@@ -158,8 +159,8 @@ public class DataLoadOperatorDescriptor extends
                     dataWriter = new DataWriter<Serializable>(vector);
                 }
 
-                imruContext = new IMRUContext(fileCtx, name, partition,
-                        nPartitions);
+                imruContext = new IMRUMapContext(fileCtx, name,
+                        inputSplits[partition], partition, nPartitions);
                 if (!hdfsLoad) {
                     final HDFSSplit split = inputSplits[partition];
                     try {

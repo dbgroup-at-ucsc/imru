@@ -6,6 +6,7 @@ import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
+import java.util.Vector;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -18,6 +19,7 @@ import edu.uci.ics.hyracks.control.nc.application.NCApplicationContext;
 import edu.uci.ics.hyracks.dataflow.common.comm.io.FrameTupleAccessor;
 import edu.uci.ics.hyracks.dataflow.common.comm.util.ByteBufferInputStream;
 import edu.uci.ics.hyracks.imru.api.old.IIMRUJob;
+import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 abstract public class ImruObject<Model extends Serializable, Data extends Serializable, IntermediateResult extends Serializable>
@@ -44,8 +46,11 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
             output.write(objectData);
             output.close();
             ImruIterInfo r = new ImruIterInfo(ctx);
-            r.op.completedSplit = ((IMRUMapContext) ctx).getSplit();
-            r.allCompletedSplits.add(((IMRUMapContext) ctx).getSplit());
+            HDFSSplit split = ((IMRUMapContext) ctx).getSplit();
+            if (r.op.completedSplits == null)
+                r.op.completedSplits = new Vector<HDFSSplit>();
+            r.op.completedSplits.add(split);
+            r.allCompletedSplits.add(split);
             return r;
         } catch (Exception e) {
             e.printStackTrace();
@@ -107,8 +112,11 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
             byte[] objectData = JavaSerializationUtils.serialize(result);
             output.write(objectData);
             output.close();
-            r.op.completedSplit = ((IMRUMapContext) ctx).getSplit();
-            r.allCompletedSplits.add(((IMRUMapContext) ctx).getSplit());
+            HDFSSplit split = ((IMRUMapContext) ctx).getSplit();
+            if (r.op.completedSplits == null)
+                r.op.completedSplits = new Vector<HDFSSplit>();
+            r.op.completedSplits.add(split);
+            r.allCompletedSplits.add(split);
             return r;
         } catch (Exception e) {
             e.printStackTrace();

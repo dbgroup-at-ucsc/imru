@@ -71,9 +71,8 @@ public class ReduceAggregationTreeFactory {
             IOperatorDescriptor producerOp, int producerPort,
             int producerOpCount, IOperatorDescriptor consumerOp,
             int consumerPort, IConnectorDescriptor consumerConn, int fanIn,
-            boolean useLocalCombiners, boolean dynamicAggr,
-            String[] producerOpLocations, ImruStream imruSpec,
-            ImruParameters parameters) {
+            boolean useLocalCombiners, String[] producerOpLocations,
+            ImruStream imruSpec, ImruParameters parameters) {
         if (useLocalCombiners) {
             producerOpCount = LocalReducerFactory
                     .getReducerCount(producerOpLocations);
@@ -108,7 +107,7 @@ public class ReduceAggregationTreeFactory {
             LocalReducerFactory.addLocalReducers(spec, producerOp,
                     producerPort, producerOpLocations,
                     aggregatorOperators[numLevels - 1], 0, producerConn,
-                    imruSpec, parameters, dynamicAggr);
+                    imruSpec, parameters);
         } else {
             spec.connect(producerConn, producerOp, producerPort,
                     aggregatorOperators[numLevels - 1], 0);

@@ -15,8 +15,17 @@ public class ImruParameters implements Serializable {
     public int compressIntermediateResultsAfterNIterations = 10;
 
     public boolean dynamicMapping;
-    
+
     public boolean useMemoryCache;
-    
+
     public int dynamicMappersPerNode;
+
+    public boolean dynamicAggr;
+    public boolean disableSwapping = false;
+    public int maxWaitTimeBeforeSwap = 1000;
+    public boolean dynamicDebug;
+    public int roundNum;
+    public int recoverRoundNum;
+    public int rerunNum;;
+    public  boolean noDiskCache;
 }

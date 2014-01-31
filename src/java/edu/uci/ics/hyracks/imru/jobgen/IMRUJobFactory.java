@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.LinkedList;
 import java.util.Random;
 import java.util.UUID;
 import java.util.Vector;
@@ -73,6 +74,7 @@ import edu.uci.ics.hyracks.imru.file.ConfigurationFactory;
 import edu.uci.ics.hyracks.imru.file.IMRUInputSplitProvider;
 import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
+import edu.uci.ics.hyracks.imru.util.Rt;
 
 /**
  * Generates JobSpecifications for iterations of iterative map reduce
@@ -105,18 +107,18 @@ public class IMRUJobFactory {
     UUID id = UUID.randomUUID();
     IMRUConnection imruConnection;
     public ImruParameters parameters;
-    boolean dynamicAggr;
-    public boolean disableSwapping = false;
-    public int maxWaitTimeBeforeSwap = 1000;
-    public boolean dynamicDebug;
+
+    //    boolean dynamicAggr;
+    //    public boolean disableSwapping = false;
+    //    public int maxWaitTimeBeforeSwap = 1000;
+    //    public boolean dynamicDebug;
 
     public IMRUJobFactory(IMRUConnection imruConnection,
             HDFSSplit[] inputSplits, ConfigurationFactory confFactory,
-            String type, int fanIn, int reducerCount,
-            ImruParameters parameters, boolean dynamicAggr) throws IOException,
-            InterruptedException {
+            String type, int fanIn, int reducerCount, ImruParameters parameters)
+            throws IOException, InterruptedException {
         this(imruConnection, inputSplits, confFactory, aggType(type), fanIn,
-                reducerCount, parameters, dynamicAggr);
+                reducerCount, parameters);
     }
 
     public static AGGREGATION aggType(String type) {
@@ -135,7 +137,7 @@ public class IMRUJobFactory {
             AGGREGATION aggType, boolean dynamicAggr) throws IOException,
             InterruptedException {
         this(f.imruConnection, incompletedSplits, f.confFactory, aggType,
-                f.fanIn, f.reducerCount, f.parameters, dynamicAggr);
+                f.fanIn, f.reducerCount, f.parameters);
     }
 
     /**
@@ -156,13 +158,11 @@ public class IMRUJobFactory {
     public IMRUJobFactory(IMRUConnection imruConnection,
             HDFSSplit[] inputSplits, ConfigurationFactory confFactory,
             AGGREGATION aggType, int fanIn, int reducerCount,
-            ImruParameters parameters, boolean dynamicAggr) throws IOException,
-            InterruptedException {
+            ImruParameters parameters) throws IOException, InterruptedException {
         this.imruConnection = imruConnection;
         this.confFactory = confFactory;
         this.inputSplits = inputSplits;
         this.parameters = parameters;
-        this.dynamicAggr = dynamicAggr;
         // For repeatability of the partition assignments, seed the
         // source of
         // randomness using the job id.
@@ -173,28 +173,46 @@ public class IMRUJobFactory {
                 .asList(mapOperatorLocations));
         mapNodesLocations = hashSet.toArray(new String[0]);
         if (parameters.dynamicMapping) {
+            //create the exact number of mapper as required
+            int mapPerNode = parameters.dynamicMappersPerNode;
             String[] locations = mapOperatorLocations;
             mapOperatorLocations = new String[mapNodesLocations.length
-                    * parameters.dynamicMappersPerNode];
+                    * mapPerNode];
             Hashtable<String, Integer> nodeToPartition = new Hashtable<String, Integer>();
             for (int i = 0; i < mapNodesLocations.length; i++) {
-                nodeToPartition.put(mapNodesLocations[i], i
-                        * parameters.dynamicMappersPerNode);
-                for (int j = 0; j < parameters.dynamicMappersPerNode; j++) {
-                    mapOperatorLocations[i * parameters.dynamicMappersPerNode
-                            + j] = mapNodesLocations[i];
+                nodeToPartition.put(mapNodesLocations[i], i * mapPerNode);
+                for (int j = 0; j < mapPerNode; j++) {
+                    mapOperatorLocations[i * mapPerNode + j] = mapNodesLocations[i];
                 }
             }
-            Vector<HDFSSplit>[] vs = new Vector[mapOperatorLocations.length];
+            LinkedList<HDFSSplit>[] vs = new LinkedList[mapOperatorLocations.length];
             for (int i = 0; i < vs.length; i++)
-                vs[i] = new Vector<HDFSSplit>();
+                vs[i] = new LinkedList<HDFSSplit>();
+            //assign partitions to the first mapper on each node
             for (int i = 0; i < inputSplits.length; i++) {
                 Integer partition = nodeToPartition.get(locations[i]);
                 vs[partition].add(inputSplits[i]);
             }
+            //equalize partitions on each node
+            for (int i = 0; i < mapNodesLocations.length; i++) {
+                int start = i * mapPerNode;
+                LinkedList<HDFSSplit> v = vs[start];
+                vs[start] = new LinkedList<HDFSSplit>();
+                while (v.size() > 0) {
+                    for (int j = 0; j < mapPerNode; j++) {
+                        if (v.size() == 0)
+                            break;
+                        vs[start + j].add(v.remove());
+                    }
+                }
+            }
             allocatedSplits = new HDFSSplit[mapOperatorLocations.length][];
-            for (int i = 0; i < vs.length; i++)
+            for (int i = 0; i < vs.length; i++) {
                 allocatedSplits[i] = vs[i].toArray(new HDFSSplit[vs[i].size()]);
+                Rt.p(mapOperatorLocations[i] + ":");
+                for (HDFSSplit split : allocatedSplits[i])
+                    Rt.np("\t" + split);
+            }
         }
         mapAndUpdateNodesLocations = hashSet.toArray(new String[0]);
         modelNode = mapNodesLocations[0];
@@ -365,9 +383,8 @@ public class IMRUJobFactory {
      */
     @SuppressWarnings( { "rawtypes", "unchecked" })
     public JobSpecification generateJob(ImruStream model,
-            DeploymentId deploymentId, int roundNum, int recoverRoundNum,
-            int rerunNum, String modelName, boolean noDiskCache,
-            boolean dynamicMapping) throws HyracksException {
+            DeploymentId deploymentId, String modelName)
+            throws HyracksException {
 
         JobSpecification spec = new JobSpecification();
         // Create operators
@@ -377,34 +394,57 @@ public class IMRUJobFactory {
         // We will have one Map operator per input file.
         IMRUOperatorDescriptor mapOperator = null;
         if (parameters.dynamicMapping) {
-            mapOperator = new DynamicMapOD(spec, model, allocatedSplits,
-                    roundNum, recoverRoundNum, rerunNum, "dmap", noDiskCache,
-                    parameters);
+            if (aggType == AGGREGATION.NARY && parameters.dynamicAggr) {
+                //                mapOperator = new DynamicMapOD(spec, model, allocatedSplits,
+                //                        roundNum, recoverRoundNum, rerunNum, "dmap", noDiskCache,
+                //                        parameters);
+                //                PartitionConstraintHelper.addAbsoluteLocationConstraint(spec,
+                //                        mapOperator, mapOperatorLocations);
+                int[] targets = DynamicAggregationStressTest
+                        .getAggregationTree(mapNodesLocations.length,
+                                this.fanIn);
+                ImruSendOD send = new ImruSendOD(spec, targets, model, "send",
+                        parameters, modelName, imruConnection);
+                send.allocatedSplits=allocatedSplits;
+                ImruRecvOD recv = new ImruRecvOD(spec, deploymentId, targets);
+                spec.connect(new SpreadConnectorDescriptor(spec, null, null),
+                        send, 0, recv, 0);
+                PartitionConstraintHelper.addAbsoluteLocationConstraint(spec,
+                        send, mapNodesLocations);
+                PartitionConstraintHelper.addAbsoluteLocationConstraint(spec,
+                        recv, mapNodesLocations);
+                //                LocalReducerFactory.addLocalReducers(spec, mapOperator, 0,
+                //                        mapOperatorLocations, send, 0,
+                //                        new OneToOneConnectorDescriptor(spec), model,
+                //                        parameters);
+                spec.addRoot(recv);
+                return spec;
+            } else {
+                throw new Error(
+                        "Dynamic aggregation must be enabled for dynamic mapping.");
+            }
         } else {
             mapOperator = new MapOperatorDescriptor(spec, model, inputSplits,
-                    roundNum, recoverRoundNum, rerunNum, "map", noDiskCache,
-                    parameters);
+                    "map", parameters);
         }
         PartitionConstraintHelper.addAbsoluteLocationConstraint(spec,
                 mapOperator, mapOperatorLocations);
 
-        if (aggType == AGGREGATION.NARY && dynamicAggr) {
+        if (aggType == AGGREGATION.NARY && parameters.dynamicAggr) {
             int[] targets = DynamicAggregationStressTest.getAggregationTree(
-                    mapOperatorLocations.length, this.fanIn);
+                    mapNodesLocations.length, this.fanIn);
             ImruSendOD send = new ImruSendOD(spec, targets, model, "send",
-                    parameters, modelName, imruConnection, disableSwapping,
-                    maxWaitTimeBeforeSwap, dynamicDebug);
+                    parameters, modelName, imruConnection);
             ImruRecvOD recv = new ImruRecvOD(spec, deploymentId, targets);
             spec.connect(new SpreadConnectorDescriptor(spec, null, null), send,
                     0, recv, 0);
             PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, send,
-                    mapOperatorLocations);
+                    mapNodesLocations);
             PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, recv,
-                    mapOperatorLocations);
+                    mapNodesLocations);
             LocalReducerFactory.addLocalReducers(spec, mapOperator, 0,
                     mapOperatorLocations, send, 0,
-                    new OneToOneConnectorDescriptor(spec), model, parameters,
-                    dynamicAggr);
+                    new OneToOneConnectorDescriptor(spec), model, parameters);
             spec.addRoot(recv);
             return spec;
         }
@@ -436,7 +476,7 @@ public class IMRUJobFactory {
                     new RangeLocalityMap(mapOperatorLocations.length));
             LocalReducerFactory.addLocalReducers(spec, mapOperator, 0,
                     mapOperatorLocations, reduceOperator, 0, mapReducerConn,
-                    model, parameters, dynamicAggr);
+                    model, parameters);
 
             // Connect things together
             IConnectorDescriptor reduceUpdateConn = new MToNReplicatingConnectorDescriptor(
@@ -450,12 +490,11 @@ public class IMRUJobFactory {
                     spec);
             ReduceAggregationTreeFactory.buildAggregationTree(spec,
                     mapOperator, 0, inputSplits.length, updateOperator, 0,
-                    reduceUpdateConn, fanIn, true, dynamicAggr,
-                    mapOperatorLocations, model, parameters);
+                    reduceUpdateConn, fanIn, true, mapOperatorLocations, model,
+                    parameters);
         }
 
         spec.addRoot(updateOperator);
         return spec;
     }
-
 }

@@ -77,8 +77,7 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
     public void selectNoAggregation(HDFSSplit[] splits) throws IOException,
             InterruptedException {
         jobFactory = new IMRUJobFactory(imruConnection, splits, confFactory,
-                IMRUJobFactory.AGGREGATION.NONE, 0, 0, parameters,
-                options.dynamicAggr);
+                IMRUJobFactory.AGGREGATION.NONE, 0, 0, parameters);
     }
 
     public void selectGenericAggregation(HDFSSplit[] splits, int aggCount)
@@ -87,8 +86,7 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
             throw new IllegalArgumentException(
                     "Must specify a nonnegative aggregator count using the -agg-count option");
         jobFactory = new IMRUJobFactory(imruConnection, splits, confFactory,
-                IMRUJobFactory.AGGREGATION.GENERIC, 0, aggCount, parameters,
-                options.dynamicAggr);
+                IMRUJobFactory.AGGREGATION.GENERIC, 0, aggCount, parameters);
     }
 
     public void selectNAryAggregation(HDFSSplit[] splits, int fanIn)
@@ -98,8 +96,7 @@ public class IMRUJobControl<Model extends Serializable, Data extends Serializabl
                     "Must specify nonnegative -fan-in");
         }
         jobFactory = new IMRUJobFactory(imruConnection, splits, confFactory,
-                IMRUJobFactory.AGGREGATION.NARY, fanIn, 0, parameters,
-                options.dynamicAggr);
+                IMRUJobFactory.AGGREGATION.NARY, fanIn, 0, parameters);
     }
 
     /**

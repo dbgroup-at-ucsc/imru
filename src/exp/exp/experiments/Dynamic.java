@@ -48,22 +48,34 @@ public class Dynamic {
         });
     }
 
+    public static ImruExpParameters parameters(boolean lr) {
+        ImruExpParameters p = new ImruExpParameters();
+        p.experiment = "lr";
+        p.nodeCount = 8;
+        p.memory = 2000;
+        p.k = 3;
+        p.iterations = 5;
+        p.batchStart = 1;
+        p.batchStep = 3;
+        p.batchEnd = 1;
+        p.batchSize = 100000;
+        p.network = 0;
+        p.cpu = "0.5";
+        p.aggArg = 2;
+        if (lr) {
+            //for logistic regression
+            p.iterations = 1;
+            p.batchStart = 10;
+            p.batchStep = 10;
+            p.batchEnd = 10;
+        }
+        return p;
+    }
+
     public static void runExp(String folder, boolean lr) throws Exception {
         try {
             //            VirtualBox.remove();
-            ImruExpParameters p = new ImruExpParameters();
-            p.experiment="lr";
-            p.nodeCount = 8;
-            p.memory = 2000;
-            p.k = 3;
-            p.iterations = 5;
-            p.batchStart = 1;
-            p.batchStep = 3;
-            p.batchEnd = 1;
-            p.batchSize = 100000;
-            p.network = 0;
-            p.cpu = "0.5";
-            p.aggArg = 2;
+            ImruExpParameters p = parameters(lr);
             int startK = 2;
             int endK = 14;
             int startDims = 1000000;
@@ -72,10 +84,6 @@ public class Dynamic {
 
             if (lr) {
                 //for logistic regression
-                p.iterations = 1;
-                p.batchStart = 10;
-                p.batchStep = 10;
-                p.batchEnd = 10;
                 startK = 0;
                 endK = 0;
             }
@@ -131,13 +139,27 @@ public class Dynamic {
         Value dynamic = new Value();
     }
 
-    public static GnuPlot plot(String name, String prefix, String postfix)
-            throws Exception {
+    public static GnuPlot plot(String name, String prefix, String postfix,
+            boolean lr) throws Exception {
+        ImruExpParameters p = parameters(lr);
+        p.aggType = "nary";
+        int startK = 2;
+        int endK = 14;
+        int startDims = 1000000;
+        int stepDims = 3000000;
+        int endDims = 10000000;
+
+        if (lr) {
+            //for logistic regression
+            p.k = 0;
+        }
+
         GnuPlot plot = new GnuPlot(new File("/tmp/cache"), name,
                 "Model size (MB)", "Time (seconds)");
-        File file = new File(new File(prefix + "0" + postfix), "k2i"
-                + ImruExpFigs.ITERATIONS
-                + "b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2_d");
+        p.numOfDimensions = startDims;
+        p.resultFolder = prefix + "0" + postfix;
+        p.dynamicAggr = true;
+        File file = p.getResultFolder();
         ImruExpFigs f = new ImruExpFigs(file);
         plot.extra = "set title \"K-means" + " 10^5 points/node*"
                 + f.p.nodeCount + " Iteration=" + f.p.iterations + "\\n cpu="
@@ -154,22 +176,22 @@ public class Dynamic {
             File dir = new File(prefix + id + postfix);
             if (!dir.exists())
                 break;
-            ImruExpFigs.figsDir = dir;
+            p.resultFolder = prefix + id + postfix;
             for (int k = 2; k <= 16; k += 2) {
                 if (exps[k] == null)
                     exps[k] = new Exp();
-                f = new ImruExpFigs(new File(ImruExpFigs.figsDir, "k" + k + "i"
-                        + ImruExpFigs.ITERATIONS
-                        + "b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2"));
-                exps[k].org.add(f.get("imruMem1"));
-                f = new ImruExpFigs(new File(ImruExpFigs.figsDir, "k" + k + "i"
-                        + ImruExpFigs.ITERATIONS
-                        + "b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2_ds"));
-                exps[k].fixed.add(f.get("imruMem1"));
-                f = new ImruExpFigs(new File(ImruExpFigs.figsDir, "k" + k + "i"
-                        + ImruExpFigs.ITERATIONS
-                        + "b1s3e1b100000/local2000M0.5coreN0_8nodes_nary_2_d"));
-                exps[k].dynamic.add(f.get("imruMem1"));
+                p.dynamicAggr = false;
+                p.dynamicDisableSwapping = false;
+                f = new ImruExpFigs(p.getResultFolder());
+                exps[k].org.add(f.get("imruMem"+p.batchStart));
+                p.dynamicAggr = true;
+                p.dynamicDisableSwapping = true;
+                f = new ImruExpFigs(p.getResultFolder());
+                exps[k].fixed.add(f.get("imruMem"+p.batchStart));
+                p.dynamicAggr = true;
+                p.dynamicDisableSwapping = false;
+                f = new ImruExpFigs(p.getResultFolder());
+                exps[k].dynamic.add(f.get("imruMem"+p.batchStart));
             }
         }
         for (int k = 0; k < exps.length; k++) {
@@ -187,10 +209,10 @@ public class Dynamic {
     public static void main(String[] args) throws Exception {
         ImruExpParameters.defExperiment = "lr";
         String resultFolder = "result_" + ImruExpParameters.defExperiment;
-        for (int i = 0; i < 10; i++)
-            runExp(resultFolder + "/dynamic_aggr/" + i, true);
+        //        for (int i = 0; i < 10; i++)
+        //            runExp(resultFolder + "/dynamic_aggr/" + i, true);
         String folder = resultFolder + "/dynamic_aggr/";
-        //                plot("straggler", folder, "/resultDelay60s").show();
-        plot("normal", folder, "/resultNoDelay").show();
+        plot("straggler", folder, "/resultDelay60s", true).show();
+        //        plot("normal", folder, "/resultNoDelay").show();
     }
 }

@@ -24,7 +24,7 @@ public class ImruIterInfo implements Serializable {
         public int partition;
         public int totalPartitions;
         public Vector<OperatorInfo> childrens = new Vector<OperatorInfo>();
-        public HDFSSplit completedSplit;
+        public Vector<HDFSSplit> completedSplits;
         public long mappedDataSize;
         public int mappedRecords;
         public long totalMappedDataSize;
@@ -56,7 +56,7 @@ public class ImruIterInfo implements Serializable {
         }
 
         public void copyTo(OperatorInfo target) {
-            target.completedSplit = completedSplit;
+            target.completedSplits = completedSplits;
             target.mappedDataSize = mappedDataSize;
             target.mappedRecords = mappedRecords;
         }
@@ -106,7 +106,7 @@ public class ImruIterInfo implements Serializable {
                     hash.add(s2);
                     this.allCompletedSplits.add(s2);
                 } else {
-                    Rt.p("DUP "+s2);
+                    Rt.p("DUP " + s2);
                 }
             }
             // if (r2.aggrTree.nodeId.equals(this.aggrTree.nodeId)) {
@@ -125,9 +125,11 @@ public class ImruIterInfo implements Serializable {
             else
                 sb.append(bs.get(i) ? "+--" : "+--");
         }
-        sb.append(info.operator + " (" + info.partition + "/"
-                + info.totalPartitions + ") " + info.nodeId);
-        boolean mapper = info.operator.contains("map")
+        if (info.operator != null)
+            sb.append(info.operator + " (" + info.partition + "/"
+                    + info.totalPartitions + ") " + info.nodeId);
+        boolean mapper = (info.operator != null && info.operator
+                .contains("map"))
                 || info.childrens.size() == 0;
         if (mapper) {
             sb.append(String.format(" mapped=%,d (%,d)", info.mappedRecords,
@@ -183,15 +185,17 @@ public class ImruIterInfo implements Serializable {
                         + ",");
             sb.append(")");
         }
-        if (info.completedSplit != null) {
-            sb.append("\n");
-            for (int i = 0; i < level; i++) {
-                if (i < level - 1)
-                    sb.append(bs.get(i) ? "   " : "|  ");
-                else
-                    sb.append(bs.get(i) ? "   " : "   ");
+        if (info.completedSplits != null) {
+            for (HDFSSplit split : info.completedSplits) {
+                sb.append("\n");
+                for (int i = 0; i < level + 1; i++) {
+                    if (i < level)
+                        sb.append(bs.get(i) ? "   " : "|  ");
+                    else
+                        sb.append(bs.get(i) ? "+--" : "+--");
+                }
+                sb.append(" ").append(split);
             }
-            sb.append(" ").append(info.completedSplit);
         }
         sb.append("\n");
         bs.set(level, info.childrens.size() == 0);
