@@ -28,7 +28,7 @@ import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.dataflow.IMRUDebugger;
 import edu.uci.ics.hyracks.imru.dataflow.IMRUSerialize;
-import edu.uci.ics.hyracks.imru.dataflow.dynamic.SwapCommand;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.swap.DynamicCommand;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 /**
@@ -284,13 +284,15 @@ public class SerializedFrames {
     }
 
     public static void serializeSwapCmd(IMRUContext ctx, IFrameWriter writer,
-            SwapCommand cmd, int partition, int targetPartition, int writerId)
+            DynamicCommand cmd, int partition, int targetPartition, int writerId)
             throws IOException {
         byte[] objectData = JavaSerializationUtils.serialize(cmd);
         ByteBuffer frame = ctx.allocateFrame();
-        serializeToFrames(ctx, frame, ctx.getFrameSize(), writer, objectData,
-                partition, targetPartition, DYNAMIC_COMMUNICATION_FRAME, null,
-                writerId);
+        int frames = serializeToFrames(ctx, frame, ctx.getFrameSize(), writer,
+                objectData, partition, targetPartition,
+                DYNAMIC_COMMUNICATION_FRAME, null, writerId);
+        if (frames > 1)
+            throw new Error(frames + " " + cmd+" "+objectData.length);
     }
 
     public static Object deserialize(byte[] bytes) {
@@ -349,12 +351,13 @@ public class SerializedFrames {
      * @param debugInfo
      * @throws HyracksDataException
      */
-    public static void serializeToFrames(IMRUContext ctx, ByteBuffer frame,
+    public static int serializeToFrames(IMRUContext ctx, ByteBuffer frame,
             int frameSize, IFrameWriter writer, byte[] objectData,
             int sourcePartition, int targetPartition, int replyPartition,
             String debugInfo, int writerId) throws HyracksDataException {
         int position = 0;
         //        Rt.p("send " + objectData.length + " " + deserialize(objectData));
+        int frames = 0;
         while (position < objectData.length) {
             if (ctx != null)
                 setUpFrame(ctx, frame);
@@ -381,6 +384,8 @@ public class SerializedFrames {
                         + position);
             FrameUtils.flushFrame(frame, writer);
             position += length;
+            frames++;
         }
+        return frames;
     }
 }

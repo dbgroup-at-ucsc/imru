@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.uci.ics.hyracks.imru.dataflow.dynamic;
+package edu.uci.ics.hyracks.imru.dataflow.dynamic.test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -65,6 +65,9 @@ import edu.uci.ics.hyracks.imru.api.old.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.api.old.IMRUJob2Impl;
 import edu.uci.ics.hyracks.imru.data.SerializedFrames;
 import edu.uci.ics.hyracks.imru.dataflow.SpreadConnectorDescriptor;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.AggrStates;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.ImruRecvOD;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.ImruSendOD;
 import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
 import edu.uci.ics.hyracks.imru.util.CreateDeployment;
@@ -279,7 +282,7 @@ public class DynamicAggregationStressTest {
     public static void stressTest() throws Exception {
         int nodeCount = 16;
         //        ImruSendOperator.debug = true;
-        ImruSendOperator.debugNodeCount = nodeCount;
+        AggrStates.debugNodeCount = nodeCount;
         start(nodeCount);
         HyracksConnection hcc = new HyracksConnection("localhost", 3099);
         //        DeploymentId did = CreateDeployment.uploadApp(hcc);
@@ -304,7 +307,7 @@ public class DynamicAggregationStressTest {
                                 if (System.in.available() > 0) {
                                     while (System.in.available() > 0)
                                         System.in.read();
-                                    ImruSendOperator.printAggrTree();
+                                    AggrStates.printAggrTree();
                                 }
                                 Thread.sleep(500);
                             }
@@ -327,56 +330,8 @@ public class DynamicAggregationStressTest {
         }
     }
 
-    public static void functionalTest() throws Exception {
-        int nodeCount = 16;
-        ImruSendOperator.debug = true;
-        ImruSendOperator.debugNodeCount = nodeCount;
-        start(nodeCount);
-        HyracksConnection hcc = new HyracksConnection("localhost", 3099);
-        //        DeploymentId did = CreateDeployment.uploadApp(hcc);
-        DeploymentId did = hcc.deployBinary(null);
-        String[] nodes = CreateDeployment.listNodes(hcc);
-        try {
-            IMRUConnection imruConnection = new IMRUConnection("localhost",
-                    3288);
-            JobSpecification job = createJob(did, nodes, "model",
-                    imruConnection, false, true);
-            JobId jobId = hcc.startJob(did, job, EnumSet.noneOf(JobFlag.class));
-            new Thread() {
-                public void run() {
-                    try {
-                        Thread.sleep(500);
-                        synchronized (sync) {
-                            sync.notifyAll();
-                        }
-                        while (true) {
-                            if (System.in.available() > 0) {
-                                while (System.in.available() > 0)
-                                    System.in.read();
-                                ImruSendOperator.printAggrTree();
-                            }
-                            Thread.sleep(500);
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                };
-            }.start();
-            hcc.waitForCompletion(jobId);
-            String s = (String) imruConnection.downloadModel("model");
-            Rt.p(s);
-            if (!s.startsWith(nodeCount + " "))
-                throw new Error();
-        } catch (Throwable e) {
-            e.printStackTrace();
-        } finally {
-            Thread.sleep(1000);
-            System.exit(0);
-        }
-    }
-
     public static void main(String[] args) throws Exception {
-        functionalTest();
+        stressTest();
         String[] nodes = new String[8];
         for (int i = 0; i < nodes.length; i++)
             nodes[i] = "NC" + i;

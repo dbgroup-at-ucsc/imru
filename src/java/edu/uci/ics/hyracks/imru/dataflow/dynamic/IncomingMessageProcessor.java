@@ -3,6 +3,18 @@ package edu.uci.ics.hyracks.imru.dataflow.dynamic;
 import java.io.IOException;
 import java.util.Vector;
 
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.map.GetAvailableSplits;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.map.ReplyAvailableSplit;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.map.ReplySplit;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.map.RequestSplit;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.swap.IdentificationCorrection;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.swap.IdentifyRequest;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.swap.LockReply;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.swap.LockRequest;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.swap.ReleaseLock;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.swap.SwapChildrenRequest;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.swap.DynamicCommand;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.swap.SwapTargetRequest;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class IncomingMessageProcessor {
@@ -20,9 +32,9 @@ public class IncomingMessageProcessor {
         this.srcPartition = srcPartition;
         this.thisPartition = thisPartition;
         this.replyPartition = replyPartition;
-        if (so.targetPartition == -2)
+        if (so.aggr.targetPartition == -2)
             return;
-        if (so.debug && object instanceof SwapCommand)
+        if (so.aggr.debug && object instanceof DynamicCommand)
             Rt.p(so.curPartition + " recv from " + srcPartition + " {" + object
                     + "}");
         if (object instanceof LockRequest) {
@@ -33,34 +45,34 @@ public class IncomingMessageProcessor {
             processSwapTargetRequest((SwapTargetRequest) object);
         } else if (object instanceof SwapChildrenRequest) {
             SwapChildrenRequest request = (SwapChildrenRequest) object;
-            if (so.debug)
+            if (so.aggr.debug)
                 Rt.p(so.curPartition + " recv swapChildren from "
                         + srcPartition + " " + request);
             if (request.addPartition == so.curPartition) {
                 Rt.p("ERROR ");
                 return;
             }
-            if (so.isParentNodeOfSwapping
-                    && request.removePartition == so.swappingTarget) {
+            if (so.aggr.isParentNodeOfSwapping
+                    && request.removePartition == so.aggr.swappingTarget) {
                 // The target partition swapped itself away
-                so.swapFailed = true;
-                so.failedReason = "disappear";
-                synchronized (so.aggrSync) {
-                    so.aggrSync.notifyAll();
+                so.aggr.swapFailed = true;
+                so.aggr.failedReason = "disappear";
+                synchronized (so.aggr.aggrSync) {
+                    so.aggr.aggrSync.notifyAll();
                 }
             }
-            for (int i = 0; i < so.incomingPartitions.length; i++) {
-                if (so.incomingPartitions[i] == request.removePartition) {
-                    so.incomingPartitions[i] = request.addPartition;
+            for (int i = 0; i < so.aggr.incomingPartitions.length; i++) {
+                if (so.aggr.incomingPartitions[i] == request.removePartition) {
+                    so.aggr.incomingPartitions[i] = request.addPartition;
                 }
-                synchronized (so.aggrSync) {
-                    so.aggrSync.notifyAll();
+                synchronized (so.aggr.aggrSync) {
+                    so.aggr.aggrSync.notifyAll();
                 }
             }
         } else if (object instanceof ReleaseLock) {
-            synchronized (so.aggrSync) {
-                so.holding = false;
-                so.aggrSync.notifyAll();
+            synchronized (so.aggr.aggrSync) {
+                so.aggr.holding = false;
+                so.aggr.aggrSync.notifyAll();
             }
         } else if (object instanceof IdentifyRequest) {
             IdentificationCorrection c = new IdentificationCorrection(
@@ -79,6 +91,12 @@ public class IncomingMessageProcessor {
                     so.receivedIdentificationSync.notifyAll();
                 }
             }
+        } else if (object instanceof GetAvailableSplits
+                || object instanceof ReplyAvailableSplit
+                || object instanceof RequestSplit
+                || object instanceof ReplySplit) {
+            so.map.processIncomingMessage(srcPartition, thisPartition,
+                    replyPartition, object);
         } else
             throw new Error();
     }
@@ -86,41 +104,41 @@ public class IncomingMessageProcessor {
     void processLockRequest(LockRequest request) throws IOException {
         boolean successful;
         String reason = null;
-        synchronized (so.aggrSync) {
-            if (so.holding) {
+        synchronized (so.aggr.aggrSync) {
+            if (so.aggr.holding) {
                 successful = false;
                 reason = "hold";
-            } else if (so.receivedMapResult) {
+            } else if (so.aggr.receivedMapResult) {
                 successful = false;
                 reason = "mapped";
-            } else if (so.sending) {
+            } else if (so.aggr.sending) {
                 successful = false;
                 reason = "send";
-            } else if (so.swappingTarget >= 0) {
+            } else if (so.aggr.swappingTarget >= 0) {
                 successful = false;
                 reason = "swapping";
             } else {
-                so.holding = true;
+                so.aggr.holding = true;
                 successful = true;
             }
         }
         if (request.isParentNode
                 && so.curPartition == request.newTargetPartition) {
             if (successful)
-                so.log.append("accept" + srcPartition + ",");
+                so.aggr.log.append("accept" + srcPartition + ",");
             else
-                so.log.append("reject" + srcPartition + ",");
+                so.aggr.log.append("reject" + srcPartition + ",");
         }
         if (successful && request.isParentNode
                 && so.curPartition == request.newTargetPartition) {
             // for the swap target
             int n = 0;
-            if (so.incomingPartitions.length > 0)
-                n = so.lockIncomingPartitions(false, -1);
-            so.isParentNodeOfSwapping = false;
-            so.swappingTarget = srcPartition;
+            if (so.aggr.incomingPartitions.length > 0)
+                n = so.aggr.lockIncomingPartitions(false, -1);
+            so.aggr.isParentNodeOfSwapping = false;
+            so.aggr.swappingTarget = srcPartition;
             if (n == 0) {
-                so.successfullyHoldPartitions = new int[0];
+                so.aggr.successfullyHoldPartitions = new int[0];
                 LockReply r2 = new LockReply();
                 r2.forParentNode = true;
                 r2.successful = true;
@@ -133,139 +151,140 @@ public class IncomingMessageProcessor {
             reply.successful = successful;
             reply.reason = reason;
             so.sendObj(srcPartition, reply);
-            if (so.debug)
+            if (so.aggr.debug)
                 Rt.p(so.curPartition + " reply " + srcPartition + " with "
                         + reply);
         }
     }
 
     void checkHoldingStatus() throws IOException {
-        for (int i = so.expectingReplies.nextSetBit(0); i >= 0; i = so.expectingReplies
+        for (int i = so.aggr.expectingReplies.nextSetBit(0); i >= 0; i = so.aggr.expectingReplies
                 .nextSetBit(i + 1)) {
-            if (so.receivedPartitions.get(i)) {
-                so.expectingReplies.clear(i);
-                so.totalRepliesRemaining--;
+            if (so.aggr.receivedPartitions.get(i)) {
+                so.aggr.expectingReplies.clear(i);
+                so.aggr.totalRepliesRemaining--;
             }
         }
     }
 
     void holdComplete() throws IOException {
-        if (so.swapFailed) {
-            synchronized (so.aggrSync) {
-                so.aggrSync.notifyAll();
+        if (so.aggr.swapFailed) {
+            synchronized (so.aggr.aggrSync) {
+                so.aggr.aggrSync.notifyAll();
             }
-            so.releaseIncomingPartitions();
+            so.aggr.releaseIncomingPartitions();
         } else {
             Vector<Integer> succeed = new Vector<Integer>();
-            for (int i : so.incomingPartitions)
-                if (so.holdSucceed.get(i))
+            for (int i : so.aggr.incomingPartitions)
+                if (so.aggr.holdSucceed.get(i))
                     succeed.add(i);
-            so.successfullyHoldPartitions = Rt.intArray(succeed);
-            if (so.isParentNodeOfSwapping) {
-                so.swapSucceed = true;
-                if (so.debug)
+            so.aggr.successfullyHoldPartitions = Rt.intArray(succeed);
+            if (so.aggr.isParentNodeOfSwapping) {
+                so.aggr.swapSucceed = true;
+                if (so.aggr.debug)
                     Rt.p("*** GO " + so.curPartition + " swap with "
-                            + so.swappingTarget + " go ahead");
-                synchronized (so.aggrSync) {
-                    so.aggrSync.notifyAll();
+                            + so.aggr.swappingTarget + " go ahead");
+                synchronized (so.aggr.aggrSync) {
+                    so.aggr.aggrSync.notifyAll();
                 }
             } else {
                 LockReply r2 = new LockReply();
                 r2.forParentNode = true;
                 r2.successful = true;
-                r2.holdedIncomingPartitions = so.successfullyHoldPartitions;
-                if (so.swappingTarget < 0)
+                r2.holdedIncomingPartitions = so.aggr.successfullyHoldPartitions;
+                if (so.aggr.swappingTarget < 0)
                     throw new Error();
-                so.sendObj(so.swappingTarget, r2);
+                so.sendObj(so.aggr.swappingTarget, r2);
             }
         }
     }
 
     void processLockReply(LockReply reply) throws IOException {
-        if (so.debug) {
+        if (so.aggr.debug) {
             StringBuilder sb = new StringBuilder();
-            for (int i = so.expectingReplies.nextSetBit(0); i >= 0; i = so.expectingReplies
+            for (int i = so.aggr.expectingReplies.nextSetBit(0); i >= 0; i = so.aggr.expectingReplies
                     .nextSetBit(i + 1)) {
-                if (!so.receivedPartitions.get(i))
+                if (!so.aggr.receivedPartitions.get(i))
                     sb.append(i + ",");
             }
             Rt.p(so.curPartition + " recv holdReply from " + srcPartition + " "
-                    + reply + " remaining " + so.totalRepliesRemaining + " ("
-                    + sb + ")");
+                    + reply + " remaining " + so.aggr.totalRepliesRemaining
+                    + " (" + sb + ")");
 
         }
-        if (so.isParentNodeOfSwapping) {
-            if (srcPartition == so.swappingTarget) {
-                so.newChildren = reply.holdedIncomingPartitions;
+        if (so.aggr.isParentNodeOfSwapping) {
+            if (srcPartition == so.aggr.swappingTarget) {
+                so.aggr.newChildren = reply.holdedIncomingPartitions;
             }
         }
-        synchronized (so.aggrSync) {
-            if (so.expectingReplies.get(srcPartition)) {
-                so.expectingReplies.clear(srcPartition);
-                so.totalRepliesRemaining--;
+        synchronized (so.aggr.aggrSync) {
+            if (so.aggr.expectingReplies.get(srcPartition)) {
+                so.aggr.expectingReplies.clear(srcPartition);
+                so.aggr.totalRepliesRemaining--;
             }
             checkHoldingStatus();
         }
-        so.holdSucceed.set(srcPartition, reply.successful);
-        if (srcPartition == so.swappingTarget) {
+        so.aggr.holdSucceed.set(srcPartition, reply.successful);
+        if (srcPartition == so.aggr.swappingTarget) {
             if (!reply.successful) {
-                so.swapFailed = true;
-                so.failedReason = reply.reason;
+                so.aggr.swapFailed = true;
+                so.aggr.failedReason = reply.reason;
             }
         }
-        int t = so.swappingTarget;
-        if (t >= 0 && (so.isPartitionFinished(so.swappingTarget))) {
+        int t = so.aggr.swappingTarget;
+        if (t >= 0 && (so.aggr.isPartitionFinished(so.aggr.swappingTarget))) {
             //Already received from the target partition
-            so.swapFailed = true;
-            so.failedReason = "Recv" + so.failedReasonReceivedSize;
+            so.aggr.swapFailed = true;
+            so.aggr.failedReason = "Recv" + so.aggr.failedReasonReceivedSize;
         }
         //            Rt.p(curPartition + " waiting reply for " + totalRepliesRemaining
         //                    + " more");
-        if (so.totalRepliesRemaining <= 0)
+        if (so.aggr.totalRepliesRemaining <= 0)
             holdComplete();
     }
 
     void processSwapTargetRequest(SwapTargetRequest request) throws IOException {
-        if (so.debug)
-            Rt.p(so.curPartition + "->" + so.targetPartition
+        if (so.aggr.debug)
+            Rt.p(so.curPartition + "->" + so.aggr.targetPartition
                     + " recv swap from " + srcPartition + " " + request);
         if (request.newTargetPartition == so.curPartition) {
-            if (so.targetPartition != srcPartition) {
-                so.printAggrTree();
-                Rt.p("ERROR: " + so.curPartition + " " + so.targetPartition
-                        + " " + srcPartition);
+            if (so.aggr.targetPartition != srcPartition) {
+                so.aggr.printAggrTree();
+                Rt.p("ERROR: " + so.curPartition + " "
+                        + so.aggr.targetPartition + " " + srcPartition);
                 //                throw new Error(so.targetPartition + " " + srcPartition);
             }
-            if (so.swappingTarget != srcPartition) {
-                so.printAggrTree();
-                Rt.p("ERROR: " + so.curPartition + " " + so.targetPartition
-                        + " " + srcPartition);
+            if (so.aggr.swappingTarget != srcPartition) {
+                so.aggr.printAggrTree();
+                Rt.p("ERROR: " + so.curPartition + " "
+                        + so.aggr.targetPartition + " " + srcPartition);
                 //                throw new Error(so.targetPartition + " " + srcPartition);
             }
-            so.targetPartition = request.outgoingPartitionOfSender;
-            so.log.append("t" + so.targetPartition + ",");
-            so.swapChildren(so.successfullyHoldPartitions,
-                    request.incompeleteIncomingPartitions, so.swappingTarget);
-            so.swapped.add(so.swappingTarget);
-            so.swappedTime.add(System.currentTimeMillis());
-            if (so.isParentNodeOfSwapping)
+            so.aggr.targetPartition = request.outgoingPartitionOfSender;
+            so.aggr.log.append("t" + so.aggr.targetPartition + ",");
+            so.aggr.swapChildren(so.aggr.successfullyHoldPartitions,
+                    request.incompeleteIncomingPartitions,
+                    so.aggr.swappingTarget);
+            so.aggr.swapped.add(so.aggr.swappingTarget);
+            so.aggr.swappedTime.add(System.currentTimeMillis());
+            if (so.aggr.isParentNodeOfSwapping)
                 Rt.p("ERROR");
             else
-                so.swappingTarget = -1;
-            synchronized (so.aggrSync) {
-                so.holding = false;
-                so.aggrSync.notifyAll();
+                so.aggr.swappingTarget = -1;
+            synchronized (so.aggr.aggrSync) {
+                so.aggr.holding = false;
+                so.aggr.aggrSync.notifyAll();
             }
-            if (so.targetPartition >= 0)
-                so.sendObj(so.targetPartition, new SwapChildrenRequest(
+            if (so.aggr.targetPartition >= 0)
+                so.sendObj(so.aggr.targetPartition, new SwapChildrenRequest(
                         srcPartition, so.curPartition));
         } else {
-            so.targetPartition = request.newTargetPartition;
-            so.log.append(so.targetPartition + ",");
+            so.aggr.targetPartition = request.newTargetPartition;
+            so.aggr.log.append(so.aggr.targetPartition + ",");
         }
-        synchronized (so.aggrSync) {
-            so.holding = false;
-            so.aggrSync.notifyAll();
+        synchronized (so.aggr.aggrSync) {
+            so.aggr.holding = false;
+            so.aggr.aggrSync.notifyAll();
         }
     }
 }

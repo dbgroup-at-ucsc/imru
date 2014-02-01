@@ -121,6 +121,47 @@ public class IMRUContext {
         return context.queue;
     }
 
+    public void addSplitsToQueue(HDFSSplit[] splits) {
+        LinkedList<HDFSSplit> queue = getQueue();
+        synchronized (queue) {
+            for (HDFSSplit split : splits) {
+                if (split.uuid < 0)
+                    throw new Error();
+                queue.add(split);
+            }
+        }
+    }
+
+    public HDFSSplit popSplitFromQueue() {
+        LinkedList<HDFSSplit> queue = getQueue();
+        synchronized (queue) {
+            if (queue.size() == 0)
+                return null;
+            HDFSSplit split = queue.remove();
+            if (split.uuid < 0)
+                throw new Error();
+            return split;
+        }
+    }
+
+    public HDFSSplit removeSplitFromQueue(int uuid) {
+        LinkedList<HDFSSplit> queue = getQueue();
+        synchronized (queue) {
+            if (queue.size() == 0)
+                return null;
+            HDFSSplit s = null;
+            for (HDFSSplit split : queue) {
+                if (split.uuid == uuid) {
+                    s = split;
+                    break;
+                }
+            }
+            if (s != null)
+                queue.remove(s);
+            return s;
+        }
+    }
+
     /**
      * Get current iteration number. The first iteration is 0.
      * 

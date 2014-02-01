@@ -170,7 +170,7 @@ public class Client<Model extends Serializable, Data extends Serializable> {
         control.parameters.useMemoryCache = options.memCache;
         control.parameters.dynamicMappersPerNode = options.dynamicMappersPerNode;
         control.parameters.dynamicAggr = options.dynamicAggr;
-        control.parameters.disableSwapping = options.dynamicDisable;
+        control.parameters.disableSwapping = options.dynamicDisableSwapping;
         control.parameters.maxWaitTimeBeforeSwap = options.dynamicSwapTime;
         control.parameters.dynamicDebug = options.dynamicDebug;
         control.connect(options.host, options.port, options.imruPort,

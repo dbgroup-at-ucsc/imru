@@ -7,6 +7,8 @@ import java.util.BitSet;
 import edu.uci.ics.hyracks.api.util.JavaSerializationUtils;
 import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.data.SerializedFrames;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.swap.SwapChildrenRequest;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.swap.SwapTargetRequest;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class DynamicAggregation<Model extends Serializable, Data extends Serializable> {
@@ -18,33 +20,33 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
 
     boolean waitForAggregation() throws Exception {
         Thread.currentThread().setName("ImruSendOperator " + so.curPartition);
-        if (so.debug)
+        if (so.aggr.debug)
             Rt.p("*** Partion " + so.curPartition
                     + " completing mapping (incoming="
-                    + so.getIncomingPartitionsString() + " target="
-                    + so.targetPartition + ")");
+                    + so.aggr.getIncomingPartitionsString() + " target="
+                    + so.aggr.targetPartition + ")");
         while (true) {
-            synchronized (so.aggrSync) {
-                if (so.holding)
-                    so.aggrSync.wait();
+            synchronized (so.aggr.aggrSync) {
+                if (so.aggr.holding)
+                    so.aggr.aggrSync.wait();
                 else {
-                    so.receivedMapResult = true;;
+                    so.aggr.receivedMapResult = true;;
                     break;
                 }
             }
         }
-        so.swappingTarget = -1;
+        so.aggr.swappingTarget = -1;
         long swapTime = System.currentTimeMillis() + so.parameters.maxWaitTimeBeforeSwap;
         while (true) {
             int unfinishedPartition = -1;
-            synchronized (so.aggrSync) {
+            synchronized (so.aggr.aggrSync) {
                 boolean hasMissingPartitions = false;
                 StringBuilder missing = new StringBuilder();
-                for (int id : so.incomingPartitions) {
-                    if (unfinishedPartition < 0 && !so.isPartitionFinished(id)
-                            && !so.swapFailedPartitions.get(id))
+                for (int id : so.aggr.incomingPartitions) {
+                    if (unfinishedPartition < 0 && !so.aggr.isPartitionFinished(id)
+                            && !so.aggr.swapFailedPartitions.get(id))
                         unfinishedPartition = id;
-                    if (!so.receivedPartitions.get(id)) {
+                    if (!so.aggr.receivedPartitions.get(id)) {
                         missing.append(id + ",");
                         hasMissingPartitions = true;
                     }
@@ -55,29 +57,29 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
                                 .currentTimeMillis()) / 2;
                         if (waitTime < 1)
                             waitTime = 1;
-                        so.aggrSync.wait(waitTime);
+                        so.aggr.aggrSync.wait(waitTime);
                         continue;
                     } else {
-                        so.swappingTarget = unfinishedPartition;
-                        so.swapSucceed = false;
-                        so.swapFailed = false;
-                        so.failedReason = null;
+                        so.aggr.swappingTarget = unfinishedPartition;
+                        so.aggr.swapSucceed = false;
+                        so.aggr.swapFailed = false;
+                        so.aggr.failedReason = null;
                     }
                 } else {
                     if (hasMissingPartitions) {
-                        if (so.debug)
+                        if (so.aggr.debug)
                             Rt.p(so.curPartition + " still need " + missing);
-                        so.aggrSync.wait();
-                        if (so.debug)
+                        so.aggr.aggrSync.wait();
+                        if (so.aggr.debug)
                             Rt.p(so.curPartition + " wake up");
                     } else {
                         break;
                     }
                 }
             }
-            if (so.debug)
-                Rt.p(so.curPartition + " " + so.swappingTarget);
-            if (so.swappingTarget >= 0)
+            if (so.aggr.debug)
+                Rt.p(so.curPartition + " " + so.aggr.swappingTarget);
+            if (so.aggr.swappingTarget >= 0)
                 performSwap();
         }
         so.imruSpec.reduceDbgInfoClose(so.dbgInfoRecvQueue);
@@ -85,43 +87,43 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
         //        so.io.close();
 
         //TODO: check the following code, no need to wait?
-        so.allChildrenFinished = true;
-        if (so.debug)
+        so.aggr.allChildrenFinished = true;
+        if (so.aggr.debug)
             Rt.p(so.curPartition + " all children finished");
         //completed aggregation
         while (true) {
-            synchronized (so.aggrSync) {
-                if (so.holding)
-                    so.aggrSync.wait();
+            synchronized (so.aggr.aggrSync) {
+                if (so.aggr.holding)
+                    so.aggr.aggrSync.wait();
                 else {
-                    so.sending = true;
+                    so.aggr.sending = true;
                     break;
                 }
             }
         }
-        if (so.debug)
+        if (so.aggr.debug)
             Rt.p(so.curPartition + " wait for aggregated result");
         while (so.aggregatedResult == null) {
-            synchronized (so.aggrSync) {
+            synchronized (so.aggr.aggrSync) {
                 if (so.aggregatedResult == null)
-                    so.aggrSync.wait();
+                    so.aggr.aggrSync.wait();
             }
         }
         //        so.future.get();
-        if (so.debug)
+        if (so.aggr.debug)
             Rt.p(so.curPartition + " start sending");
-        boolean isRoot = so.targetPartition < 0;
-        info.op.swapsWithPartitions = Rt.intArray(so.swaps);
-        info.op.swapsTime = Rt.longArray(so.swapsTime);
-        info.op.swappedWithPartitions = Rt.intArray(so.swapped);
-        info.op.swappedTime = Rt.longArray(so.swappedTime);
-        if (so.swapsFailed.size() > 0) {
-            info.op.swapsFailed = new String[so.swapsFailed.size()];
-            info.op.swapsFailedTime = new long[so.swapsFailed.size()];
-            for (int i = 0; i < so.swapsFailed.size(); i++) {
-                info.op.swapsFailed[i] = so.swapsFailed.get(i) + ":"
-                        + so.swapFailedReason.get(i);
-                info.op.swapsFailedTime[i] = so.swapFailedTime.get(i);
+        boolean isRoot = so.aggr.targetPartition < 0;
+        info.op.swapsWithPartitions = Rt.intArray(so.aggr.swaps);
+        info.op.swapsTime = Rt.longArray(so.aggr.swapsTime);
+        info.op.swappedWithPartitions = Rt.intArray(so.aggr.swapped);
+        info.op.swappedTime = Rt.longArray(so.aggr.swappedTime);
+        if (so.aggr.swapsFailed.size() > 0) {
+            info.op.swapsFailed = new String[so.aggr.swapsFailed.size()];
+            info.op.swapsFailedTime = new long[so.aggr.swapsFailed.size()];
+            for (int i = 0; i < so.aggr.swapsFailed.size(); i++) {
+                info.op.swapsFailed[i] = so.aggr.swapsFailed.get(i) + ":"
+                        + so.aggr.swapFailedReason.get(i);
+                info.op.swapsFailedTime[i] = so.aggr.swapFailedTime.get(i);
             }
         }
         if (isRoot) {
@@ -129,7 +131,7 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
                     so.imruContext);
             Model model = (Model) so.imruContext.getModel();
             if (model == null) {
-                //                if (so.debug) {
+                //                if (so.aggr.debug) {
                 String s = SerializedFrames.deserialize(so.aggregatedResult)
                         .toString();
                 String[] ss = s.split(",+");
@@ -137,7 +139,7 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
                 StringBuilder sb = new StringBuilder();
                 for (String s2 : ss)
                     bs.set(Integer.parseInt(s2));
-                for (int i = 0; i < so.debugNodeCount; i++)
+                for (int i = 0; i < so.aggr.debugNodeCount; i++)
                     if (!bs.get(i))
                         sb.append("missing " + i + ",");
                 Rt.p("Partition " + so.curPartition
@@ -179,9 +181,9 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
             //                Rt.p(model);
             //            LOG.info("uploaded model to CC " + (end - start) + " milliseconds");
         } else {
-            if (so.debug) {
-                so.printAggrTree();
-                Rt.p("UPLOAD " + so.curPartition + " -> " + so.targetPartition
+            if (so.aggr.debug) {
+                so.aggr.printAggrTree();
+                Rt.p("UPLOAD " + so.curPartition + " -> " + so.aggr.targetPartition
                         + " " + so.aggregatedResult.length
                 //                        + MergedFrames.deserialize(so.aggregatedResult)
                         );
@@ -189,111 +191,111 @@ public class DynamicAggregation<Model extends Serializable, Data extends Seriali
             ByteBuffer frame = so.imruContext.allocateFrame();
             SerializedFrames.serializeToFrames(so.imruContext, frame,
                     so.imruContext.getFrameSize(), so.getWriter(),
-                    so.aggregatedResult, so.curPartition, so.targetPartition,
+                    so.aggregatedResult, so.curPartition, so.aggr.targetPartition,
                     so.curPartition, so.imruContext.getNodeId() + " reduce "
                             + so.curPartition + " "
                             + so.imruContext.getOperatorName(), so
-                            .partitionToWriter(so.targetPartition));
+                            .partitionToWriter(so.aggr.targetPartition));
             //                        so.sendData(so.targetPartition, so.aggregatedResult);
             SerializedFrames.serializeDbgInfo(so.imruContext, so.getWriter(),
-                    info, so.curPartition, so.targetPartition, so
-                            .partitionToWriter(so.targetPartition));
+                    info, so.curPartition, so.aggr.targetPartition, so
+                            .partitionToWriter(so.aggr.targetPartition));
         }
-        so.sentPartition = so.targetPartition;
-        so.targetPartition = -2;
+        so.aggr.sentPartition = so.aggr.targetPartition;
+        so.aggr.targetPartition = -2;
         return isRoot;
     }
 
     void performSwap() throws Exception {
-        if (so.debug) {
-            so.printAggrTree();
+        if (so.aggr.debug) {
+            so.aggr.printAggrTree();
             Rt.p("*** " + so.curPartition + " attempts to swap with "
-                    + so.swappingTarget + " "
-                    + so.getIncomingPartitionsString() + "->"
-                    + so.targetPartition);
+                    + so.aggr.swappingTarget + " "
+                    + so.aggr.getIncomingPartitionsString() + "->"
+                    + so.aggr.targetPartition);
         }
-        so.isParentNodeOfSwapping = true;
-        so.newChildren = null;
-        so.lockIncomingPartitions(true, so.swappingTarget);
+        so.aggr.isParentNodeOfSwapping = true;
+        so.aggr.newChildren = null;
+        so.aggr.lockIncomingPartitions(true, so.aggr.swappingTarget);
         while (true) {
-            if (so.debug)
-                Rt.p(so.curPartition + " swapping " + so.swappingTarget + " "
-                        + so.swapSucceed + " " + so.swapFailed);
-            if (so.swappingTarget >= 0
-                    && (so.isPartitionFinished(so.swappingTarget))) {
-                if (so.debug)
+            if (so.aggr.debug)
+                Rt.p(so.curPartition + " swapping " + so.aggr.swappingTarget + " "
+                        + so.aggr.swapSucceed + " " + so.aggr.swapFailed);
+            if (so.aggr.swappingTarget >= 0
+                    && (so.aggr.isPartitionFinished(so.aggr.swappingTarget))) {
+                if (so.aggr.debug)
                     Rt.p(so.curPartition + " swapping target finished");
                 //Already received from the target partition
-                so.swapFailed = true;
-                so.failedReason = "recv" + so.failedReasonReceivedSize;
+                so.aggr.swapFailed = true;
+                so.aggr.failedReason = "recv" + so.aggr.failedReasonReceivedSize;
             } else {
-                synchronized (so.aggrSync) {
-                    if (!so.swapSucceed && !so.swapFailed)
-                        so.aggrSync.wait();
+                synchronized (so.aggr.aggrSync) {
+                    if (!so.aggr.swapSucceed && !so.aggr.swapFailed)
+                        so.aggr.aggrSync.wait();
                 }
             }
 
-            if (so.debug)
+            if (so.aggr.debug)
                 Rt.p(so.curPartition + " wake up");
-            if (so.swapFailed) {
-                synchronized (so.aggrSync) {
-                    so.expectingReplies.clear();
-                    so.totalRepliesRemaining = 0;
+            if (so.aggr.swapFailed) {
+                synchronized (so.aggr.aggrSync) {
+                    so.aggr.expectingReplies.clear();
+                    so.aggr.totalRepliesRemaining = 0;
                 }
-                so.releaseIncomingPartitions();
-                if (so.debug)
+                so.aggr.releaseIncomingPartitions();
+                if (so.aggr.debug)
                     Rt.p("*** " + so.curPartition + " attempts to swap with "
-                            + so.swappingTarget + " failed");
-                so.swapFailedPartitions.set(so.swappingTarget);
-                so.swapsFailed.add(so.swappingTarget);
-                so.swapFailedReason.add(so.failedReason);
-                so.swapFailedTime.add(System.currentTimeMillis());
-                so.swappingTarget = -1;
+                            + so.aggr.swappingTarget + " failed");
+                so.aggr.swapFailedPartitions.set(so.aggr.swappingTarget);
+                so.aggr.swapsFailed.add(so.aggr.swappingTarget);
+                so.aggr.swapFailedReason.add(so.aggr.failedReason);
+                so.aggr.swapFailedTime.add(System.currentTimeMillis());
+                so.aggr.swappingTarget = -1;
                 break;
-            } else if (so.swapSucceed) {
-                int target = so.targetPartition;
+            } else if (so.aggr.swapSucceed) {
+                int target = so.aggr.targetPartition;
                 SwapTargetRequest swap = new SwapTargetRequest();
-                swap.outgoingPartitionOfSender = so.targetPartition;
-                swap.newTargetPartition = so.swappingTarget;
-                for (int id : so.successfullyHoldPartitions) {
-                    if (id != so.swappingTarget) {
-                        if (so.debug)
-                            Rt.p(so.curPartition + "->" + so.targetPartition
+                swap.outgoingPartitionOfSender = so.aggr.targetPartition;
+                swap.newTargetPartition = so.aggr.swappingTarget;
+                for (int id : so.aggr.successfullyHoldPartitions) {
+                    if (id != so.aggr.swappingTarget) {
+                        if (so.aggr.debug)
+                            Rt.p(so.curPartition + "->" + so.aggr.targetPartition
                                     + " send swap to " + id + " " + swap);
                         so.sendObj(id, swap);
                     }
                 }
                 swap.newTargetPartition = so.curPartition;
-                if (so.newChildren != null) {
-                    for (int id : so.newChildren) {
-                        if (so.debug)
-                            Rt.p(so.curPartition + "->" + so.targetPartition
+                if (so.aggr.newChildren != null) {
+                    for (int id : so.aggr.newChildren) {
+                        if (so.aggr.debug)
+                            Rt.p(so.curPartition + "->" + so.aggr.targetPartition
                                     + " send swap to " + id + " " + swap);
                         so.sendObj(id, swap);
                     }
                 }
-                if (so.debug)
+                if (so.aggr.debug)
                     Rt
-                            .p(so.curPartition + "->" + so.targetPartition
-                                    + " send swap to " + so.swappingTarget
+                            .p(so.curPartition + "->" + so.aggr.targetPartition
+                                    + " send swap to " + so.aggr.swappingTarget
                                     + " " + swap);
-                swap.newTargetPartition = so.swappingTarget;
-                swap.incompeleteIncomingPartitions = so.successfullyHoldPartitions;
-                so.sendObj(so.swappingTarget, swap);
-                so.targetPartition = so.swappingTarget;
-                so.log.append("i" + so.targetPartition + ",");
+                swap.newTargetPartition = so.aggr.swappingTarget;
+                swap.incompeleteIncomingPartitions = so.aggr.successfullyHoldPartitions;
+                so.sendObj(so.aggr.swappingTarget, swap);
+                so.aggr.targetPartition = so.aggr.swappingTarget;
+                so.aggr.log.append("i" + so.aggr.targetPartition + ",");
 
-                so.swapChildren(so.successfullyHoldPartitions, so.newChildren,
+                so.aggr.swapChildren(so.aggr.successfullyHoldPartitions, so.aggr.newChildren,
                         -1);
                 if (target >= 0)
                     so.sendObj(target, new SwapChildrenRequest(so.curPartition,
-                            so.swappingTarget));
-                if (so.debug)
+                            so.aggr.swappingTarget));
+                if (so.aggr.debug)
                     Rt.p("swap " + so.curPartition + " with "
-                            + so.swappingTarget);
-                so.swaps.add(so.swappingTarget);
-                so.swapsTime.add(System.currentTimeMillis());
-                so.swappingTarget = -1;
+                            + so.aggr.swappingTarget);
+                so.aggr.swaps.add(so.aggr.swappingTarget);
+                so.aggr.swapsTime.add(System.currentTimeMillis());
+                so.aggr.swappingTarget = -1;
                 break;
             }
         }

@@ -13,7 +13,7 @@ import edu.uci.ics.hyracks.api.job.JobId;
 import edu.uci.ics.hyracks.api.job.JobSpecification;
 import edu.uci.ics.hyracks.ec2.HyracksCluster;
 import edu.uci.ics.hyracks.imru.dataflow.dynamic.ImruSendOperator;
-import edu.uci.ics.hyracks.imru.dataflow.dynamic.DynamicAggregationStressTest;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.test.DynamicAggregationStressTest;
 import edu.uci.ics.hyracks.imru.util.CreateDeployment;
 import edu.uci.ics.hyracks.imru.util.Rt;
 import exp.ImruExpFigs;

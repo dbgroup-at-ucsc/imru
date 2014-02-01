@@ -39,6 +39,7 @@ public class ImruSendOD<Model extends Serializable, Data extends Serializable>
     ImruParameters parameters;
     String modelName;
     IMRUConnection imruConnection;
+    public HDFSSplit[] splits;
     public HDFSSplit[][] allocatedSplits;
 
     //    boolean disableSwapping = false;
@@ -68,11 +69,11 @@ public class ImruSendOD<Model extends Serializable, Data extends Serializable>
             IRecordDescriptorProvider recordDescProvider,
             final int curPartition, final int nPartitions)
             throws HyracksDataException {
-        ImruSendOperator<Model, Data> so=new ImruSendOperator<Model, Data>(ctx, curPartition,
-                nPartitions, targetPartitions, imruSpec, parameters, modelName,
-                imruConnection, allocatedSplits);
-//        if (parameters.dynamicMapping)
-//            return new ImruSendOperatorDynamic<Model, Data>(so);
+        ImruSendOperator<Model, Data> so = new ImruSendOperator<Model, Data>(
+                ctx, curPartition, nPartitions, targetPartitions, imruSpec,
+                parameters, modelName, imruConnection, splits, allocatedSplits);
+        //        if (parameters.dynamicMapping)
+        //            return new ImruSendOperatorDynamic<Model, Data>(so);
         return so;
     }
 }

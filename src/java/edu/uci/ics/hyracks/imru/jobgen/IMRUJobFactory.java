@@ -69,7 +69,7 @@ import edu.uci.ics.hyracks.imru.dataflow.UpdateOperatorDescriptor;
 import edu.uci.ics.hyracks.imru.dataflow.dynamic.DynamicMapOD;
 import edu.uci.ics.hyracks.imru.dataflow.dynamic.ImruRecvOD;
 import edu.uci.ics.hyracks.imru.dataflow.dynamic.ImruSendOD;
-import edu.uci.ics.hyracks.imru.dataflow.dynamic.DynamicAggregationStressTest;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.test.DynamicAggregationStressTest;
 import edu.uci.ics.hyracks.imru.file.ConfigurationFactory;
 import edu.uci.ics.hyracks.imru.file.IMRUInputSplitProvider;
 import edu.uci.ics.hyracks.imru.file.HDFSSplit;
@@ -405,7 +405,8 @@ public class IMRUJobFactory {
                                 this.fanIn);
                 ImruSendOD send = new ImruSendOD(spec, targets, model, "send",
                         parameters, modelName, imruConnection);
-                send.allocatedSplits=allocatedSplits;
+                send.splits = inputSplits;
+                send.allocatedSplits = allocatedSplits;
                 ImruRecvOD recv = new ImruRecvOD(spec, deploymentId, targets);
                 spec.connect(new SpreadConnectorDescriptor(spec, null, null),
                         send, 0, recv, 0);

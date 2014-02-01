@@ -1,12 +1,12 @@
-package edu.uci.ics.hyracks.imru.dataflow.dynamic;
+package edu.uci.ics.hyracks.imru.dataflow.dynamic.swap;
 
 import java.io.Serializable;
 
-public class LockReply extends SwapCommand {
-    boolean forParentNode;
-    boolean successful;
-    String reason;
-    int[] holdedIncomingPartitions; // of the swapped partition
+public class LockReply extends DynamicCommand {
+    public boolean forParentNode;
+    public boolean successful;
+    public String reason;
+    public int[] holdedIncomingPartitions; // of the swapped partition
 
     @Override
     public String toString() {
@@ -20,6 +20,6 @@ public class LockReply extends SwapCommand {
                 sb.append("," + i);
         }
         sb.append("]");
-        return "Reply "+sb.toString();
+        return "Reply " + sb.toString();
     }
 }

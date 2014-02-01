@@ -105,7 +105,7 @@ public class ImruExpParameters implements Serializable {
         if (p.dynamicAggr)
             options.dynamicAggr = true;
         if (p.dynamicDisableSwapping)
-            options.dynamicDisable = true;
+            options.dynamicDisableSwapping = true;
         if (p.dynamicDebug)
             options.dynamicDebug = true;
         options.inputPaths = p.path;

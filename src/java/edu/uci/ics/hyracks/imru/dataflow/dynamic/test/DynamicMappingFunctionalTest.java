@@ -1,4 +1,4 @@
-package edu.uci.ics.hyracks.imru.dataflow.dynamic;
+package edu.uci.ics.hyracks.imru.dataflow.dynamic.test;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,10 +12,11 @@ import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
 import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruObject;
 import edu.uci.ics.hyracks.imru.api.ImruOptions;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.AggrStates;
 import edu.uci.ics.hyracks.imru.util.Client;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
-public class DynamicMappingTest {
+public class DynamicMappingFunctionalTest {
     static class Job extends ImruObject<String, String, String> {
         /**
          * Frame size must be large enough to store at least one data object
@@ -117,12 +118,31 @@ public class DynamicMappingTest {
             option.numOfNodes = 3;
             option.aggTreeType = "nary";
             option.fanIn = 3;
-            option.frameSize = 256;
+            //            option.frameSize = 256;
             option.inputPaths = "data/kmeans/kmeans0.txt";
             option.numSplits = 10;
+            option.memCache = true; //TODO test without mem cache
             option.dynamicMapping = true;
-            option.dynamicMappersPerNode = 2;
+//            option.dynamicDisableSwapping = true;
+            option.dynamicMappersPerNode = 1;
             option.dynamicAggr = true;
+//            option.dynamicDebug = true;
+            new Thread() {
+                public void run() {
+                    try {
+                        while (true) {
+                            if (System.in.available() > 0) {
+                                while (System.in.available() > 0)
+                                    System.in.read();
+                                AggrStates.printAggrTree();
+                            }
+                            Thread.sleep(500);
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                };
+            }.start();
             String finalModel = Client.run(new Job(), "", option);
             System.out.println("FinalModel: " + finalModel);
         } catch (Throwable e) {

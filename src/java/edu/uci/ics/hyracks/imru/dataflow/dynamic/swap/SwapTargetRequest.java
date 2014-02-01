@@ -1,11 +1,11 @@
-package edu.uci.ics.hyracks.imru.dataflow.dynamic;
+package edu.uci.ics.hyracks.imru.dataflow.dynamic.swap;
 
 import java.io.Serializable;
 
-public class SwapTargetRequest extends SwapCommand {
-    int outgoingPartitionOfSender;
-    int newTargetPartition;
-    int[] incompeleteIncomingPartitions; // of this partition
+public class SwapTargetRequest extends DynamicCommand {
+    public int outgoingPartitionOfSender;
+    public int newTargetPartition;
+    public  int[] incompeleteIncomingPartitions; // of this partition
 
     @Override
     public String toString() {

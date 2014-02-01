@@ -25,6 +25,8 @@ import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryOutputSourceOperatorNo
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.data.SerializedFrames;
 import edu.uci.ics.hyracks.imru.dataflow.SpreadOD;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.swap.IdentificationCorrection;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.swap.IdentifyRequest;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
@@ -111,7 +113,7 @@ public class ImruRecvOD<Model extends Serializable> extends
                                         f.totalSize, f.data,
                                         sendOperator.dbgInfoRecvQueue);
                         if (completed)
-                            sendOperator.completedAggr(f.srcPartition,
+                            sendOperator.aggr.completedAggr(f.srcPartition,
                                     f.targetParition, f.replyPartition);
                     } else if (f.replyPartition == SerializedFrames.DYNAMIC_COMMUNICATION_FRAME) {
                         NCApplicationContext appContext = (NCApplicationContext) ctx
@@ -127,7 +129,7 @@ public class ImruRecvOD<Model extends Serializable> extends
                         sendOperator.imruSpec.reduceReceive(f.srcPartition,
                                 f.offset, f.totalSize, f.data,
                                 sendOperator.recvQueue);
-                        sendOperator.aggrStarted(f.srcPartition,
+                        sendOperator.aggr.aggrStarted(f.srcPartition,
                                 f.targetParition, f.receivedSize, f.totalSize);
                     }
                     //                    if (frames.data == null) {

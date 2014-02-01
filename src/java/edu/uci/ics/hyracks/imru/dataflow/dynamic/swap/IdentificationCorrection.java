@@ -1,8 +1,9 @@
-package edu.uci.ics.hyracks.imru.dataflow.dynamic;
+package edu.uci.ics.hyracks.imru.dataflow.dynamic.swap;
 
-public class IdentificationCorrection extends SwapCommand {
-    int partition;
-    int writer;
+
+public class IdentificationCorrection extends DynamicCommand {
+    public int partition;
+    public int writer;
 
     public IdentificationCorrection(int partition, int writer) {
         this.partition = partition;

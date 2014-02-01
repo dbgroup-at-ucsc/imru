@@ -51,7 +51,7 @@ public class ImruOptions {
     public boolean dynamicAggr = false;
 
     @Option(name = "-dynamic-disable", usage = "Use the dynamically mechanism only")
-    public boolean dynamicDisable = false;
+    public boolean dynamicDisableSwapping = false;
 
     @Option(name = "-dynamic-swap-time", usage = "Swap nodes after freezed for this time")
     public int dynamicSwapTime = 1000;
