@@ -82,7 +82,7 @@ public class IncomingMessageProcessor {
             }
         } else if (object instanceof IdentificationCorrection) {
             IdentificationCorrection ic = (IdentificationCorrection) object;
-            Rt.p("correct " + so.curPartition + " " + ic);
+//            Rt.p("correct " + so.curPartition + " " + ic);
             so.partitionWriter[ic.partition] = ic.writer;
             synchronized (so.receivedIdentificationSync) {
                 if (!so.receivedIdentifications.get(ic.partition)) {

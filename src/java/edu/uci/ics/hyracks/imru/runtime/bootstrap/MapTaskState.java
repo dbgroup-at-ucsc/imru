@@ -18,6 +18,7 @@ package edu.uci.ics.hyracks.imru.runtime.bootstrap;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.Random;
 import java.util.Vector;
 
 import edu.uci.ics.hyracks.api.dataflow.TaskId;
@@ -33,6 +34,7 @@ public class MapTaskState extends AbstractStateObject {
     private RunFileWriter out;
     private Vector vector;
     public long parsedDataSize;
+    public long uuid=new Random().nextLong();
 
     public MapTaskState(JobId jobId, TaskId taskId) {
         super(jobId, taskId);

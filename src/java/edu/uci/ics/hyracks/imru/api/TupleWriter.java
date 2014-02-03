@@ -102,6 +102,8 @@ public class TupleWriter implements DataOutput {
     
     public void close() throws HyracksDataException {
         if (appender.getTupleCount() > 0) {
+//            Rt.p(frame.toString());
+//            Rt.p(frame);
             writer.writeFrame(frame);
             appender.reset(frame, true);
         }

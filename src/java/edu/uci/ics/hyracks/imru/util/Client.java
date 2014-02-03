@@ -195,13 +195,13 @@ public class Client<Model extends Serializable, Data extends Serializable> {
             control.selectGenericAggregation(splits, options.aggCount);
         } else if (options.aggTreeType.equals("nary")) {
             Map<String, NodeControllerInfo> map = hcc.getNodeControllerInfos();
-            if (map.size() < 3) {
-                Rt.p("Change to generic aggregation because there are only "
-                        + map.size() + " nodes");
-                control.selectGenericAggregation(splits, options.fanIn);
-            } else {
+//            if (map.size() < 3) {
+//                Rt.p("Change to generic aggregation because there are only "
+//                        + map.size() + " nodes");
+//                control.selectGenericAggregation(splits, options.fanIn);
+//            } else {
                 control.selectNAryAggregation(splits, options.fanIn);
-            }
+//            }
         } else {
             throw new IllegalArgumentException("Invalid aggregation tree type");
         }

@@ -119,14 +119,14 @@ public class DynamicMapping<Model extends Serializable, Data extends Serializabl
                 if (m.incomingQueue.size() == 0) {
                     GetAvailableSplits get = new GetAvailableSplits(
                             so.curPartition);
-                    boolean sent=false;
+                    boolean sent = false;
                     for (int p : m.connected) {
                         if (!m.depletedPartitions.get(p)) {
                             if (so.aggr.receivingPartitions.get(p))
                                 m.depletedPartitions.set(p);
                             else {
                                 so.sendObj(p, get);
-                                sent=true;
+                                sent = true;
                             }
                         }
                     }
@@ -183,14 +183,16 @@ public class DynamicMapping<Model extends Serializable, Data extends Serializabl
             state.setMemCache(vector);
             dataWriter = new DataWriter<Serializable>(vector);
         }
+        IMRUMapContext imruFileContext = new IMRUMapContext(fileCtx, name,
+                split, partition, nPartitions);
         try {
             InputStream in = split.getInputStream();
             state.parsedDataSize = in.available();
             if (runFileWriter != null) {
-                so.imruSpec.parse(imruContext, new BufferedInputStream(in,
+                so.imruSpec.parse(imruFileContext, new BufferedInputStream(in,
                         1024 * 1024), new FrameWriter(runFileWriter));
             } else {
-                so.imruSpec.parse(imruContext, new BufferedInputStream(in,
+                so.imruSpec.parse(imruFileContext, new BufferedInputStream(in,
                         1024 * 1024), dataWriter);
             }
             in.close();
@@ -226,7 +228,6 @@ public class DynamicMapping<Model extends Serializable, Data extends Serializabl
                 IterationUtils.setIterationState(so.ctx, split.uuid, state);
             }
         }
-
         long mapStartTime = System.currentTimeMillis();
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -234,7 +235,7 @@ public class DynamicMapping<Model extends Serializable, Data extends Serializabl
         if (!so.parameters.noDiskCache) {
             RunFileWriter runFileWriter = state.getRunFileWriter();
             if (runFileWriter != null) {
-                info = mapFromDiskCache(runFileWriter, model, out);
+                info = mapFromDiskCache(runFileWriter, model, out, split);
             } else {
                 // read from memory cache
                 Vector vector = state.getMemCache();
@@ -304,7 +305,8 @@ public class DynamicMapping<Model extends Serializable, Data extends Serializabl
     }
 
     ImruIterInfo mapFromDiskCache(RunFileWriter runFileWriter, Model model,
-            ByteArrayOutputStream out) throws HyracksDataException {
+            ByteArrayOutputStream out, HDFSSplit split)
+            throws HyracksDataException {
         // Read from disk cache
         Log.info("Cached example file size is " + runFileWriter.getFileSize()
                 + " bytes");
@@ -351,8 +353,13 @@ public class DynamicMapping<Model extends Serializable, Data extends Serializabl
             };
             // writer = chunkFrameHelper.wrapWriter(writer,
             // partition);
-            return so.imruSpec.map(imruContext, input, model, out, so.imruSpec
-                    .getCachedDataFrameSize());
+            try {
+                return so.imruSpec.map(imruContext, input, model, out,
+                        so.imruSpec.getCachedDataFrameSize());
+            } catch (Throwable e) {
+                Rt.p(imruContext.getNodeId() + "\t" + split.uuid);
+                throw new HyracksDataException(e);
+            }
         }
     }
 }

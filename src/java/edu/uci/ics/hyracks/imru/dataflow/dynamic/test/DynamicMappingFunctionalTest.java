@@ -121,12 +121,14 @@ public class DynamicMappingFunctionalTest {
             //            option.frameSize = 256;
             option.inputPaths = "data/kmeans/kmeans0.txt";
             option.numSplits = 10;
-            option.memCache = true; //TODO test without mem cache
+//            option.memCache = true; //TODO test without mem cache
             option.dynamicMapping = true;
 //            option.dynamicDisableSwapping = true;
             option.dynamicMappersPerNode = 1;
             option.dynamicAggr = true;
 //            option.dynamicDebug = true;
+//            option.numOfNodes = 1;
+//            option.numSplits = 1;
             new Thread() {
                 public void run() {
                     try {

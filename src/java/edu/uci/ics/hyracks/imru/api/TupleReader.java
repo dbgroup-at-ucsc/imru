@@ -130,6 +130,9 @@ public class TupleReader extends DataInputStream {
             if (!input.hasNext())
                 return false;
             ByteBuffer buf = input.next();
+//            Rt.p(buf.toString());
+//            Rt.p(buf);
+//            System.exit(0);
             accessor.reset(buf);
             tupleId = 0;
             tupleCount = accessor.getTupleCount();
@@ -142,8 +145,8 @@ public class TupleReader extends DataInputStream {
         int startOffset = accessor.getFieldSlotsLength()
                 + accessor.getTupleStartOffset(tupleId)
                 + accessor.getFieldStartOffset(tupleId, fieldId);
-//                Rt.p(accessor.getFieldSlotsLength() +" "+ accessor.getTupleStartOffset(tupleId)
-//                        +" "+ accessor.getFieldStartOffset(tupleId, fieldId));
+        //                Rt.p(accessor.getFieldSlotsLength() +" "+ accessor.getTupleStartOffset(tupleId)
+        //                        +" "+ accessor.getFieldStartOffset(tupleId, fieldId));
         in.setByteBuffer(accessor.getBuffer(), startOffset);
     }
 

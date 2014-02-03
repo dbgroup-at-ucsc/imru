@@ -98,9 +98,9 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
                     r.op.totalMappedRecords++;
                     return data;
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    throw new ImruError(e);
                 }
-                return null;
+//                return null;
             }
 
             @Override
