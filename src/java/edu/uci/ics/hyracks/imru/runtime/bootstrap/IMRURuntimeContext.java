@@ -44,7 +44,8 @@ public class IMRURuntimeContext implements IWorkspaceFileFactory {
     private DefaultDeallocatableRegistry registry = new DefaultDeallocatableRegistry();
 
     public IMRURuntimeContext(INCApplicationContext appCtx) {
-        ioManager = (IOManager) appCtx.getRootContext().getIOManager();
+        if (appCtx != null)
+            ioManager = (IOManager) appCtx.getRootContext().getIOManager();
     }
 
     public void close() {

@@ -7,9 +7,13 @@ import java.util.LinkedList;
 import edu.uci.ics.hyracks.api.application.INCApplicationContext;
 import edu.uci.ics.hyracks.api.context.IHyracksJobletContext;
 import edu.uci.ics.hyracks.api.context.IHyracksTaskContext;
+import edu.uci.ics.hyracks.api.deployment.DeploymentId;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
+import edu.uci.ics.hyracks.api.job.IJobSerializerDeserializer;
 import edu.uci.ics.hyracks.control.nc.Joblet;
 import edu.uci.ics.hyracks.control.nc.NodeControllerService;
+import edu.uci.ics.hyracks.control.nc.application.NCApplicationContext;
+import edu.uci.ics.hyracks.imru.dataflow.IMRUSerialize;
 import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRURuntimeContext;
 import edu.uci.ics.hyracks.imru.util.Rt;
@@ -25,6 +29,10 @@ public class IMRUContext {
     protected IHyracksTaskContext ctx;
     int partition;
     int nPartition;
+
+    //for multi-core
+    IMRURuntimeContext runtimeContext;
+    int frameSize;
 
     public IMRUContext(IHyracksTaskContext ctx, int partition, int nPartition) {
         this(ctx, null, partition, nPartition);
@@ -44,6 +52,17 @@ public class IMRUContext {
         } else {
             Rt.p(jobletContext.getClass().getName());
         }
+    }
+
+    public IMRUContext(String nodeId, int frameSize,
+            IMRURuntimeContext runtimeContext, String operatorName,
+            int partition, int nPartition) {
+        this.nodeId = nodeId;
+        this.runtimeContext = runtimeContext;
+        this.frameSize = frameSize;
+        this.operatorName = operatorName;
+        this.partition = partition;
+        this.nPartition = nPartition;
     }
 
     public String getNodeId() {
@@ -67,21 +86,47 @@ public class IMRUContext {
     }
 
     public ByteBuffer allocateFrame() throws HyracksDataException {
+        if (ctx == null)
+            return ByteBuffer.allocate(frameSize);
         return ctx.allocateFrame();
     }
 
     public int getFrameSize() {
+        if (ctx == null)
+            return frameSize;
         return ctx.getFrameSize();
     }
 
     public IHyracksJobletContext getJobletContext() {
+        if (ctx == null)
+            return null;
         return ctx.getJobletContext();
     }
 
+    public Serializable deserialize(DeploymentId deploymentId, byte[] bs)
+            throws IMRUDataException {
+        try {
+            if (ctx == null)
+                return (Serializable) IMRUSerialize.deserialize(bs);
+            NCApplicationContext appContext = (NCApplicationContext) ctx
+                    .getJobletContext().getApplicationContext();
+            IJobSerializerDeserializer jobSerDe = appContext
+                    .getJobSerializerDeserializerContainer()
+                    .getJobSerializerDeserializer(deploymentId);
+            return (Serializable) jobSerDe.deserialize(bs);
+        } catch (Exception e) {
+            throw new IMRUDataException(e);
+        }
+    }
+
     public IMRURuntimeContext getRuntimeContext() {
-        INCApplicationContext appContext = getJobletContext()
-                .getApplicationContext();
-        return (IMRURuntimeContext) appContext.getApplicationObject();
+        if (ctx == null)
+            return runtimeContext;
+        else {
+            INCApplicationContext appContext = getJobletContext()
+                    .getApplicationContext();
+            return (IMRURuntimeContext) appContext.getApplicationObject();
+        }
     }
 
     /**
@@ -90,34 +135,22 @@ public class IMRUContext {
      * @return
      */
     public Serializable getModel() {
-        INCApplicationContext appContext = getJobletContext()
-                .getApplicationContext();
-        IMRURuntimeContext context = (IMRURuntimeContext) appContext
-                .getApplicationObject();
+        IMRURuntimeContext context = getRuntimeContext();
         return context.model;
     }
 
     public void setUserObject(String key, Object value) {
-        INCApplicationContext appContext = getJobletContext()
-                .getApplicationContext();
-        IMRURuntimeContext context = (IMRURuntimeContext) appContext
-                .getApplicationObject();
+        IMRURuntimeContext context = getRuntimeContext();
         context.userObjects.put(key, value);
     }
 
     public Object getUserObject(String key) {
-        INCApplicationContext appContext = getJobletContext()
-                .getApplicationContext();
-        IMRURuntimeContext context = (IMRURuntimeContext) appContext
-                .getApplicationObject();
+        IMRURuntimeContext context = getRuntimeContext();
         return context.userObjects.get(key);
     }
 
     public LinkedList<HDFSSplit> getQueue() {
-        INCApplicationContext appContext = getJobletContext()
-                .getApplicationContext();
-        IMRURuntimeContext context = (IMRURuntimeContext) appContext
-                .getApplicationObject();
+        IMRURuntimeContext context = getRuntimeContext();
         return context.queue;
     }
 
@@ -168,10 +201,7 @@ public class IMRUContext {
      * @return
      */
     public int getIterationNumber() {
-        INCApplicationContext appContext = getJobletContext()
-                .getApplicationContext();
-        IMRURuntimeContext context = (IMRURuntimeContext) appContext
-                .getApplicationObject();
+        IMRURuntimeContext context = getRuntimeContext();
         return context.modelAge - 1;
     }
 
@@ -181,10 +211,7 @@ public class IMRUContext {
      * @return
      */
     public int getRecoverIterationNumber() {
-        INCApplicationContext appContext = getJobletContext()
-                .getApplicationContext();
-        IMRURuntimeContext context = (IMRURuntimeContext) appContext
-                .getApplicationObject();
+        IMRURuntimeContext context = getRuntimeContext();
         return context.currentRecoveryIteration;
     }
 
@@ -194,10 +221,7 @@ public class IMRUContext {
      * @return
      */
     public int getRerunCount() {
-        INCApplicationContext appContext = getJobletContext()
-                .getApplicationContext();
-        IMRURuntimeContext context = (IMRURuntimeContext) appContext
-                .getApplicationObject();
+        IMRURuntimeContext context = getRuntimeContext();
         return context.rerunNum;
     }
 
@@ -205,10 +229,7 @@ public class IMRUContext {
      * Set the model shared in each node controller
      */
     public void setModel(Serializable model) {
-        INCApplicationContext appContext = getJobletContext()
-                .getApplicationContext();
-        IMRURuntimeContext context = (IMRURuntimeContext) appContext
-                .getApplicationObject();
+        IMRURuntimeContext context = getRuntimeContext();
         context.model = model;
     }
 
@@ -216,10 +237,7 @@ public class IMRUContext {
      * Set the model shared in each node controller
      */
     public void setModel(Serializable model, int age) {
-        INCApplicationContext appContext = getJobletContext()
-                .getApplicationContext();
-        IMRURuntimeContext context = (IMRURuntimeContext) appContext
-                .getApplicationObject();
+        IMRURuntimeContext context = getRuntimeContext();
         context.model = model;
         context.modelAge = age;
     }

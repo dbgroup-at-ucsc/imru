@@ -66,8 +66,6 @@ public class ImruRecvOD<Model extends Serializable> extends
                 try {
                     if (buffer == null)
                         return;
-                    SerializedFrames f = SerializedFrames.nextFrame(ctx
-                            .getFrameSize(), buffer);
                     //                MergedFrames frames = MergedFrames
                     //                        .nextFrame(ctx, buffer, queue);
                     while (sendOperator == null) {
@@ -75,73 +73,7 @@ public class ImruRecvOD<Model extends Serializable> extends
                                 .getUserObject("sendOperator");
                         Thread.sleep(50);
                     }
-                    if (f.targetParition != sendOperator.curPartition) {
-                        // TODO: find out why this happens
-                        if (f.replyPartition == SerializedFrames.DYNAMIC_COMMUNICATION_FRAME) {
-                            NCApplicationContext appContext = (NCApplicationContext) ctx
-                                    .getJobletContext().getApplicationContext();
-                            IJobSerializerDeserializer jobSerDe = appContext
-                                    .getJobSerializerDeserializerContainer()
-                                    .getJobSerializerDeserializer(deploymentId);
-                            Serializable receivedObject = (Serializable) jobSerDe
-                                    .deserialize(f.data);
-                            if (receivedObject instanceof IdentifyRequest) {
-                            } else if (receivedObject instanceof IdentificationCorrection) {
-                            } else {
-                                Rt.p("ERROR: " + sendOperator.curPartition
-                                        + " recv wrong message from="
-                                        + f.srcPartition + " to="
-                                        + f.targetParition + " ["
-                                        + receivedObject+"]");
-                                return;
-                            }
-                            // redeliver
-
-                            //                            sendOperator.getWriter().nextFrame(buffer);
-                            //                            throw new Error();
-                            //                            System.exit(0);
-                        } else {
-                            throw new Error(sendOperator.curPartition
-                                    + " recv wrong message from="
-                                    + f.srcPartition + " to="
-                                    + f.targetParition);
-                        }
-                    }
-                    if (f.replyPartition == SerializedFrames.DBG_INFO_FRAME) {
-                        boolean completed = sendOperator.imruSpec
-                                .reduceDbgInfoReceive(f.srcPartition, f.offset,
-                                        f.totalSize, f.data,
-                                        sendOperator.dbgInfoRecvQueue);
-                        if (completed)
-                            sendOperator.aggr.completedAggr(f.srcPartition,
-                                    f.targetParition, f.replyPartition);
-                    } else if (f.replyPartition == SerializedFrames.DYNAMIC_COMMUNICATION_FRAME) {
-                        NCApplicationContext appContext = (NCApplicationContext) ctx
-                                .getJobletContext().getApplicationContext();
-                        IJobSerializerDeserializer jobSerDe = appContext
-                                .getJobSerializerDeserializerContainer()
-                                .getJobSerializerDeserializer(deploymentId);
-                        Serializable receivedObject = (Serializable) jobSerDe
-                                .deserialize(f.data);
-                        sendOperator.complete(f.srcPartition, f.targetParition,
-                                f.replyPartition, receivedObject);
-                    } else {
-                        sendOperator.imruSpec.reduceReceive(f.srcPartition,
-                                f.offset, f.totalSize, f.data,
-                                sendOperator.recvQueue);
-                        sendOperator.aggr.aggrStarted(f.srcPartition,
-                                f.targetParition, f.receivedSize, f.totalSize);
-                    }
-                    //                    if (frames.data == null) {
-                    //                        sendOperator.progress(frames.sourceParition,
-                    //                                frames.targetParition, frames.receivedSize,
-                    //                                frames.totalSize, null);
-                    //                        return;
-                    //                    }
-                    //                    if (ImruSendOperator.debugNetworkSpeed > 0) {
-                    //                        Thread
-                    //                                .sleep(1 + (int) (frames.data.length / ImruSendOperator.debugNetworkSpeed));
-                    //                    }
+                    sendOperator.recvFrame(buffer, deploymentId);
                 } catch (Exception e) {
                     throw new HyracksDataException(e);
                 } finally {

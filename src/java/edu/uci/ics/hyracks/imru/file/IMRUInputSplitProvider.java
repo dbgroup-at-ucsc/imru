@@ -97,7 +97,11 @@ public class IMRUInputSplitProvider implements Serializable {
         IMRUInputSplitProvider inputSplitProvider = new IMRUInputSplitProvider(
                 inputPaths, confFactory, numSplits, minSplitSize, maxSplitSize);
         List<HDFSSplit> inputSplits = inputSplitProvider.getInputSplits();
-        return inputSplits.toArray(new HDFSSplit[inputSplits.size()]);
+        HDFSSplit[] splits = inputSplits.toArray(new HDFSSplit[inputSplits
+                .size()]);
+        for (int i = 0; i < splits.length; i++)
+            splits[i].uuid = i;
+        return splits;
     }
 
     /**

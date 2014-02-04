@@ -39,6 +39,9 @@ public class ImruOptions {
     @Option(name = "-max-split-size", usage = "Maximum size of each split")
     public long maxSplitSize = Long.MAX_VALUE;
 
+    @Option(name = "-splits-per-node", usage = "Do not use. For internal experiment only")
+    public int splitsPerNode = 1;
+
     //For dynamic mapping
     @Option(name = "-dynamicMap", usage = "Dynamically reallocate partitions. Need a proper -num-split to be effective.")
     public boolean dynamicMapping = false;
@@ -50,8 +53,11 @@ public class ImruOptions {
     @Option(name = "-dynamic", usage = "Dynamically alter aggregation tree")
     public boolean dynamicAggr = false;
 
-    @Option(name = "-dynamic-disable", usage = "Use the dynamically mechanism only")
+    @Option(name = "-dynamic-disable-swapping", usage = "Use the dynamically dataflow but disable swapping")
     public boolean dynamicDisableSwapping = false;
+
+    @Option(name = "-dynamic-disable-relocation", usage = "Use the dynamically dataflow but disable split relocation")
+    public boolean dynamicDisableRelocation = false;
 
     @Option(name = "-dynamic-swap-time", usage = "Swap nodes after freezed for this time")
     public int dynamicSwapTime = 1000;
@@ -87,7 +93,7 @@ public class ImruOptions {
     public int aggCount = -1;
 
     @Option(name = "-fan-in", usage = "The fan-in, if using an nary aggregation tree")
-    public int fanIn = -1;
+    public int fanIn = 3;
 
     @Option(name = "-model-file", usage = "Local file to write the final weights to")
     public String modelFilename;

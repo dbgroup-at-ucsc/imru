@@ -17,7 +17,7 @@ import edu.uci.ics.hyracks.imru.util.Client;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class DynamicMappingFunctionalTest {
-    static class Job extends ImruObject<String, String, String> {
+    public static class Job extends ImruObject<String, String, String> {
         /**
          * Frame size must be large enough to store at least one data object
          */
@@ -104,6 +104,7 @@ public class DynamicMappingFunctionalTest {
 
         @Override
         public boolean shouldTerminate(String model, ImruIterInfo info) {
+            info.printReport();
             return true;
         }
     };

@@ -26,7 +26,6 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
         extends ImruFrames<Model, Data> {
     public static final long serialVersionUID = 1;
     int fieldCount = 1;
-    private static ExecutorService threadPool = Executors.newCachedThreadPool();
 
     @Override
     public void parse(IMRUContext ctx, InputStream in, FrameWriter writer)
@@ -81,7 +80,7 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
                 int len = reader.read(bs);
                 if (len != length)
                     throw new Exception("partial read");
-                Data data = (Data) deserialize(ctx, bs);
+                Data data = (Data) ctx.deserialize(deploymentId, bs);
                 r.op.mappedDataSize += bs.length;
                 r.op.totalMappedDataSize += bs.length;
                 return data;
@@ -100,7 +99,7 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
                 } catch (Exception e) {
                     throw new ImruError(e);
                 }
-//                return null;
+                //                return null;
             }
 
             @Override
@@ -145,8 +144,8 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
                     return null;
 
                 try {
-                    IntermediateResult result = (IntermediateResult) deserialize(
-                            ctx, objectData);
+                    IntermediateResult result = (IntermediateResult) ctx
+                            .deserialize(deploymentId, objectData);
                     return result;
                 } catch (Throwable e) {
                     e.printStackTrace();
@@ -184,8 +183,8 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
                 if (objectData == null)
                     return null;
                 try {
-                    IntermediateResult result = (IntermediateResult) deserialize(
-                            ctx, objectData);
+                    IntermediateResult result = (IntermediateResult) ctx
+                            .deserialize(deploymentId, objectData);
                     return result;
                 } catch (Exception e) {
                     Rt

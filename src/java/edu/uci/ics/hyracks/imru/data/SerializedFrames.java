@@ -92,6 +92,8 @@ public class SerializedFrames {
                 @Override
                 public void run() {
                     try {
+                        Thread.currentThread().setName(
+                                "serilizedFrames:" + name);
                         Iterator<byte[]> input = io.getInput();
                         if (output != null) {
                             ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -292,7 +294,7 @@ public class SerializedFrames {
                 objectData, partition, targetPartition,
                 DYNAMIC_COMMUNICATION_FRAME, null, writerId);
         if (frames > 1)
-            throw new Error(frames + " " + cmd+" "+objectData.length);
+            throw new Error(frames + " " + cmd + " " + objectData.length);
     }
 
     public static Object deserialize(byte[] bytes) {

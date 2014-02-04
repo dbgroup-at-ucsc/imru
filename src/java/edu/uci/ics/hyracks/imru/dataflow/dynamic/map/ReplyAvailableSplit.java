@@ -11,16 +11,18 @@ public class ReplyAvailableSplit extends DynamicCommand {
     public int splitUUID;
     public Vector<Integer> forwardedPartitions = new Vector<Integer>();
 
-    public ReplyAvailableSplit(GetAvailableSplits get, int curPartition,int splitUUID) {
+    public ReplyAvailableSplit(GetAvailableSplits get, int curPartition,
+            int splitUUID) {
         this.requestedBy = get.requestedBy;
         this.uuid = get.uuid;
         this.splitLocation = curPartition;
-        this.splitUUID= splitUUID;
+        this.splitUUID = splitUUID;
         forwardedPartitions.addAll(get.forwardedPartitions);
     }
 
     @Override
     public String toString() {
-        return "ReplyAvailableSplit " + requestedBy + " " + splitLocation;
+        return "ReplyAvailableSplit request=" + requestedBy + " location="
+                + splitLocation + " split=" + splitUUID;
     }
 }

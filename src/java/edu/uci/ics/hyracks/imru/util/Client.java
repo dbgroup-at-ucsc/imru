@@ -180,8 +180,6 @@ public class Client<Model extends Serializable, Data extends Serializable> {
         // set aggregation type
         HDFSSplit[] splits = control.getSplits(options.inputPaths,
                 options.numSplits, options.minSplitSize, options.maxSplitSize);
-        for (int i = 0; i < splits.length; i++)
-            splits[i].uuid = i;
         if (options.hadoopConfPath != null && options.dynamicMapping)
             throw new Error("Can't handle dynamic HDFS loading");
         if (options.aggTreeType == null) {

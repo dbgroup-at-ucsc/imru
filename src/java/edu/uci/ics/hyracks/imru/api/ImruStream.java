@@ -13,6 +13,7 @@ import edu.uci.ics.hyracks.api.exceptions.HyracksException;
 import edu.uci.ics.hyracks.api.job.IJobSerializerDeserializer;
 import edu.uci.ics.hyracks.control.nc.application.NCApplicationContext;
 import edu.uci.ics.hyracks.imru.data.SerializedFrames;
+import edu.uci.ics.hyracks.imru.dataflow.IMRUSerialize;
 
 abstract public class ImruStream<Model extends Serializable, Data extends Serializable>
         implements Serializable {
@@ -20,20 +21,6 @@ abstract public class ImruStream<Model extends Serializable, Data extends Serial
 
     public void setDeploymentId(DeploymentId deploymentId) {
         this.deploymentId = deploymentId;
-    }
-
-    public Serializable deserialize(IMRUContext ctx, byte[] bs)
-            throws IMRUDataException {
-        try {
-            NCApplicationContext appContext = (NCApplicationContext) ctx
-                    .getJobletContext().getApplicationContext();
-            IJobSerializerDeserializer jobSerDe = appContext
-                    .getJobSerializerDeserializerContainer()
-                    .getJobSerializerDeserializer(deploymentId);
-            return (Serializable) jobSerDe.deserialize(bs);
-        } catch (HyracksException e) {
-            throw new IMRUDataException(e);
-        }
     }
 
     /**
@@ -144,7 +131,8 @@ abstract public class ImruStream<Model extends Serializable, Data extends Serial
             @Override
             public void receiveComplete(int srcPartition, byte[] bs)
                     throws IMRUDataException {
-                ImruIterInfo info = (ImruIterInfo) deserialize(ctx, bs);
+                ImruIterInfo info = (ImruIterInfo) ctx.deserialize(
+                        deploymentId, bs);
                 reduceRecvDbgInfo(srcPartition, info, userObject);
             }
 
@@ -176,7 +164,8 @@ abstract public class ImruStream<Model extends Serializable, Data extends Serial
             @Override
             public void receiveComplete(int srcPartition, byte[] bs)
                     throws IMRUDataException {
-                ImruIterInfo info = (ImruIterInfo) deserialize(ctx, bs);
+                ImruIterInfo info = (ImruIterInfo) ctx.deserialize(
+                        deploymentId, bs);
                 updateRecvInformation(srcPartition, info, userObject);
             }
 

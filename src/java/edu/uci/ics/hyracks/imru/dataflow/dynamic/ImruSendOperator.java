@@ -8,25 +8,30 @@ import java.nio.ByteBuffer;
 import java.util.BitSet;
 import java.util.Hashtable;
 import java.util.LinkedList;
-import java.util.Stack;
-import java.util.Vector;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import scala.actors.threadpool.Arrays;
 
 import edu.uci.ics.hyracks.api.comm.IFrameWriter;
 import edu.uci.ics.hyracks.api.context.IHyracksTaskContext;
+import edu.uci.ics.hyracks.api.deployment.DeploymentId;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
+import edu.uci.ics.hyracks.api.job.IJobSerializerDeserializer;
+import edu.uci.ics.hyracks.control.nc.application.NCApplicationContext;
 import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryInputUnaryOutputOperatorNodePushable;
+import edu.uci.ics.hyracks.imru.api.IMRUMapContext;
 import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
 import edu.uci.ics.hyracks.imru.api.ImruFrames;
 import edu.uci.ics.hyracks.imru.api.ImruParameters;
 import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.data.SerializedFrames;
+import edu.uci.ics.hyracks.imru.dataflow.IMRUSerialize;
+import edu.uci.ics.hyracks.imru.dataflow.dynamic.swap.IdentificationCorrection;
 import edu.uci.ics.hyracks.imru.dataflow.dynamic.swap.IdentifyRequest;
 import edu.uci.ics.hyracks.imru.dataflow.dynamic.swap.DynamicCommand;
 import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
+import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRURuntimeContext;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class ImruSendOperator<Model extends Serializable, Data extends Serializable>
@@ -35,6 +40,7 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
     ImruParameters parameters;
     IHyracksTaskContext ctx;
     IMRUReduceContext imruContext;
+    public IMRURuntimeContext runtimeContext;
     String modelName;
     IMRUConnection imruConnection;
     Hashtable<Integer, LinkedList<ByteBuffer>> hash = new Hashtable<Integer, LinkedList<ByteBuffer>>();
@@ -66,9 +72,16 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
             throws HyracksDataException {
         this.ctx = ctx;
         this.name = "DR" + curPartition;
-        imruContext = new IMRUReduceContext(ctx, name, false, -1, curPartition,
-                nPartitions);
-        imruContext.setUserObject("sendOperator", this);
+        if (ctx != null) {
+            imruContext = new IMRUReduceContext(ctx, name, false, -1,
+                    curPartition, nPartitions);
+            imruContext.setUserObject("sendOperator", this);
+            runtimeContext = imruContext.getRuntimeContext();
+        } else {
+            runtimeContext = new IMRURuntimeContext(null);
+            imruContext = new IMRUReduceContext("NC" + curPartition, 32768,
+                    runtimeContext, name, false, -1, curPartition, nPartitions);
+        }
         map = new MapStates(this);
         aggr = new AggrStates(this);
         this.curPartition = curPartition;
@@ -154,7 +167,11 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
     Object recvQueue;
     byte[] aggregatedResult;
 
-    private void startup() throws HyracksDataException {
+    public void setWriter(IFrameWriter writer) {
+        this.writer = writer;
+    }
+
+    public void startup() throws HyracksDataException {
         if (parameters.dynamicMapping) {
             if (allocatedSplits == null)
                 throw new Error();
@@ -182,7 +199,8 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
                 }.start();
             }
         }
-        writer.open();
+        if (writer != null)
+            writer.open();
 
         recvQueue = imruSpec.reduceInit(imruContext, new OutputStream() {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -212,7 +230,8 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
         });
         dbgInfoRecvQueue = imruSpec.reduceDbgInfoInit(imruContext, recvQueue);
 
-        discoverPartitionWriterMapping();
+        if (ctx != null)
+            discoverPartitionWriterMapping();
     }
 
     void discoverPartitionWriterMapping() {
@@ -243,6 +262,81 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
                         + (nPartitions - receivedIdentificationCorrections));
             }
         }
+    }
+
+    public void recvFrame(ByteBuffer buffer, DeploymentId deploymentId)
+            throws Exception {
+        ImruSendOperator sendOperator = this;
+        SerializedFrames f = SerializedFrames.nextFrame(imruContext
+                .getFrameSize(), buffer);
+        if (f.targetParition != sendOperator.curPartition) {
+            // TODO: find out why this happens
+            if (f.replyPartition == SerializedFrames.DYNAMIC_COMMUNICATION_FRAME) {
+                NCApplicationContext appContext = (NCApplicationContext) ctx
+                        .getJobletContext().getApplicationContext();
+                IJobSerializerDeserializer jobSerDe = appContext
+                        .getJobSerializerDeserializerContainer()
+                        .getJobSerializerDeserializer(deploymentId);
+                Serializable receivedObject = (Serializable) jobSerDe
+                        .deserialize(f.data);
+                if (receivedObject instanceof IdentifyRequest) {
+                } else if (receivedObject instanceof IdentificationCorrection) {
+                } else {
+                    Rt.p("ERROR: " + sendOperator.curPartition
+                            + " recv wrong message from=" + f.srcPartition
+                            + " to=" + f.targetParition + " [" + receivedObject
+                            + "]");
+                    return;
+                }
+                // redeliver
+
+                //                            sendOperator.getWriter().nextFrame(buffer);
+                //                            throw new Error();
+                //                            System.exit(0);
+            } else {
+                throw new Error(sendOperator.curPartition
+                        + " recv wrong message from=" + f.srcPartition + " to="
+                        + f.targetParition);
+            }
+        }
+        if (f.replyPartition == SerializedFrames.DBG_INFO_FRAME) {
+            boolean completed = sendOperator.imruSpec.reduceDbgInfoReceive(
+                    f.srcPartition, f.offset, f.totalSize, f.data,
+                    sendOperator.dbgInfoRecvQueue);
+            if (completed)
+                sendOperator.aggr.completedAggr(f.srcPartition,
+                        f.targetParition, f.replyPartition);
+        } else if (f.replyPartition == SerializedFrames.DYNAMIC_COMMUNICATION_FRAME) {
+            Serializable receivedObject;
+            if (deploymentId != null) {
+                NCApplicationContext appContext = (NCApplicationContext) ctx
+                        .getJobletContext().getApplicationContext();
+                IJobSerializerDeserializer jobSerDe = appContext
+                        .getJobSerializerDeserializerContainer()
+                        .getJobSerializerDeserializer(deploymentId);
+                receivedObject = (Serializable) jobSerDe.deserialize(f.data);
+            } else {
+                receivedObject = (Serializable) IMRUSerialize
+                        .deserialize(f.data);
+            }
+            sendOperator.complete(f.srcPartition, f.targetParition,
+                    f.replyPartition, receivedObject);
+        } else {
+            sendOperator.imruSpec.reduceReceive(f.srcPartition, f.offset,
+                    f.totalSize, f.data, sendOperator.recvQueue);
+            sendOperator.aggr.aggrStarted(f.srcPartition, f.targetParition,
+                    f.receivedSize, f.totalSize);
+        }
+        //                    if (frames.data == null) {
+        //                        sendOperator.progress(frames.sourceParition,
+        //                                frames.targetParition, frames.receivedSize,
+        //                                frames.totalSize, null);
+        //                        return;
+        //                    }
+        //                    if (ImruSendOperator.debugNetworkSpeed > 0) {
+        //                        Thread
+        //                                .sleep(1 + (int) (frames.data.length / ImruSendOperator.debugNetworkSpeed));
+        //                    }
     }
 
     @Override

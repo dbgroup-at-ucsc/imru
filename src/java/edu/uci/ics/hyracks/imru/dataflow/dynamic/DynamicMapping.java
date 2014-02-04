@@ -6,15 +6,17 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.util.Hashtable;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Vector;
 import java.util.concurrent.Future;
 import java.util.logging.Logger;
 
 import org.eclipse.jetty.util.log.Log;
 
-import edu.uci.ics.hyracks.api.application.INCApplicationContext;
 import edu.uci.ics.hyracks.api.context.IHyracksTaskContext;
+import edu.uci.ics.hyracks.api.dataflow.state.IStateObject;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.api.io.FileReference;
 import edu.uci.ics.hyracks.api.util.JavaSerializationUtils;
@@ -34,7 +36,6 @@ import edu.uci.ics.hyracks.imru.dataflow.dynamic.map.GetAvailableSplits;
 import edu.uci.ics.hyracks.imru.dataflow.dynamic.map.ReplyAvailableSplit;
 import edu.uci.ics.hyracks.imru.dataflow.dynamic.map.RequestSplit;
 import edu.uci.ics.hyracks.imru.file.HDFSSplit;
-import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRURuntimeContext;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.MapTaskState;
 import edu.uci.ics.hyracks.imru.util.IterationUtils;
 import edu.uci.ics.hyracks.imru.util.Rt;
@@ -48,7 +49,7 @@ public class DynamicMapping<Model extends Serializable, Data extends Serializabl
     IMRUMapContext imruContext;
     int partition;
     int nPartitions;
-    private final IHyracksTaskContext fileCtx;
+    IHyracksTaskContext fileCtx;
     MapStates m;
     int count = 0;
     ImruIterInfo overallInfo;
@@ -61,31 +62,38 @@ public class DynamicMapping<Model extends Serializable, Data extends Serializabl
         this.partition = mapPartitionId;
         this.nPartitions = so.allocatedSplits.length;
         this.name = "dmap" + partition;
-        imruContext = new IMRUMapContext(so.ctx, name, null, mapPartitionId,
-                nPartitions);
+        if (so.ctx != null) {
+            imruContext = new IMRUMapContext(so.ctx, name, null,
+                    mapPartitionId, nPartitions);
+        } else {
+            imruContext = new IMRUMapContext("NC" + so.curPartition, 32768,
+                    so.runtimeContext, name, null, mapPartitionId, nPartitions);
+        }
+
         overallInfo = new ImruIterInfo(imruContext);
-        fileCtx = new RunFileContext(so.ctx, so.imruSpec
-                .getCachedDataFrameSize());
+        if (so.ctx != null)
+            fileCtx = new RunFileContext(so.ctx, so.imruSpec
+                    .getCachedDataFrameSize());
         imruContext.addSplitsToQueue(so.allocatedSplits[mapPartitionId]);
-        INCApplicationContext appContext = so.ctx.getJobletContext()
-                .getApplicationContext();
-        IMRURuntimeContext context = (IMRURuntimeContext) appContext
-                .getApplicationObject();
+        //        INCApplicationContext appContext = so.ctx.getJobletContext()
+        //                .getApplicationContext();
+        //        IMRURuntimeContext context = (IMRURuntimeContext) appContext
+        //                .getApplicationObject();
         try {
             // Load the environment and weight vector.
             // For efficiency reasons, the Environment and weight vector
             // are
             // shared across all MapOperator partitions.
 
-            context.currentRecoveryIteration = so.parameters.recoverRoundNum;
-            context.rerunNum = so.parameters.rerunNum;
+            so.runtimeContext.currentRecoveryIteration = so.parameters.recoverRoundNum;
+            so.runtimeContext.rerunNum = so.parameters.rerunNum;
             // final IMRUContext imruContext = new IMRUContext(ctx,
             // name);
-            model = (Model) context.model;
+            model = (Model) so.runtimeContext.model;
             if (model == null)
                 throw new HyracksDataException("model is not cached");
-            synchronized (context.envLock) {
-                if (context.modelAge < so.parameters.roundNum)
+            synchronized (so.runtimeContext.envLock) {
+                if (so.runtimeContext.modelAge < so.parameters.roundNum)
                     throw new HyracksDataException("Model was not spread to "
                             + imruContext.getNodeId());
             }
@@ -97,7 +105,8 @@ public class DynamicMapping<Model extends Serializable, Data extends Serializabl
                     break;
                 processSplit(model, split);
             }
-            requestPartitions();
+            if (!so.parameters.disableRelocation)
+                requestPartitions();
             overallInfo.op.operatorStartTime = mapStartTime;
             overallInfo.op.operatorTotalTime = System.currentTimeMillis()
                     - mapStartTime;
@@ -168,8 +177,9 @@ public class DynamicMapping<Model extends Serializable, Data extends Serializabl
 
     MapTaskState loadSplit(HDFSSplit split) throws HyracksDataException {
         long startTime = System.currentTimeMillis();
-        MapTaskState state = new MapTaskState(so.ctx.getJobletContext()
-                .getJobId(), so.ctx.getTaskAttemptId().getTaskId());
+        MapTaskState state = so.ctx == null ? new MapTaskState(null, null)
+                : new MapTaskState(so.ctx.getJobletContext().getJobId(), so.ctx
+                        .getTaskAttemptId().getTaskId());
         RunFileWriter runFileWriter = null;
         DataWriter dataWriter = null;
         if (!so.parameters.useMemoryCache) {
@@ -183,8 +193,9 @@ public class DynamicMapping<Model extends Serializable, Data extends Serializabl
             state.setMemCache(vector);
             dataWriter = new DataWriter<Serializable>(vector);
         }
-        IMRUMapContext imruFileContext = new IMRUMapContext(fileCtx, name,
-                split, partition, nPartitions);
+        IMRUMapContext imruFileContext = fileCtx == null ? imruContext
+                : new IMRUMapContext(fileCtx, name, split, partition,
+                        nPartitions);
         try {
             InputStream in = split.getInputStream();
             state.parsedDataSize = in.available();
@@ -209,7 +220,7 @@ public class DynamicMapping<Model extends Serializable, Data extends Serializabl
         }
         long end = System.currentTimeMillis();
         LOG.info("Parsed input data in " + (end - startTime) + " milliseconds");
-        IterationUtils.setIterationState(so.ctx, split.uuid, state);
+        setIterationState(so.ctx, split.uuid, state);
         return state;
     }
 
@@ -217,15 +228,15 @@ public class DynamicMapping<Model extends Serializable, Data extends Serializabl
             throws IOException {
         // Load the examples.
         imruContext.setSplit(split);
-        MapTaskState state = (MapTaskState) IterationUtils.getIterationState(
-                so.ctx, split.uuid);
+        MapTaskState state = (MapTaskState) getIterationState(so.ctx,
+                split.uuid);
         if (!so.parameters.noDiskCache) {
             if (state == null) {
                 state = loadSplit(split);
             } else {
                 // Use the same state in the future iterations
-                IterationUtils.removeIterationState(so.ctx, split.uuid);
-                IterationUtils.setIterationState(so.ctx, split.uuid, state);
+                removeIterationState(so.ctx, split.uuid);
+                setIterationState(so.ctx, split.uuid, state);
             }
         }
         long mapStartTime = System.currentTimeMillis();
@@ -361,5 +372,26 @@ public class DynamicMapping<Model extends Serializable, Data extends Serializabl
                 throw new HyracksDataException(e);
             }
         }
+    }
+
+    static Map<Integer, IStateObject> stateMap = new Hashtable<Integer, IStateObject>();
+
+    public void setIterationState(IHyracksTaskContext ctx, int partition,
+            IStateObject state) {
+        if (so.ctx != null)
+            IterationUtils.setIterationState(so.ctx, partition, state);
+        stateMap.put(partition, state);
+    }
+
+    public IStateObject getIterationState(IHyracksTaskContext ctx, int partition) {
+        if (so.ctx != null)
+            IterationUtils.getIterationState(so.ctx, partition);
+        return stateMap.get(partition);
+    }
+
+    public void removeIterationState(IHyracksTaskContext ctx, int partition) {
+        if (so.ctx != null)
+            IterationUtils.removeIterationState(so.ctx, partition);
+        stateMap.remove(partition);
     }
 }

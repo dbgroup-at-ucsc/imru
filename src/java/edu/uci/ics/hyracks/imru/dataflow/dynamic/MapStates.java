@@ -27,7 +27,6 @@ public class MapStates {
     Object splitSync = new Object();
     ImruSendOperator so;
     LinkedList<HDFSSplit> queue;
-    private static ExecutorService threadPool = Executors.newCachedThreadPool();
     HashSet<Long> waitingRequests = new HashSet<Long>();
 
     public MapStates(ImruSendOperator so) {

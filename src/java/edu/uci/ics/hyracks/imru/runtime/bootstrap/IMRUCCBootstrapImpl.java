@@ -87,6 +87,7 @@ public class IMRUCCBootstrapImpl implements ICCApplicationEntryPoint {
         if (System.getProperty("imru.tempdir") != null)
             modelDir = System.getProperty("imru.tempdir");
         webServer = new Server(port);
+        LOGGER.info("IMRU "+ portStr+" "+ modelDir);
 
         ServletContextHandler context = new ServletContextHandler(
                 ServletContextHandler.SESSIONS);

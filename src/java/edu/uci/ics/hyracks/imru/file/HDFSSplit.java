@@ -166,7 +166,7 @@ public class HDFSSplit implements Serializable {
         }
         if (paths.length == 1 && requestedSplits > 1
                 && list.size() != requestedSplits)
-            throw new Error();
+            throw new Error(requestedSplits + " " + list.size());
         return list;
     }
 
