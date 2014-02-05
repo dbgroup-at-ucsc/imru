@@ -36,6 +36,7 @@ import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class ImruSendOperator<Model extends Serializable, Data extends Serializable>
         extends AbstractUnaryInputUnaryOutputOperatorNodePushable {
+    public static int EXPERIMENT_FRAME_SIZE = 32768;
     final ImruStream<Model, Data> imruSpec;
     ImruParameters parameters;
     IHyracksTaskContext ctx;
@@ -79,8 +80,9 @@ public class ImruSendOperator<Model extends Serializable, Data extends Serializa
             runtimeContext = imruContext.getRuntimeContext();
         } else {
             runtimeContext = new IMRURuntimeContext(null);
-            imruContext = new IMRUReduceContext("NC" + curPartition, 32768,
-                    runtimeContext, name, false, -1, curPartition, nPartitions);
+            imruContext = new IMRUReduceContext("NC" + curPartition,
+                    EXPERIMENT_FRAME_SIZE, runtimeContext, name, false, -1,
+                    curPartition, nPartitions);
         }
         map = new MapStates(this);
         aggr = new AggrStates(this);

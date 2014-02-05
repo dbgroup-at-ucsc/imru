@@ -15,6 +15,7 @@
 
 package edu.uci.ics.hyracks.imru.api;
 
+import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.LinkedList;
 
@@ -98,8 +99,9 @@ public class ASyncIO<Data> {
                             while (queue.size() == 0 && more) {
                                 queue.wait();
                             }
-                            if (queue.size() > 0)
+                            if (queue.size() > 0) {
                                 data = queue.removeFirst();
+                            }
                         }
                         synchronized (fullSync) {
                             fullSync.notifyAll();

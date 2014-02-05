@@ -3,8 +3,11 @@ package edu.uci.ics.hyracks.imru.wrapper;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import scala.actors.threadpool.Arrays;
 
 import edu.uci.ics.hyracks.api.comm.IFrameWriter;
 import edu.uci.ics.hyracks.api.context.IHyracksTaskContext;
@@ -25,16 +28,28 @@ import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 import edu.uci.ics.hyracks.imru.file.IMRUInputSplitProvider;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUCCBootstrapImpl;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
+import edu.uci.ics.hyracks.imru.util.Client;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class IMRUMultiCore<Model extends Serializable, Data extends Serializable> {
-    public static int networkSpeed = 1024 * 1024; //B/s
+    public static int networkSpeedInternal = 1024 * 1024; //B/s
     ImruOptions options;
     HDFSSplit[] splits;
     HDFSSplit[][] allocatedSplits;
     ImruSendOperator<Model, Data>[] os;
-    IMRUCCBootstrapImpl boot = new IMRUCCBootstrapImpl();
-    IMRUConnection imruConnection = new IMRUConnection("localhost", 3288);
+    IMRUConnection imruConnection = new IMRUConnection(null, -1) {
+        Hashtable<String, byte[]> hash = new Hashtable<String, byte[]>();
+
+        @Override
+        public byte[] downloadData(String name) throws IOException {
+            return hash.get(name);
+        }
+
+        @Override
+        public void uploadData(String name, byte[] data) throws IOException {
+            hash.put(name, data);
+        }
+    };
     ASyncIO<ByteBuffer>[] recvQueues;
     Thread[] recvThreads;
     IFrameWriter writer;
@@ -49,7 +64,8 @@ public class IMRUMultiCore<Model extends Serializable, Data extends Serializable
         this.options = options;
         this.model = model;
         this.job = job;
-        boot.start(null, null);
+        if (options.disableLogging)
+            Client.disableLogging();
         splits = IMRUInputSplitProvider.getInputSplits(options.inputPaths,
                 new ConfigurationFactory(), options.numOfNodes
                         * options.splitsPerNode, 0, Long.MAX_VALUE);
@@ -85,7 +101,11 @@ public class IMRUMultiCore<Model extends Serializable, Data extends Serializable
                         .getInt(SerializedFrames.TARGET_OFFSET);
                 int writerId = buffer.getInt(SerializedFrames.WRITER_OFFSET);
                 try {
-                    recvQueues[writerId].add(buffer);
+                    byte[] bs=buffer.array();
+                    bs=Arrays.copyOf(bs, bs.length);
+                    if (bs.length!= buffer.limit())
+                        throw new Error();
+                    recvQueues[writerId].add(ByteBuffer.wrap(bs));
                 } catch (Exception e) {
                     throw new HyracksDataException(e);
                 }
@@ -106,7 +126,7 @@ public class IMRUMultiCore<Model extends Serializable, Data extends Serializable
         recvQueues = new ASyncIO[options.numOfNodes];
         recvThreads = new Thread[options.numOfNodes];
         for (int i = 0; i < recvQueues.length; i++) {
-            recvQueues[i] = new ASyncIO<ByteBuffer>();
+            recvQueues[i] = new ASyncIO<ByteBuffer>(256);
             final int id = i;
             recvThreads[i] = new Thread("recv " + i) {
                 @Override
@@ -118,9 +138,7 @@ public class IMRUMultiCore<Model extends Serializable, Data extends Serializable
                             ByteBuffer buffer = iterator.next();
                             int size = buffer.limit();
                             //                            Rt.p(size);
-                            int ms = (int) ((float) size * 1000 / networkSpeed);
-                            if (ms < 1)
-                                ms = 1;
+                            int ms = (int) ((float) size * 1000 / networkSpeedInternal);
                             Thread.sleep(ms);
                             os[id].recvFrame(buffer, null);
                         }
@@ -169,7 +187,7 @@ public class IMRUMultiCore<Model extends Serializable, Data extends Serializable
         for (int i = 0; i < recvQueues.length; i++) {
             recvQueues[i].close();
         }
-        IMRUSerialize.threadPool.shutdown();
+//        IMRUSerialize.threadPool.shutdown();
     }
 
     public static <Model extends Serializable, Data extends Serializable> Model run(
@@ -180,8 +198,9 @@ public class IMRUMultiCore<Model extends Serializable, Data extends Serializable
         return multiCore.model;
     }
 
-    public static void main(String[] args) throws Exception {
-        networkSpeed = 1024 * 1024;
+    public static void main1(String[] args) throws Exception {
+        IMRUMultiCore.networkSpeedInternal = 1024 * 1024;
+
         ImruOptions options = new ImruOptions();
         options.inputPaths = "data/kmeans/kmeans0.txt";
         options.numOfNodes = 3;
@@ -190,8 +209,11 @@ public class IMRUMultiCore<Model extends Serializable, Data extends Serializable
         options.modelFilename = "model";
         options.dynamicAggr = true;
         options.dynamicMapping = true;
-        options.dynamicDisableRelocation = false;
+        options.dynamicDisableRelocation = true;
+        options.dynamicDisableSwapping = true;
         //        options.dynamicDebug = true;
+        options.disableLogging = true;
+
         String model = "";
         ImruStream<String, String> job = new DynamicMappingFunctionalTest.Job();
         String finalModel = IMRUMultiCore.run(options, model, job);

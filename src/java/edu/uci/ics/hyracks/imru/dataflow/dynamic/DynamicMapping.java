@@ -250,7 +250,7 @@ public class DynamicMapping<Model extends Serializable, Data extends Serializabl
             } else {
                 // read from memory cache
                 Vector vector = state.getMemCache();
-                Log.info("Cached in memory examples " + vector.size());
+                LOG.info("Cached in memory examples " + vector.size());
                 info = so.imruSpec.mapMem(imruContext, ((Vector<Data>) vector)
                         .iterator(), model, out, so.imruSpec
                         .getCachedDataFrameSize());
