@@ -25,19 +25,18 @@ import edu.uci.ics.hyracks.api.dataflow.TaskId;
 import edu.uci.ics.hyracks.api.job.JobId;
 import edu.uci.ics.hyracks.dataflow.common.io.RunFileWriter;
 import edu.uci.ics.hyracks.dataflow.std.base.AbstractStateObject;
+import edu.uci.ics.hyracks.imru.elastic.wrapper.ImruState;
 
 /**
  * Used to share state (the cached data file) between the data loading
  * and map operators.
  */
 public class MapTaskState extends AbstractStateObject {
-    private RunFileWriter out;
-    private Vector vector;
-    public long parsedDataSize;
-    public long uuid=new Random().nextLong();
+    public ImruState state;
 
-    public MapTaskState(JobId jobId, TaskId taskId) {
+    public MapTaskState(ImruState state, JobId jobId, TaskId taskId) {
         super(jobId, taskId);
+        this.state = state;
     }
 
     @Override
@@ -48,21 +47,5 @@ public class MapTaskState extends AbstractStateObject {
     @Override
     public void fromBytes(DataInput in) throws IOException {
         throw new UnsupportedOperationException();
-    }
-
-    public RunFileWriter getRunFileWriter() {
-        return out;
-    }
-
-    public void setRunFileWriter(RunFileWriter out) {
-        this.out = out;
-    }
-
-    public void setMemCache(Vector vector) {
-        this.vector = vector;
-    }
-
-    public Vector getMemCache() {
-        return vector;
     }
 }

@@ -30,7 +30,8 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
     @Override
     public void parse(IMRUContext ctx, InputStream in, FrameWriter writer)
             throws IOException {
-        TupleWriter tupleWriter = new TupleWriter(ctx, writer, fieldCount);
+        TupleWriter tupleWriter = new TupleWriter(
+                this.getCachedDataFrameSize(), writer, fieldCount);
         parse(ctx, in, new DataWriter<Data>(tupleWriter));
         tupleWriter.close();
     }
@@ -45,7 +46,7 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
             output.write(objectData);
             output.close();
             ImruIterInfo r = new ImruIterInfo(ctx);
-            HDFSSplit split = ((IMRUMapContext) ctx).getSplit();
+            HDFSSplit split = ctx.getSplit();
             if (r.op.completedSplits == null)
                 r.op.completedSplits = new Vector<HDFSSplit>();
             r.op.completedSplits.add(split);
@@ -80,7 +81,7 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
                 int len = reader.read(bs);
                 if (len != length)
                     throw new Exception("partial read");
-                Data data = (Data) ctx.deserialize(deploymentId, bs);
+                Data data = (Data) ctx.deserialize(bs);
                 r.op.mappedDataSize += bs.length;
                 r.op.totalMappedDataSize += bs.length;
                 return data;
@@ -111,7 +112,7 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
             byte[] objectData = JavaSerializationUtils.serialize(result);
             output.write(objectData);
             output.close();
-            HDFSSplit split = ((IMRUMapContext) ctx).getSplit();
+            HDFSSplit split = ctx.getSplit();
             if (r.op.completedSplits == null)
                 r.op.completedSplits = new Vector<HDFSSplit>();
             r.op.completedSplits.add(split);
@@ -124,7 +125,7 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
     }
 
     @Override
-    public void reduceFrames(final IMRUReduceContext ctx,
+    public void reduceFrames(final IMRUContext ctx,
             final Iterator<byte[]> input, OutputStream output)
             throws IMRUDataException {
         Iterator<IntermediateResult> iterator = new Iterator<IntermediateResult>() {
@@ -145,7 +146,7 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
 
                 try {
                     IntermediateResult result = (IntermediateResult) ctx
-                            .deserialize(deploymentId, objectData);
+                            .deserialize(objectData);
                     return result;
                 } catch (Throwable e) {
                     e.printStackTrace();
@@ -184,7 +185,7 @@ abstract public class ImruObject<Model extends Serializable, Data extends Serial
                     return null;
                 try {
                     IntermediateResult result = (IntermediateResult) ctx
-                            .deserialize(deploymentId, objectData);
+                            .deserialize(objectData);
                     return result;
                 } catch (Exception e) {
                     Rt

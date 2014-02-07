@@ -26,6 +26,7 @@ public class IMRUContext {
     private NodeControllerService nodeController;
 
     private String nodeId;
+    protected DeploymentId deploymentId;
     protected IHyracksTaskContext ctx;
     int partition;
     int nPartition;
@@ -34,12 +35,17 @@ public class IMRUContext {
     IMRURuntimeContext runtimeContext;
     int frameSize;
 
-    public IMRUContext(IHyracksTaskContext ctx, int partition, int nPartition) {
-        this(ctx, null, partition, nPartition);
+    //For mapper
+    HDFSSplit split;
+
+    public IMRUContext(DeploymentId deploymentId, IHyracksTaskContext ctx,
+            int partition, int nPartition) {
+        this(deploymentId, ctx, null, partition, nPartition);
     }
 
-    public IMRUContext(IHyracksTaskContext ctx, String operatorName,
-            int partition, int nPartition) {
+    public IMRUContext(DeploymentId deploymentId, IHyracksTaskContext ctx,
+            String operatorName, int partition, int nPartition) {
+        this.deploymentId = deploymentId;
         this.ctx = ctx;
         this.operatorName = operatorName;
         this.partition = partition;
@@ -103,10 +109,9 @@ public class IMRUContext {
         return ctx.getJobletContext();
     }
 
-    public Serializable deserialize(DeploymentId deploymentId, byte[] bs)
-            throws IMRUDataException {
+    public Serializable deserialize(byte[] bs) throws IMRUDataException {
         try {
-            if (ctx == null)
+            if (deploymentId == null || ctx == null)
                 return (Serializable) IMRUSerialize.deserialize(bs);
             NCApplicationContext appContext = (NCApplicationContext) ctx
                     .getJobletContext().getApplicationContext();
@@ -242,7 +247,20 @@ public class IMRUContext {
         context.modelAge = age;
     }
 
-    public IHyracksTaskContext getHyracksTaskContext() {
-        return ctx;
+    //For mapper
+    //    public IHyracksTaskContext getHyracksTaskContext() {
+    //        return ctx;
+    //    }
+
+    public HDFSSplit getSplit() {
+        return split;
+    }
+
+    public void setSplit(HDFSSplit split) {
+        this.split = split;
+    }
+
+    public String getDataPath() {
+        return split.getPath();
     }
 }

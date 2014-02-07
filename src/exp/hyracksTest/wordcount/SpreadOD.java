@@ -12,6 +12,7 @@ import edu.uci.ics.hyracks.api.dataflow.IOperatorNodePushable;
 import edu.uci.ics.hyracks.api.dataflow.value.IRecordDescriptorProvider;
 import edu.uci.ics.hyracks.api.dataflow.value.ISerializerDeserializer;
 import edu.uci.ics.hyracks.api.dataflow.value.RecordDescriptor;
+import edu.uci.ics.hyracks.api.deployment.DeploymentId;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.api.job.JobSpecification;
 import edu.uci.ics.hyracks.dataflow.common.comm.util.FrameUtils;
@@ -24,12 +25,15 @@ import edu.uci.ics.hyracks.imru.jobgen.SpreadGraph;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 public class SpreadOD extends AbstractSingleActivityOperatorDescriptor {
+    DeploymentId deploymentId;
     SpreadGraph.Level level;
     boolean first;
     boolean last;
 
-    public SpreadOD(JobSpecification spec, SpreadGraph.Level[] levels, int level) {
+    public SpreadOD(DeploymentId deploymentId, JobSpecification spec,
+            SpreadGraph.Level[] levels, int level) {
         super(spec, level > 0 ? 1 : 0, level < levels.length - 1 ? 1 : 0);
+        this.deploymentId = deploymentId;
         this.level = levels[level];
         first = level == 0;
         last = level == levels.length - 1;
@@ -166,8 +170,8 @@ public class SpreadOD extends AbstractSingleActivityOperatorDescriptor {
         try {
             if (first != (queue == null))
                 throw new Error();
-            IMRUContext imruContext = new IMRUContext(ctx, partition,
-                    nPartitions);
+            IMRUContext imruContext = new IMRUContext(deploymentId, ctx,
+                    partition, nPartitions);
             String nodeId = imruContext.getNodeId();
             byte[] bs = null;
             if (first) {

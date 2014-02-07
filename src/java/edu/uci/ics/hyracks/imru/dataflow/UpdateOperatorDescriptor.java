@@ -32,6 +32,7 @@ import edu.uci.ics.hyracks.api.dataflow.IOperatorNodePushable;
 import edu.uci.ics.hyracks.api.dataflow.value.IRecordDescriptorProvider;
 import edu.uci.ics.hyracks.api.dataflow.value.ISerializerDeserializer;
 import edu.uci.ics.hyracks.api.dataflow.value.RecordDescriptor;
+import edu.uci.ics.hyracks.api.deployment.DeploymentId;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.api.job.JobSpecification;
 import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryInputSinkOperatorNodePushable;
@@ -70,6 +71,7 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
     private final String modelName;
     IMRUConnection imruConnection;
     ImruParameters parameters;
+    DeploymentId deploymentId;
 
     /**
      * Create a new UpdateOperatorDescriptor.
@@ -86,10 +88,11 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
      *            The HDFS path to serialize the updated environment
      *            to.
      */
-    public UpdateOperatorDescriptor(JobSpecification spec,
+    public UpdateOperatorDescriptor(DeploymentId deploymentId,JobSpecification spec,
             ImruStream<Model, Data> imruSpec, String modelName,
             IMRUConnection imruConnection, ImruParameters parameters) {
         super(spec, 1, 0, "update", imruSpec);
+        this.deploymentId = deploymentId;
         this.modelName = modelName;
         this.imruConnection = imruConnection;
         this.parameters = parameters;
@@ -112,7 +115,8 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
             {
                 this.name = UpdateOperatorDescriptor.this.getDisplayName()
                         + partition;
-                imruContext = new IMRUContext(ctx, name, partition, nPartitions);
+                imruContext = new IMRUContext(deploymentId, ctx, name,
+                        partition, nPartitions);
             }
 
             @SuppressWarnings("unchecked")
@@ -131,14 +135,18 @@ public class UpdateOperatorDescriptor<Model extends Serializable, Data extends S
             @Override
             public void nextFrame(ByteBuffer encapsulatedChunk)
                     throws HyracksDataException {
-                SerializedFrames f = SerializedFrames.nextFrame(ctx
-                        .getFrameSize(), encapsulatedChunk);
-                if (f.replyPartition == SerializedFrames.DBG_INFO_FRAME)
-                    imruSpec.updateDbgInfoReceive(f.srcPartition, f.offset,
-                            f.totalSize, f.data, dbgInfoQueue);
-                else
-                    imruSpec.updateReceive(f.srcPartition, f.offset,
-                            f.totalSize, f.data, recvQueue);
+                try {
+                    SerializedFrames f = SerializedFrames.nextFrame(ctx
+                            .getFrameSize(), encapsulatedChunk);
+                    if (f.replyPartition == SerializedFrames.DBG_INFO_FRAME)
+                        imruSpec.updateDbgInfoReceive(f.srcPartition, f.offset,
+                                f.totalSize, f.data, dbgInfoQueue);
+                    else
+                        imruSpec.updateReceive(f.srcPartition, f.offset,
+                                f.totalSize, f.data, recvQueue);
+                } catch (IOException e) {
+                    throw new HyracksDataException(e);
+                }
             }
 
             @Override

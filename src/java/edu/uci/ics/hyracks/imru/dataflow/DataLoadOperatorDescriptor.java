@@ -35,6 +35,7 @@ import edu.uci.ics.hyracks.api.context.IHyracksTaskContext;
 import edu.uci.ics.hyracks.api.dataflow.IOperatorNodePushable;
 import edu.uci.ics.hyracks.api.dataflow.value.IRecordDescriptorProvider;
 import edu.uci.ics.hyracks.api.dataflow.value.RecordDescriptor;
+import edu.uci.ics.hyracks.api.deployment.DeploymentId;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.api.io.FileReference;
 import edu.uci.ics.hyracks.api.job.JobSpecification;
@@ -45,13 +46,15 @@ import edu.uci.ics.hyracks.imru.api.ASyncInputStream;
 import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.FrameWriter;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
-import edu.uci.ics.hyracks.imru.api.IMRUMapContext;
 import edu.uci.ics.hyracks.imru.api.ImruOptions;
 import edu.uci.ics.hyracks.imru.api.ImruParameters;
 import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.api.TupleReader;
 import edu.uci.ics.hyracks.imru.api.old.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.data.RunFileContext;
+import edu.uci.ics.hyracks.imru.elastic.wrapper.ImruHyracksWriter;
+import edu.uci.ics.hyracks.imru.elastic.wrapper.ImruState;
+import edu.uci.ics.hyracks.imru.elastic.wrapper.ImruWriter;
 import edu.uci.ics.hyracks.imru.file.ConfigurationFactory;
 import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRURuntimeContext;
@@ -78,6 +81,7 @@ public class DataLoadOperatorDescriptor extends
     private boolean hdfsLoad = false;
     //	private boolean memCache;
     ImruParameters parameters;
+    DeploymentId deploymentId;
 
     /**
      * Create a new DataLoadOperatorDescriptor.
@@ -91,11 +95,13 @@ public class DataLoadOperatorDescriptor extends
      * @param confFactory
      *            A Hadoop configuration, used for HDFS.
      */
-    public DataLoadOperatorDescriptor(JobSpecification spec,
+    public DataLoadOperatorDescriptor(DeploymentId deploymentId,
+            JobSpecification spec,
             ImruStream<Serializable, Serializable> imruSpec,
             HDFSSplit[] inputSplits, ConfigurationFactory confFactory,
             boolean hdfsLoad, ImruParameters parameters) {
         super(spec, hdfsLoad ? 1 : 0, 0, "parse", imruSpec);
+        this.deploymentId = deploymentId;
         this.inputSplits = inputSplits;
         this.confFactory = confFactory;
         this.hdfsLoad = hdfsLoad;
@@ -111,92 +117,106 @@ public class DataLoadOperatorDescriptor extends
             private final IHyracksTaskContext fileCtx;
             private final String name;
             long startTime;
-            MapTaskState state;
-            RunFileWriter runFileWriter;
+            ImruState state;
+            ImruWriter runFileWriter;
             DataWriter dataWriter;
-            IMRUMapContext imruContext;
+            IMRUContext imruContext;
             boolean initialized = false;
+            ImruHyracksWriter imruWriter;
 
             {
                 fileCtx = new RunFileContext(ctx, imruSpec
                         .getCachedDataFrameSize());
                 name = DataLoadOperatorDescriptor.this.getDisplayName()
                         + partition;
+                imruWriter = new ImruHyracksWriter(deploymentId,ctx, null);
             }
 
             @Override
             public void initialize() throws HyracksDataException {
-                // Rt.p("initialize");
-                if (initialized)
-                    return;
-                initialized = true;
-                // Load the examples.
-                state = (MapTaskState) IterationUtils.getIterationState(ctx,
-                        partition);
-                if (state != null) {
-                    LOG.severe("Duplicate loading of input data.");
-                    INCApplicationContext appContext = ctx.getJobletContext()
-                            .getApplicationContext();
-                    IMRURuntimeContext context = (IMRURuntimeContext) appContext
-                            .getApplicationObject();
-                    context.modelAge = 0;
-                    // throw new
-                    // IllegalStateException("Duplicate loading of input data.");
-                }
-                startTime = System.currentTimeMillis();
-                if (state == null)
-                    state = new MapTaskState(ctx.getJobletContext().getJobId(),
-                            ctx.getTaskAttemptId().getTaskId());
-                if (!parameters.useMemoryCache) {
-                    FileReference file = ctx
-                            .createUnmanagedWorkspaceFile("IMRUInput");
-                    runFileWriter = new RunFileWriter(file, ctx.getIOManager());
-                    state.setRunFileWriter(runFileWriter);
-                    runFileWriter.open();
-                } else {
-                    Vector vector = new Vector();
-                    state.setMemCache(vector);
-                    dataWriter = new DataWriter<Serializable>(vector);
-                }
+                try {
+                    // Rt.p("initialize");
+                    if (initialized)
+                        return;
+                    initialized = true;
 
-                imruContext = new IMRUMapContext(fileCtx, name,
-                        inputSplits[partition], partition, nPartitions);
-                if (!hdfsLoad) {
-                    final HDFSSplit split = inputSplits[partition];
-                    try {
-                        InputStream in = split.getInputStream();
-                        state.parsedDataSize = in.available();
-                        if (runFileWriter != null) {
-                            imruSpec.parse(imruContext,
-                                    new BufferedInputStream(in, 1024 * 1024),
-                                    new FrameWriter(runFileWriter));
-                        } else {
-                            imruSpec.parse(imruContext,
-                                    new BufferedInputStream(in, 1024 * 1024),
-                                    dataWriter);
-                        }
-                        in.close();
-                    } catch (IOException e) {
-                        fail();
-                        Rt.p(imruContext.getNodeId() + " " + split);
-                        throw new HyracksDataException(e);
+                    // Load the examples.
+                    MapTaskState state2 = (MapTaskState) IterationUtils
+                            .getIterationState(ctx, partition);
+                    state = state2 == null ? null : state2.state;
+                    if (state != null) {
+                        LOG.severe("Duplicate loading of input data.");
+                        INCApplicationContext appContext = ctx
+                                .getJobletContext().getApplicationContext();
+                        IMRURuntimeContext context = (IMRURuntimeContext) appContext
+                                .getApplicationObject();
+                        context.modelAge = 0;
+                        // throw new
+                        // IllegalStateException("Duplicate loading of input data.");
                     }
-                    finishDataCache();
+                    startTime = System.currentTimeMillis();
+                    if (state == null)
+                        state = new ImruState();
+                    if (!parameters.useMemoryCache) {
+                        FileReference file = ctx
+                                .createUnmanagedWorkspaceFile("IMRUInput");
+                        runFileWriter = imruWriter.createRunFileWriter();
+                        state.diskCache = runFileWriter;
+                        runFileWriter.open();
+                    } else {
+                        Vector vector = new Vector();
+                        state.memCache = vector;
+                        dataWriter = new DataWriter<Serializable>(vector);
+                    }
+
+                    imruContext = new IMRUContext(deploymentId, fileCtx, name,
+                            partition, nPartitions);
+                    imruContext.setSplit(inputSplits[partition]);
+                    if (!hdfsLoad) {
+                        final HDFSSplit split = inputSplits[partition];
+                        try {
+                            InputStream in = split.getInputStream();
+                            state.parsedDataSize = in.available();
+                            if (runFileWriter != null) {
+                                imruSpec
+                                        .parse(imruContext,
+                                                new BufferedInputStream(in,
+                                                        1024 * 1024),
+                                                new FrameWriter(runFileWriter));
+                            } else {
+                                imruSpec
+                                        .parse(imruContext,
+                                                new BufferedInputStream(in,
+                                                        1024 * 1024),
+                                                dataWriter);
+                            }
+                            in.close();
+                        } catch (IOException e) {
+                            fail();
+                            Rt.p(imruContext.getNodeId() + " " + split);
+                            throw new HyracksDataException(e);
+                        }
+                        finishDataCache();
+                    }
+                } catch (IOException e) {
+                    throw new HyracksDataException(e);
                 }
             }
 
-            void finishDataCache() throws HyracksDataException {
+            void finishDataCache() throws IOException {
                 if (runFileWriter != null) {
                     runFileWriter.close();
                     LOG.info("Cached input data file "
-                            + runFileWriter.getFileReference().getFile()
-                                    .getAbsolutePath() + " is "
+                            + runFileWriter.getPath() + " is "
                             + runFileWriter.getFileSize() + " bytes");
                 }
                 long end = System.currentTimeMillis();
                 LOG.info("Parsed input data in " + (end - startTime)
                         + " milliseconds");
-                IterationUtils.setIterationState(ctx, partition, state);
+                IterationUtils
+                        .setIterationState(ctx, partition, new MapTaskState(
+                                state, ctx.getJobletContext().getJobId(), ctx
+                                        .getTaskAttemptId().getTaskId()));
             }
 
             @Override
@@ -290,7 +310,11 @@ public class DataLoadOperatorDescriptor extends
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
-                        finishDataCache();
+                        try {
+                            finishDataCache();
+                        } catch (IOException e) {
+                            throw new HyracksDataException(e);
+                        }
                     }
                 };
             }

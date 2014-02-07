@@ -21,15 +21,16 @@ import java.util.List;
 import edu.uci.ics.hyracks.api.constraints.PartitionConstraintHelper;
 import edu.uci.ics.hyracks.api.dataflow.IConnectorDescriptor;
 import edu.uci.ics.hyracks.api.dataflow.IOperatorDescriptor;
+import edu.uci.ics.hyracks.api.deployment.DeploymentId;
 import edu.uci.ics.hyracks.api.job.JobSpecification;
 import edu.uci.ics.hyracks.dataflow.std.connectors.LocalityAwareMToNPartitioningConnectorDescriptor;
 import edu.uci.ics.hyracks.imru.api.ImruParameters;
 import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.dataflow.ReduceOperatorDescriptor;
 import edu.uci.ics.hyracks.imru.dataflow.SpreadConnectorDescriptor;
-import edu.uci.ics.hyracks.imru.dataflow.dynamic.ImruRecvOD;
-import edu.uci.ics.hyracks.imru.dataflow.dynamic.ImruSendOD;
-import edu.uci.ics.hyracks.imru.dataflow.dynamic.test.DynamicAggregationStressTest;
+import edu.uci.ics.hyracks.imru.elastic.ImruRecvOD;
+import edu.uci.ics.hyracks.imru.elastic.ImruSendOD;
+import edu.uci.ics.hyracks.imru.elastic.test.DynamicAggregationStressTest;
 
 /**
  * Constructs aggregation trees between the Map and Update operators.
@@ -67,10 +68,11 @@ public class ReduceAggregationTreeFactory {
      *            The IMRU job specification.
      */
     @SuppressWarnings( { "rawtypes" })
-    public static void buildAggregationTree(JobSpecification spec,
-            IOperatorDescriptor producerOp, int producerPort,
-            int producerOpCount, IOperatorDescriptor consumerOp,
-            int consumerPort, IConnectorDescriptor consumerConn, int fanIn,
+    public static void buildAggregationTree(DeploymentId deploymentId,
+            JobSpecification spec, IOperatorDescriptor producerOp,
+            int producerPort, int producerOpCount,
+            IOperatorDescriptor consumerOp, int consumerPort,
+            IConnectorDescriptor consumerConn, int fanIn,
             boolean useLocalCombiners, String[] producerOpLocations,
             ImruStream imruSpec, ImruParameters parameters) {
         if (useLocalCombiners) {
@@ -82,8 +84,9 @@ public class ReduceAggregationTreeFactory {
         int numLevels = levelNodeCounts.length;
         ReduceOperatorDescriptor[] aggregatorOperators = new ReduceOperatorDescriptor[numLevels];
         for (int level = 0; level < numLevels; level++) {
-            aggregatorOperators[level] = new ReduceOperatorDescriptor(spec,
-                    imruSpec, "RedL" + level + "_", parameters);
+            aggregatorOperators[level] = new ReduceOperatorDescriptor(
+                    deploymentId, spec, imruSpec, "RedL" + level + "_",
+                    parameters);
             aggregatorOperators[level].level = level;
             //            aggregatorOperators[level].setDisplayName("ReduceOperatorDescriptor(level " + level + ")");
             PartitionConstraintHelper.addPartitionCountConstraint(spec,
@@ -104,8 +107,8 @@ public class ReduceAggregationTreeFactory {
                 spec, OneToOneTuplePartitionComputerFactory.INSTANCE,
                 new RangeLocalityMap(producerOpCount));
         if (useLocalCombiners) {
-            LocalReducerFactory.addLocalReducers(spec, producerOp,
-                    producerPort, producerOpLocations,
+            LocalReducerFactory.addLocalReducers(deploymentId, spec,
+                    producerOp, producerPort, producerOpLocations,
                     aggregatorOperators[numLevels - 1], 0, producerConn,
                     imruSpec, parameters);
         } else {

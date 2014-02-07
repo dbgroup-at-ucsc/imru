@@ -98,10 +98,12 @@ public class TrainMergeDriver<Model extends Serializable> {
             mergerIds[i] = hash.get(mapOperatorLocations[i]);
         }
 
-        TrainOD map = new TrainOD(job, trainMergejob, inputSplits, mergerIds,
-                mergeLocations.length, imruConnection, id.toString());
-        MergeOD fuse = new MergeOD(job, trainMergejob, imruConnection,
-                modelFileName, id.toString(), mapOperatorLocations.length);
+        TrainOD map = new TrainOD(deploymentId, job, trainMergejob,
+                inputSplits, mergerIds, mergeLocations.length, imruConnection,
+                id.toString());
+        MergeOD fuse = new MergeOD(deploymentId, job, trainMergejob,
+                imruConnection, modelFileName, id.toString(),
+                mapOperatorLocations.length);
         job.connect(new SpreadConnectorDescriptor(job, null, null), map, 0,
                 fuse, 0);
         PartitionConstraintHelper.addAbsoluteLocationConstraint(job, map,

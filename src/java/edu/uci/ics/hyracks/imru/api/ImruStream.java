@@ -17,12 +17,6 @@ import edu.uci.ics.hyracks.imru.dataflow.IMRUSerialize;
 
 abstract public class ImruStream<Model extends Serializable, Data extends Serializable>
         implements Serializable {
-    DeploymentId deploymentId;
-
-    public void setDeploymentId(DeploymentId deploymentId) {
-        this.deploymentId = deploymentId;
-    }
-
     /**
      * Frame size must be large enough to store at least one tuple
      */
@@ -56,7 +50,7 @@ abstract public class ImruStream<Model extends Serializable, Data extends Serial
             Model model, OutputStream output, int cachedDataFrameSize)
             throws IMRUDataException;
 
-    abstract public Object reduceInit(IMRUReduceContext ctx, OutputStream output)
+    abstract public Object reduceInit(IMRUContext ctx, OutputStream output)
             throws IMRUDataException;
 
     abstract public void reduceReceive(int srcParition, int offset,
@@ -131,8 +125,7 @@ abstract public class ImruStream<Model extends Serializable, Data extends Serial
             @Override
             public void receiveComplete(int srcPartition, byte[] bs)
                     throws IMRUDataException {
-                ImruIterInfo info = (ImruIterInfo) ctx.deserialize(
-                        deploymentId, bs);
+                ImruIterInfo info = (ImruIterInfo) ctx.deserialize(bs);
                 reduceRecvDbgInfo(srcPartition, info, userObject);
             }
 
@@ -164,8 +157,7 @@ abstract public class ImruStream<Model extends Serializable, Data extends Serial
             @Override
             public void receiveComplete(int srcPartition, byte[] bs)
                     throws IMRUDataException {
-                ImruIterInfo info = (ImruIterInfo) ctx.deserialize(
-                        deploymentId, bs);
+                ImruIterInfo info = (ImruIterInfo) ctx.deserialize(bs);
                 updateRecvInformation(srcPartition, info, userObject);
             }
 

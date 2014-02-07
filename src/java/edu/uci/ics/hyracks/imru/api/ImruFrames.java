@@ -18,7 +18,7 @@ public abstract class ImruFrames<Model extends Serializable, Data extends Serial
     Model updatedModel;
 
     @Override
-    public Object reduceInit(final IMRUReduceContext ctx,
+    public Object reduceInit(final IMRUContext ctx,
             final OutputStream output) throws IMRUDataException {
         A a = new A();
         a.info = new ImruIterInfo(ctx);
@@ -70,7 +70,7 @@ public abstract class ImruFrames<Model extends Serializable, Data extends Serial
     /**
      * Combine multiple raw data to one binary data
      */
-    abstract public void reduceFrames(IMRUReduceContext ctx,
+    abstract public void reduceFrames(IMRUContext ctx,
             Iterator<byte[]> input, OutputStream output)
             throws IMRUDataException;
 

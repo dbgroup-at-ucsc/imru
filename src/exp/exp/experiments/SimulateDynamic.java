@@ -11,17 +11,15 @@ import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.FrameWriter;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
-import edu.uci.ics.hyracks.imru.api.IMRUMapContext;
-import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
 import edu.uci.ics.hyracks.imru.api.ImruFrames;
 import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruObject;
 import edu.uci.ics.hyracks.imru.api.ImruOptions;
 import edu.uci.ics.hyracks.imru.api.ImruStream;
-import edu.uci.ics.hyracks.imru.dataflow.dynamic.test.DynamicMappingFunctionalTest;
+import edu.uci.ics.hyracks.imru.elastic.test.DynamicMappingFunctionalTest;
+import edu.uci.ics.hyracks.imru.elastic.wrapper.IMRUMultiCore;
 import edu.uci.ics.hyracks.imru.util.Client;
 import edu.uci.ics.hyracks.imru.util.Rt;
-import edu.uci.ics.hyracks.imru.wrapper.IMRUMultiCore;
 import exp.ImruExpFigs;
 import exp.imruVsSpark.data.DataGenerator;
 import exp.imruVsSpark.kmeans.SKMeansModel;
@@ -261,11 +259,10 @@ public class SimulateDynamic {
     }
 
     public static void dynamicAggr(String[] args) throws Exception {
-        IMRUMultiCore.networkSpeedInternal = 100 * 1024 * 1024;
         ImruOptions options = new ImruOptions();
         options.inputPaths = "/data/data/batch100000/10/nodes8/dims100000.txt";
         msPerSplit = 0;
-        options.numOfNodes = 32;
+        options.numOfNodes = 16;
         options.splitsPerNode = 1;
         options.memCache = true;
         options.modelFilename = "model";
@@ -281,13 +278,14 @@ public class SimulateDynamic {
                     new byte[1024 * 1024], job);
             System.out.println("FinalModel: " + finalModel.length);
         }
-        options.numOfNodes = 32;
         options.splitsPerNode = 1;
         int mb = 1024 * 1024;
         int iterations = 1;
-        for (int si = 0; si < 2; si++) {
-            int stragger = si == 0 ? 0 : 5;
-            if (true) {
+        if (false)
+            for (int si = 0; si < 2; si++) {
+                options.numOfNodes = 16;
+                IMRUMultiCore.networkSpeedInternal = 10 * mb;
+                int stragger = si == 0 ? 0 : 5000;
                 GnuPlot plot = new GnuPlot(new File("/tmp/cache"),
                         "aggrModelSize_" + (si == 0 ? "Normal" : "stragger"),
                         "Model size (MB)", "Time (seconds)");
@@ -299,12 +297,12 @@ public class SimulateDynamic {
                 plot.pointSize = 1;
                 plot.scale = false;
                 plot.colored = true;
-                for (int modelSize = 10; modelSize <= 100; modelSize += 10) {
+                for (int modelSize = 10; modelSize <= 30; modelSize += 10) {
                     byte[] model = new byte[modelSize * mb];
                     double[] times = new double[2];
                     for (int i = 0; i < 2; i++) {
                         Rt.p("Model size: " + modelSize);
-                        options.dynamicDisableRelocation = (i == 0);
+                        options.dynamicDisableSwapping = (i == 0);
                         long start = System.currentTimeMillis();
                         ImruStream<byte[], byte[]> job = new Job(stragger,
                                 modelSize * mb, iterations);
@@ -316,10 +314,14 @@ public class SimulateDynamic {
                     plot.startNewX(modelSize);
                     plot.addY(times[0]);
                     plot.addY(times[1]);
+                    Rt.p(plot.name);
                     plot.finish();
                 }
             }
-            if (true) {
+        if (false)
+            for (int si = 0; si < 2; si++) {
+                IMRUMultiCore.networkSpeedInternal = 10 * mb;
+                int stragger = si == 0 ? 0 : 5000;
                 int modelSize = 100;
                 GnuPlot plot = new GnuPlot(new File("/tmp/cache"), "aggrNodes_"
                         + (si == 0 ? "Normal" : "stragger"), "Number of nodes",
@@ -332,12 +334,12 @@ public class SimulateDynamic {
                 plot.pointSize = 1;
                 plot.scale = false;
                 plot.colored = true;
-                for (options.numOfNodes = 2; options.numOfNodes <= 64; options.numOfNodes *= 2) {
+                for (options.numOfNodes = 2; options.numOfNodes <= 32; options.numOfNodes *= 2) {
                     byte[] model = new byte[modelSize * mb];
                     double[] times = new double[2];
                     for (int i = 0; i < 2; i++) {
                         Rt.p("Nodes: " + options.numOfNodes);
-                        options.dynamicDisableRelocation = (i == 0);
+                        options.dynamicDisableSwapping = (i == 0);
                         long start = System.currentTimeMillis();
                         ImruStream<byte[], byte[]> job = new Job(stragger,
                                 modelSize * mb, iterations);
@@ -352,39 +354,41 @@ public class SimulateDynamic {
                     plot.finish();
                 }
             }
-            {
-                int modelSize = 100;
-                GnuPlot plot = new GnuPlot(new File("/tmp/cache"),
-                        "aggrNetwork_" + (si == 0 ? "Normal" : "stragger"),
-                        "Network speed (MB)", "Time (seconds)");
-                plot.extra = "set title \"" + options.numOfNodes + " nodes "
-                        + modelSize + "MB model " + " \"";
-                plot.setPlotNames("Fixed aggregation", "Dynamic aggregation");
-                plot.startPointType = 1;
-                plot.pointSize = 1;
-                plot.scale = false;
-                plot.colored = true;
-                for (int speedMb = 1; speedMb <= 1000; speedMb *= 10) {
-                    IMRUMultiCore.networkSpeedInternal = speedMb * mb;
-                    byte[] model = new byte[modelSize * mb];
-                    double[] times = new double[2];
-                    for (int i = 0; i < 2; i++) {
-                        Rt.p("Network speed: "
-                                + IMRUMultiCore.networkSpeedInternal);
-                        options.dynamicDisableRelocation = (i == 0);
-                        long start = System.currentTimeMillis();
-                        ImruStream<byte[], byte[]> job = new Job(stragger,
-                                modelSize * mb, iterations);
-                        byte[] finalModel = IMRUMultiCore.run(options, model,
-                                job);
-                        System.out.println("FinalModel: " + finalModel.length);
-                        times[i] = (System.currentTimeMillis() - start) / 1000.0;
-                    }
-                    plot.startNewX(speedMb);
-                    plot.addY(times[0]);
-                    plot.addY(times[1]);
-                    plot.finish();
+        for (int si = 0; si < 2; si++) {
+            int modelSize = 100;
+            options.numOfNodes = 16;
+            int stragger = si == 0 ? 0 : 5000;
+            GnuPlot plot = new GnuPlot(new File("/tmp/cache"), "aggrNetwork_"
+                    + (si == 0 ? "Normal" : "stragger"), "Network speed (MB)",
+                    "Time (seconds)");
+            plot.extra = "set title \"" + options.numOfNodes + " nodes "
+                    + modelSize + "MB model " + " \"";
+            plot.setPlotNames("Fixed aggregation", "Dynamic aggregation");
+            plot.startPointType = 1;
+            plot.pointSize = 1;
+            plot.scale = false;
+            plot.colored = true;
+            int[] speeds = { 10, 30, 100 };
+            for (int speedMb : speeds) {
+                IMRUMultiCore.networkSpeedInternal = speedMb * mb;
+                byte[] model = new byte[modelSize * mb];
+                double[] times = new double[2];
+                for (int i = 0; i < 2; i++) {
+                    Rt
+                            .p("Network speed: "
+                                    + IMRUMultiCore.networkSpeedInternal);
+                    options.dynamicDisableSwapping = (i == 0);
+                    long start = System.currentTimeMillis();
+                    ImruStream<byte[], byte[]> job = new Job(stragger,
+                            modelSize * mb, iterations);
+                    byte[] finalModel = IMRUMultiCore.run(options, model, job);
+                    System.out.println("FinalModel: " + finalModel.length);
+                    times[i] = (System.currentTimeMillis() - start) / 1000.0;
                 }
+                plot.startNewX(speedMb);
+                plot.addY(times[0]);
+                plot.addY(times[1]);
+                plot.finish();
             }
         }
         System.exit(0);

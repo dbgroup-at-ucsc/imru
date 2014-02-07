@@ -175,7 +175,7 @@ public class Test {
             for (int i = 0; i < graph.levels.length; i++) {
                 SpreadGraph.Level level = graph.levels[i];
                 String[] locations = level.getLocationContraint();
-                SpreadOD op = new SpreadOD(job, graph.levels, i);
+                SpreadOD op = new SpreadOD(null,job, graph.levels, i);
                 if (i > 0)
                     job.connect(new SpreadConnectorDescriptor(job,
                             graph.levels[i - 1], level), last, 0, op, 0);

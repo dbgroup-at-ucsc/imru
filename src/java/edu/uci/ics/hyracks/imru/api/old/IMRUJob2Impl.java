@@ -41,8 +41,6 @@ import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.FrameWriter;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
-import edu.uci.ics.hyracks.imru.api.IMRUMapContext;
-import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
 import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
@@ -165,9 +163,8 @@ public class IMRUJob2Impl<Model extends Serializable, Data extends Serializable,
     }
 
     @Override
-    public void reduce(final IMRUReduceContext ctx,
-            final Iterator<byte[]> input, OutputStream output)
-            throws IMRUDataException {
+    public void reduce(final IMRUContext ctx, final Iterator<byte[]> input,
+            OutputStream output) throws IMRUDataException {
         final ImruIterInfo r = new ImruIterInfo(ctx);
         Iterator<T> iterator = new Iterator<T>() {
             @Override

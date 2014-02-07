@@ -66,10 +66,10 @@ import edu.uci.ics.hyracks.imru.dataflow.ReduceOperatorDescriptor;
 import edu.uci.ics.hyracks.imru.dataflow.SpreadConnectorDescriptor;
 import edu.uci.ics.hyracks.imru.dataflow.SpreadOD;
 import edu.uci.ics.hyracks.imru.dataflow.UpdateOperatorDescriptor;
-import edu.uci.ics.hyracks.imru.dataflow.dynamic.DynamicMapOD;
-import edu.uci.ics.hyracks.imru.dataflow.dynamic.ImruRecvOD;
-import edu.uci.ics.hyracks.imru.dataflow.dynamic.ImruSendOD;
-import edu.uci.ics.hyracks.imru.dataflow.dynamic.test.DynamicAggregationStressTest;
+import edu.uci.ics.hyracks.imru.elastic.DynamicMapOD;
+import edu.uci.ics.hyracks.imru.elastic.ImruRecvOD;
+import edu.uci.ics.hyracks.imru.elastic.ImruSendOD;
+import edu.uci.ics.hyracks.imru.elastic.test.DynamicAggregationStressTest;
 import edu.uci.ics.hyracks.imru.file.ConfigurationFactory;
 import edu.uci.ics.hyracks.imru.file.IMRUInputSplitProvider;
 import edu.uci.ics.hyracks.imru.file.HDFSSplit;
@@ -270,11 +270,11 @@ public class IMRUJobFactory {
     }
 
     @SuppressWarnings("rawtypes")
-    public JobSpecification generateDataGenerateJob(IIMRUDataGenerator generator)
-            throws IOException {
+    public JobSpecification generateDataGenerateJob(DeploymentId deploymentId,
+            IIMRUDataGenerator generator) throws IOException {
         JobSpecification spec = new JobSpecification();
         IMRUOperatorDescriptor dataLoad = new DataGeneratorOperatorDescriptor(
-                spec, generator, inputSplits, confFactory);
+                deploymentId, spec, generator, inputSplits, confFactory);
         PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, dataLoad,
                 mapOperatorLocations);
         spec.addRoot(dataLoad);
@@ -292,8 +292,8 @@ public class IMRUJobFactory {
      * @throws IOException
      */
     @SuppressWarnings("rawtypes")
-    public JobSpecification generateDataLoadJob(ImruStream model)
-            throws IOException {
+    public JobSpecification generateDataLoadJob(DeploymentId deploymentId,
+            ImruStream model) throws IOException {
         JobSpecification spec = new JobSpecification();
         if (confFactory.useHDFS()) {
             InputSplit[] splits = getInputSplits();
@@ -305,8 +305,9 @@ public class IMRUJobFactory {
             PartitionConstraintHelper.addAbsoluteLocationConstraint(spec,
                     readOperator, mapOperatorLocations);
 
-            IOperatorDescriptor writer = new DataLoadOperatorDescriptor(spec,
-                    model, inputSplits, confFactory, true, parameters);
+            IOperatorDescriptor writer = new DataLoadOperatorDescriptor(
+                    deploymentId, spec, model, inputSplits, confFactory, true,
+                    parameters);
             PartitionConstraintHelper.addAbsoluteLocationConstraint(spec,
                     readOperator, mapOperatorLocations);
 
@@ -314,7 +315,8 @@ public class IMRUJobFactory {
                     0, writer, 0);
         } else {
             IMRUOperatorDescriptor dataLoad = new DataLoadOperatorDescriptor(
-                    spec, model, inputSplits, confFactory, false, parameters);
+                    deploymentId, spec, model, inputSplits, confFactory, false,
+                    parameters);
             PartitionConstraintHelper.addAbsoluteLocationConstraint(spec,
                     dataLoad, mapOperatorLocations);
             spec.addRoot(dataLoad);
@@ -403,8 +405,8 @@ public class IMRUJobFactory {
                 int[] targets = DynamicAggregationStressTest
                         .getAggregationTree(mapNodesLocations.length,
                                 this.fanIn);
-                ImruSendOD send = new ImruSendOD(spec, targets, model, "send",
-                        parameters, modelName, imruConnection);
+                ImruSendOD send = new ImruSendOD(deploymentId, spec, targets,
+                        model, "send", parameters, modelName, imruConnection);
                 send.splits = inputSplits;
                 send.allocatedSplits = allocatedSplits;
                 ImruRecvOD recv = new ImruRecvOD(spec, deploymentId, targets);
@@ -425,8 +427,8 @@ public class IMRUJobFactory {
                         "Dynamic aggregation must be enabled for dynamic mapping.");
             }
         } else {
-            mapOperator = new MapOperatorDescriptor(spec, model, inputSplits,
-                    "map", parameters);
+            mapOperator = new MapOperatorDescriptor(deploymentId, spec, model,
+                    inputSplits, "map", parameters);
         }
         PartitionConstraintHelper.addAbsoluteLocationConstraint(spec,
                 mapOperator, mapOperatorLocations);
@@ -434,8 +436,8 @@ public class IMRUJobFactory {
         if (aggType == AGGREGATION.NARY && parameters.dynamicAggr) {
             int[] targets = DynamicAggregationStressTest.getAggregationTree(
                     mapNodesLocations.length, this.fanIn);
-            ImruSendOD send = new ImruSendOD(spec, targets, model, "send",
-                    parameters, modelName, imruConnection);
+            ImruSendOD send = new ImruSendOD(deploymentId, spec, targets,
+                    model, "send", parameters, modelName, imruConnection);
             ImruRecvOD recv = new ImruRecvOD(spec, deploymentId, targets);
             spec.connect(new SpreadConnectorDescriptor(spec, null, null), send,
                     0, recv, 0);
@@ -443,8 +445,8 @@ public class IMRUJobFactory {
                     mapNodesLocations);
             PartitionConstraintHelper.addAbsoluteLocationConstraint(spec, recv,
                     mapNodesLocations);
-            LocalReducerFactory.addLocalReducers(spec, mapOperator, 0,
-                    mapOperatorLocations, send, 0,
+            LocalReducerFactory.addLocalReducers(deploymentId, spec,
+                    mapOperator, 0, mapOperatorLocations, send, 0,
                     new OneToOneConnectorDescriptor(spec), model, parameters);
             spec.addRoot(recv);
             return spec;
@@ -452,7 +454,8 @@ public class IMRUJobFactory {
 
         // Environment updating
         IMRUOperatorDescriptor updateOperator = new UpdateOperatorDescriptor(
-                spec, model, modelName, imruConnection, parameters);
+                deploymentId, spec, model, modelName, imruConnection,
+                parameters);
         PartitionConstraintHelper.addPartitionCountConstraint(spec,
                 updateOperator, 1);
         // Make sure update operator can get the model
@@ -467,7 +470,8 @@ public class IMRUJobFactory {
         } else if (aggType == AGGREGATION.GENERIC) {
             // One level of reducers (ala Hadoop)
             IOperatorDescriptor reduceOperator = new ReduceOperatorDescriptor(
-                    spec, model, "generic reducer", this.parameters);
+                    deploymentId, spec, model, "generic reducer",
+                    this.parameters);
             PartitionConstraintHelper.addPartitionCountConstraint(spec,
                     reduceOperator, reducerCount);
 
@@ -475,9 +479,9 @@ public class IMRUJobFactory {
             IConnectorDescriptor mapReducerConn = new LocalityAwareMToNPartitioningConnectorDescriptor(
                     spec, OneToOneTuplePartitionComputerFactory.INSTANCE,
                     new RangeLocalityMap(mapOperatorLocations.length));
-            LocalReducerFactory.addLocalReducers(spec, mapOperator, 0,
-                    mapOperatorLocations, reduceOperator, 0, mapReducerConn,
-                    model, parameters);
+            LocalReducerFactory.addLocalReducers(deploymentId, spec,
+                    mapOperator, 0, mapOperatorLocations, reduceOperator, 0,
+                    mapReducerConn, model, parameters);
 
             // Connect things together
             IConnectorDescriptor reduceUpdateConn = new MToNReplicatingConnectorDescriptor(
@@ -489,10 +493,10 @@ public class IMRUJobFactory {
             // Reduce aggregation tree.
             IConnectorDescriptor reduceUpdateConn = new MToNReplicatingConnectorDescriptor(
                     spec);
-            ReduceAggregationTreeFactory.buildAggregationTree(spec,
-                    mapOperator, 0, inputSplits.length, updateOperator, 0,
-                    reduceUpdateConn, fanIn, true, mapOperatorLocations, model,
-                    parameters);
+            ReduceAggregationTreeFactory.buildAggregationTree(deploymentId,
+                    spec, mapOperator, 0, inputSplits.length, updateOperator,
+                    0, reduceUpdateConn, fanIn, true, mapOperatorLocations,
+                    model, parameters);
         }
 
         spec.addRoot(updateOperator);

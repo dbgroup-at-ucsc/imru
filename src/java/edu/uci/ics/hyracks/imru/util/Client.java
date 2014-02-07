@@ -193,13 +193,13 @@ public class Client<Model extends Serializable, Data extends Serializable> {
             control.selectGenericAggregation(splits, options.aggCount);
         } else if (options.aggTreeType.equals("nary")) {
             Map<String, NodeControllerInfo> map = hcc.getNodeControllerInfos();
-//            if (map.size() < 3) {
-//                Rt.p("Change to generic aggregation because there are only "
-//                        + map.size() + " nodes");
-//                control.selectGenericAggregation(splits, options.fanIn);
-//            } else {
-                control.selectNAryAggregation(splits, options.fanIn);
-//            }
+            //            if (map.size() < 3) {
+            //                Rt.p("Change to generic aggregation because there are only "
+            //                        + map.size() + " nodes");
+            //                control.selectGenericAggregation(splits, options.fanIn);
+            //            } else {
+            control.selectNAryAggregation(splits, options.fanIn);
+            //            }
         } else {
             throw new IllegalArgumentException("Invalid aggregation tree type");
         }
@@ -225,7 +225,6 @@ public class Client<Model extends Serializable, Data extends Serializable> {
     public <T extends Serializable> JobStatus run(
             ImruObject<Model, Data, T> job, Model initialModel)
             throws Exception {
-        job.setDeploymentId(deploymentId);
         return control.run(deploymentId, job, initialModel);
     }
 
@@ -236,7 +235,6 @@ public class Client<Model extends Serializable, Data extends Serializable> {
      */
     public JobStatus run(ImruStream<Model, Data> job, Model initialModel)
             throws Exception {
-        job.setDeploymentId(deploymentId);
         return control.run(deploymentId, job, initialModel);
     }
 

@@ -7,7 +7,7 @@ import edu.uci.ics.hyracks.api.deployment.DeploymentId;
 import edu.uci.ics.hyracks.api.job.JobFlag;
 import edu.uci.ics.hyracks.api.job.JobId;
 import edu.uci.ics.hyracks.api.job.JobSpecification;
-import edu.uci.ics.hyracks.imru.dataflow.dynamic.test.DynamicAggregationStressTest;
+import edu.uci.ics.hyracks.imru.elastic.test.DynamicAggregationStressTest;
 import edu.uci.ics.hyracks.imru.util.Client;
 import edu.uci.ics.hyracks.imru.util.CreateDeployment;
 import edu.uci.ics.hyracks.imru.util.Rt;

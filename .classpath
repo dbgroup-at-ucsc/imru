@@ -83,7 +83,7 @@
 	<classpathentry kind="lib" path="dist/lib/hyracks-control-common-0.2.11-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="dist/lib/hyracks-control-nc-0.2.11-SNAPSHOT.jar" sourcepath="/home/wangrui/a/imru/hyracks10/hyracks/hyracks/hyracks-control/hyracks-control-nc/src/main/java"/>
 	<classpathentry kind="lib" path="dist/lib/hyracks-data-std-0.2.11-SNAPSHOT.jar"/>
-	<classpathentry kind="lib" path="dist/lib/hyracks-dataflow-common-0.2.11-SNAPSHOT.jar" sourcepath="/home/wangrui/a/imru/hyracks10/hyracks/hyracks/hyracks-dataflow-common/src/main/java"/>
+	<classpathentry kind="lib" path="dist/lib/hyracks-dataflow-common-0.2.11-SNAPSHOT.jar" sourcepath="/data/a/imru/hyracks10/hyracks/hyracks/hyracks-dataflow-common/src/main/java"/>
 	<classpathentry kind="lib" path="dist/lib/hyracks-dataflow-std-0.2.11-SNAPSHOT.jar" sourcepath="/home/wangrui/a/imru/hyracks10/hyracks/hyracks/hyracks-dataflow-std/src/main/java"/>
 	<classpathentry kind="lib" path="dist/lib/hyracks-ec2-0.2.11-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="dist/lib/hyracks-hdfs-0.20.2-0.2.11-SNAPSHOT.jar"/>

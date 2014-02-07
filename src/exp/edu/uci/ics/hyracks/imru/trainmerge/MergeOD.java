@@ -14,6 +14,7 @@ import edu.uci.ics.hyracks.api.dataflow.IOperatorNodePushable;
 import edu.uci.ics.hyracks.api.dataflow.value.IRecordDescriptorProvider;
 import edu.uci.ics.hyracks.api.dataflow.value.ISerializerDeserializer;
 import edu.uci.ics.hyracks.api.dataflow.value.RecordDescriptor;
+import edu.uci.ics.hyracks.api.deployment.DeploymentId;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.api.job.JobSpecification;
 import edu.uci.ics.hyracks.api.util.JavaSerializationUtils;
@@ -36,11 +37,13 @@ public class MergeOD<Model extends Serializable> extends
     TrainMergeJob<Model> trainMergejob;
     String jobId;
     int totalTrainPartitions;
+    DeploymentId deploymentId;
 
-    public MergeOD(JobSpecification spec, TrainMergeJob<Model> trainMergejob,
-            IMRUConnection imruConnection, String modelName, String jobId,
-            int totalTrainPartitions) {
+    public MergeOD(DeploymentId deploymentId, JobSpecification spec,
+            TrainMergeJob<Model> trainMergejob, IMRUConnection imruConnection,
+            String modelName, String jobId, int totalTrainPartitions) {
         super(spec, 1, 0);
+        this.deploymentId = deploymentId;
         this.imruConnection = imruConnection;
         this.modelName = modelName;
         this.trainMergejob = trainMergejob;
@@ -74,8 +77,8 @@ public class MergeOD<Model extends Serializable> extends
             @Override
             public void close() throws HyracksDataException {
                 if (partition == 0) {
-                    IMRUContext imruContext = new IMRUContext(ctx, "merge",
-                            partition, nPartitions);
+                    IMRUContext imruContext = new IMRUContext(deploymentId,
+                            ctx, "merge", partition, nPartitions);
                     long start = System.currentTimeMillis();
                     Model model = (Model) imruContext.getModel();
                     try {
@@ -142,13 +145,15 @@ public class MergeOD<Model extends Serializable> extends
             int partition, ByteBuffer buffer,
             Hashtable<Integer, LinkedList<ByteBuffer>> hash, int nPartitions)
             throws HyracksDataException {
-        SerializedFrames frames = SerializedFrames.nextFrame(ctx, buffer, hash);
-        if (frames.data == null)
-            return;
         try {
-            TrainMergeContext context = new TrainMergeContext(ctx, "merge",
-                    null, partition, nPartitions, totalTrainPartitions
-                            + partition, partition, imruConnection, jobId);
+            SerializedFrames frames = SerializedFrames.nextFrame(ctx, buffer,
+                    hash);
+            if (frames.data == null)
+                return;
+            TrainMergeContext context = new TrainMergeContext(deploymentId,
+                    ctx, "merge", null, partition, nPartitions,
+                    totalTrainPartitions + partition, partition,
+                    imruConnection, jobId);
             Serializable receivedObject = (Serializable) JavaSerializationUtils
                     .deserialize(frames.data, SpreadOD.class.getClassLoader());
             trainMergejob.receive(context, frames.replyPartition,

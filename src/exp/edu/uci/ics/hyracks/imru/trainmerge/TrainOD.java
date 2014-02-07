@@ -12,6 +12,7 @@ import edu.uci.ics.hyracks.api.dataflow.IOperatorNodePushable;
 import edu.uci.ics.hyracks.api.dataflow.value.IRecordDescriptorProvider;
 import edu.uci.ics.hyracks.api.dataflow.value.ISerializerDeserializer;
 import edu.uci.ics.hyracks.api.dataflow.value.RecordDescriptor;
+import edu.uci.ics.hyracks.api.deployment.DeploymentId;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.api.job.JobSpecification;
 import edu.uci.ics.hyracks.api.util.JavaSerializationUtils;
@@ -34,11 +35,14 @@ public class TrainOD<Model extends Serializable> extends
     int totalMerger;
     IMRUConnection imruConnection;
     String jobId;
+    DeploymentId deploymentId;
 
-    public TrainOD(JobSpecification spec, TrainMergeJob<Model> trainMergejob,
-            HDFSSplit[] inputSplits, int[] mergerIds, int totalMerger,
-            IMRUConnection imruConnection, String jobId) {
+    public TrainOD(DeploymentId deploymentId, JobSpecification spec,
+            TrainMergeJob<Model> trainMergejob, HDFSSplit[] inputSplits,
+            int[] mergerIds, int totalMerger, IMRUConnection imruConnection,
+            String jobId) {
         super(spec, 0, 1);
+        this.deploymentId = deploymentId;
         recordDescriptors[0] = new RecordDescriptor(
                 new ISerializerDeserializer[1]);
         this.inputSplits = inputSplits;
@@ -80,9 +84,9 @@ public class TrainOD<Model extends Serializable> extends
                 return;
         }
         writer.open();
-        TrainMergeContext context = new TrainMergeContext(ctx, "train", writer,
-                partition, nPartitions, partition, mergerIds[partition],
-                imruConnection, jobId);
+        TrainMergeContext context = new TrainMergeContext(deploymentId, ctx,
+                "train", writer, partition, nPartitions, partition,
+                mergerIds[partition], imruConnection, jobId);
         try {
             String nodeId = context.getNodeId();
             Model model = (Model) context.getModel();

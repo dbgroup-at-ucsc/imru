@@ -14,21 +14,16 @@ import java.util.LinkedList;
 import java.util.concurrent.Future;
 
 import edu.uci.ics.hyracks.api.comm.FrameHelper;
-import edu.uci.ics.hyracks.api.comm.IFrameWriter;
 import edu.uci.ics.hyracks.api.context.IHyracksTaskContext;
-import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
-import edu.uci.ics.hyracks.api.exceptions.HyracksException;
 import edu.uci.ics.hyracks.api.util.JavaSerializationUtils;
-import edu.uci.ics.hyracks.dataflow.common.comm.util.FrameUtils;
 import edu.uci.ics.hyracks.imru.api.ASyncIO;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
-import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
 import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
-import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.dataflow.IMRUDebugger;
 import edu.uci.ics.hyracks.imru.dataflow.IMRUSerialize;
-import edu.uci.ics.hyracks.imru.dataflow.dynamic.swap.DynamicCommand;
+import edu.uci.ics.hyracks.imru.elastic.swap.DynamicCommand;
+import edu.uci.ics.hyracks.imru.elastic.wrapper.ImruPlatformAPI;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 /**
@@ -176,7 +171,7 @@ public class SerializedFrames {
     public byte[] data;
 
     public static SerializedFrames nextFrame(int frameSize, ByteBuffer buffer)
-            throws HyracksDataException {
+            throws IOException {
         if (buffer == null)
             return null;
         int sourcePartition = buffer.getInt(SOURCE_OFFSET);
@@ -194,7 +189,7 @@ public class SerializedFrames {
     }
 
     public static byte[] deserializeFromChunks(int frameSize,
-            LinkedList<ByteBuffer> chunks) throws HyracksDataException {
+            LinkedList<ByteBuffer> chunks) throws IOException {
         int curPosition = 0;
         byte[] bs = null;
         for (ByteBuffer buffer : chunks) {
@@ -203,13 +198,13 @@ public class SerializedFrames {
             if (bs == null)
                 bs = new byte[size];
             else if (size != bs.length)
-                throw new HyracksDataException();
+                throw new IOException();
             if (position != curPosition) {
                 Rt.p(size);
                 Rt.p(position);
                 Rt.p(buffer);
                 //                System.exit(0);
-                throw new HyracksDataException(position + " " + curPosition);
+                throw new IOException(position + " " + curPosition);
             }
             int len = Math.min(bs.length - curPosition, frameSize - HEADER
                     - TAIL);
@@ -224,14 +219,14 @@ public class SerializedFrames {
     @Deprecated
     public static SerializedFrames nextFrame(IHyracksTaskContext ctx,
             ByteBuffer buffer, Hashtable<Integer, LinkedList<ByteBuffer>> hash)
-            throws HyracksDataException {
+            throws IOException {
         return nextFrame(ctx, buffer, hash, null);
     }
 
     @Deprecated
     public static SerializedFrames nextFrame(IHyracksTaskContext ctx,
             ByteBuffer buffer, Hashtable<Integer, LinkedList<ByteBuffer>> hash,
-            String debugInfo) throws HyracksDataException {
+            String debugInfo) throws IOException {
         if (buffer == null)
             return null;
         int frameSize = ctx.getFrameSize();
@@ -267,27 +262,27 @@ public class SerializedFrames {
         return merge;
     }
 
-    public static void serializeToFrames(IMRUContext ctx, IFrameWriter writer,
-            byte[] objectData, int partition, int targetPartition,
-            String debugInfo) throws HyracksDataException {
+    public static void serializeToFrames(IMRUContext ctx,
+            ImruPlatformAPI writer, byte[] objectData, int partition,
+            int targetPartition, String debugInfo) throws IOException {
         ByteBuffer frame = ctx.allocateFrame();
         serializeToFrames(ctx, frame, ctx.getFrameSize(), writer, objectData,
                 partition, targetPartition, partition, debugInfo,
                 targetPartition);
     }
 
-    public static void serializeDbgInfo(IMRUContext ctx, IFrameWriter writer,
-            ImruIterInfo info, int partition, int targetPartition, int writerId)
-            throws IOException {
+    public static void serializeDbgInfo(IMRUContext ctx,
+            ImruPlatformAPI writer, ImruIterInfo info, int partition,
+            int targetPartition, int writerId) throws IOException {
         byte[] objectData = JavaSerializationUtils.serialize(info);
         ByteBuffer frame = ctx.allocateFrame();
         serializeToFrames(ctx, frame, ctx.getFrameSize(), writer, objectData,
                 partition, targetPartition, DBG_INFO_FRAME, null, writerId);
     }
 
-    public static void serializeSwapCmd(IMRUContext ctx, IFrameWriter writer,
-            DynamicCommand cmd, int partition, int targetPartition, int writerId)
-            throws IOException {
+    public static void serializeSwapCmd(IMRUContext ctx,
+            ImruPlatformAPI writer, DynamicCommand cmd, int partition,
+            int targetPartition, int writerId) throws IOException {
         byte[] objectData = JavaSerializationUtils.serialize(cmd);
         ByteBuffer frame = ctx.allocateFrame();
         int frames = serializeToFrames(ctx, frame, ctx.getFrameSize(), writer,
@@ -351,12 +346,12 @@ public class SerializedFrames {
      * @param replyPartition
      *            - use -1 to indicate debug information
      * @param debugInfo
-     * @throws HyracksDataException
+     * @throws IOException
      */
     public static int serializeToFrames(IMRUContext ctx, ByteBuffer frame,
-            int frameSize, IFrameWriter writer, byte[] objectData,
+            int frameSize, ImruPlatformAPI writer, byte[] objectData,
             int sourcePartition, int targetPartition, int replyPartition,
-            String debugInfo, int writerId) throws HyracksDataException {
+            String debugInfo, int writerId) throws IOException {
         int position = 0;
         //        Rt.p("send " + objectData.length + " " + deserialize(objectData));
         int frames = 0;
@@ -384,7 +379,8 @@ public class SerializedFrames {
             if (debugInfo != null)
                 IMRUDebugger.sendDebugInfo("flush " + debugInfo + " "
                         + position);
-            FrameUtils.flushFrame(frame, writer);
+            writer.nextFrame(frame);
+            //            FrameUtils.flushFrame(frame, writer);
             position += length;
             frames++;
         }

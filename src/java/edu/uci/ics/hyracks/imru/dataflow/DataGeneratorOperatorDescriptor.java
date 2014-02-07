@@ -11,6 +11,7 @@ import edu.uci.ics.hyracks.api.context.IHyracksTaskContext;
 import edu.uci.ics.hyracks.api.dataflow.IOperatorNodePushable;
 import edu.uci.ics.hyracks.api.dataflow.value.IRecordDescriptorProvider;
 import edu.uci.ics.hyracks.api.dataflow.value.RecordDescriptor;
+import edu.uci.ics.hyracks.api.deployment.DeploymentId;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.api.job.JobSpecification;
 import edu.uci.ics.hyracks.dataflow.std.base.AbstractOperatorNodePushable;
@@ -30,11 +31,13 @@ public class DataGeneratorOperatorDescriptor extends
     protected final ConfigurationFactory confFactory;
     protected final HDFSSplit[] inputSplits;
     IIMRUDataGenerator imruSpec;
+    DeploymentId deploymentId;
 
-    public DataGeneratorOperatorDescriptor(JobSpecification spec,
-            IIMRUDataGenerator imruSpec, HDFSSplit[] inputSplits,
-            ConfigurationFactory confFactory) {
+    public DataGeneratorOperatorDescriptor(DeploymentId deploymentId,
+            JobSpecification spec, IIMRUDataGenerator imruSpec,
+            HDFSSplit[] inputSplits, ConfigurationFactory confFactory) {
         super(spec, 0, 0, "parse", null);
+        this.deploymentId = deploymentId;
         this.inputSplits = inputSplits;
         this.confFactory = confFactory;
         this.imruSpec = imruSpec;
@@ -44,7 +47,7 @@ public class DataGeneratorOperatorDescriptor extends
     public IOperatorNodePushable createPushRuntime(
             final IHyracksTaskContext ctx,
             IRecordDescriptorProvider recordDescProvider, final int partition,
-           final  int nPartitions) throws HyracksDataException {
+            final int nPartitions) throws HyracksDataException {
         return new AbstractOperatorNodePushable() {
             private final String name;
             long startTime;
@@ -63,7 +66,8 @@ public class DataGeneratorOperatorDescriptor extends
                 initialized = true;
                 startTime = System.currentTimeMillis();
 
-                imruContext = new IMRUContext(ctx, name,partition,nPartitions);
+                imruContext = new IMRUContext(deploymentId, ctx, name,
+                        partition, nPartitions);
                 final HDFSSplit split = inputSplits[partition];
                 try {
                     BufferedOutputStream output = new BufferedOutputStream(

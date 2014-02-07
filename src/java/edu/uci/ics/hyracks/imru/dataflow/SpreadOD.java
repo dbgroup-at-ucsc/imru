@@ -31,6 +31,7 @@ import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryOutputSourceOperatorNo
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.data.SerializedFrames;
+import edu.uci.ics.hyracks.imru.elastic.wrapper.ImruHyracksWriter;
 import edu.uci.ics.hyracks.imru.jobgen.SpreadGraph;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRUConnection;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRURuntimeContext;
@@ -130,15 +131,16 @@ public class SpreadOD extends AbstractSingleActivityOperatorDescriptor {
             int partition, ByteBuffer buffer,
             Hashtable<Integer, LinkedList<ByteBuffer>> hash, int nPartitions)
             throws HyracksDataException {
-        int frameSize = ctx.getFrameSize();
-        SerializedFrames frames = SerializedFrames.nextFrame(ctx, buffer, hash);
-        if (!first && frames.data == null)
-            return;
-        if (!last)
-            writer.open();
         try {
-            IMRUContext imruContext = new IMRUContext(ctx, partition,
-                    nPartitions);
+            int frameSize = ctx.getFrameSize();
+            SerializedFrames frames = SerializedFrames.nextFrame(ctx, buffer,
+                    hash);
+            if (!first && frames.data == null)
+                return;
+            if (!last)
+                writer.open();
+            IMRUContext imruContext = new IMRUContext(deploymentId, ctx,
+                    partition, nPartitions);
             String nodeId = imruContext.getNodeId();
             byte[] bs;
             if (first) {
@@ -163,6 +165,7 @@ public class SpreadOD extends AbstractSingleActivityOperatorDescriptor {
                 Rt.write(file, bs);
             }
             SpreadGraph.Node node = level.nodes.get(partition);
+            ImruHyracksWriter imruWriter = new ImruHyracksWriter(deploymentId,ctx, writer);;
 
             ByteBuffer frame = ctx.allocateFrame();
             for (SpreadGraph.Node n : node.subNodes) {
@@ -171,7 +174,7 @@ public class SpreadOD extends AbstractSingleActivityOperatorDescriptor {
                 // IMRUContext(ctx).getNodeId() + " to " + node.name);
                 // buffer.putInt(0, n.partitionInThisLevel);
                 SerializedFrames.serializeToFrames(imruContext, frame,
-                        frameSize, writer, bs, node.partitionInThisLevel,
+                        frameSize, imruWriter, bs, node.partitionInThisLevel,
                         n.partitionInThisLevel, node.partitionInThisLevel,
                         null, n.partitionInThisLevel);
                 if (last)

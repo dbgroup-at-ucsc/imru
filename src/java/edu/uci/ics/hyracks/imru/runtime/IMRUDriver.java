@@ -228,7 +228,8 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
      * @throws Exception
      */
     private JobStatus runDataLoad() throws Exception {
-        JobSpecification job = jobFactory.generateDataLoadJob(imruSpec);
+        JobSpecification job = jobFactory.generateDataLoadJob(deploymentId,
+                imruSpec);
         //                byte[] bs=JavaSerializationUtils.serialize(job);
         //                Rt.p("Dataload job size: "+bs.length);
         JobId jobId = hcc.startJob(deploymentId, job, EnumSet
@@ -242,7 +243,8 @@ public class IMRUDriver<Model extends Serializable, Data extends Serializable> {
 
     public JobStatus runDataGenerator(IIMRUDataGenerator generator)
             throws Exception {
-        JobSpecification job = jobFactory.generateDataGenerateJob(generator);
+        JobSpecification job = jobFactory.generateDataGenerateJob(deploymentId,
+                generator);
         //                byte[] bs=JavaSerializationUtils.serialize(job);
         //                Rt.p("Data generator job size: "+bs.length);
         JobId jobId = hcc.startJob(deploymentId, job, EnumSet

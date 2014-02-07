@@ -31,17 +31,19 @@ import edu.uci.ics.hyracks.api.dataflow.IOperatorNodePushable;
 import edu.uci.ics.hyracks.api.dataflow.value.IRecordDescriptorProvider;
 import edu.uci.ics.hyracks.api.dataflow.value.ISerializerDeserializer;
 import edu.uci.ics.hyracks.api.dataflow.value.RecordDescriptor;
+import edu.uci.ics.hyracks.api.deployment.DeploymentId;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.api.job.JobSpecification;
 import edu.uci.ics.hyracks.dataflow.std.base.AbstractUnaryInputUnaryOutputOperatorNodePushable;
 import edu.uci.ics.hyracks.imru.api.ASyncIO;
-import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
+import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruParameters;
 import edu.uci.ics.hyracks.imru.api.ImruStream;
 import edu.uci.ics.hyracks.imru.api.old.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.data.ChunkFrameHelper;
 import edu.uci.ics.hyracks.imru.data.SerializedFrames;
+import edu.uci.ics.hyracks.imru.elastic.wrapper.ImruHyracksWriter;
 import edu.uci.ics.hyracks.imru.util.Rt;
 
 /**
@@ -59,6 +61,7 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
     public boolean isLocal = false;
     public int level = 0;
     ImruParameters parameters;
+    DeploymentId deploymentId;
 
     /**
      * Create a new ReduceOperatorDescriptor.
@@ -68,12 +71,13 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
      * @param imruSpec
      *            The IMRU Job specification
      */
-    public ReduceOperatorDescriptor(JobSpecification spec,
+    public ReduceOperatorDescriptor(DeploymentId deploymentId,JobSpecification spec,
             ImruStream<?, ?> imruSpec, String name, ImruParameters parameters) {
         super(spec, 1, 1, name, imruSpec);
         this.imruSpec = imruSpec;
         recordDescriptors[0] = dummyRecordDescriptor;
         this.parameters = parameters;
+        this.deploymentId= deploymentId;
     }
 
     @Override
@@ -82,23 +86,25 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
             IRecordDescriptorProvider recordDescProvider, final int partition,
             final int nPartitions) throws HyracksDataException {
         return new AbstractUnaryInputUnaryOutputOperatorNodePushable() {
-            IMRUReduceContext imruContext;
+            IMRUContext imruContext;
             Hashtable<Integer, LinkedList<ByteBuffer>> hash = new Hashtable<Integer, LinkedList<ByteBuffer>>();
             public String name;
             Object dbgInfoRecvQueue;
             Object recvQueue;
+            ImruHyracksWriter imruWriter;
 
             {
                 this.name = ReduceOperatorDescriptor.this.getDisplayName()
                         + partition;
+                imruWriter = new ImruHyracksWriter(deploymentId,ctx, this.writer);
             }
 
             @Override
             public void open() throws HyracksDataException {
                 writer.open();
                 try {
-                    imruContext = new IMRUReduceContext(ctx, name, isLocal,
-                            level, partition, nPartitions);
+                    imruContext = new IMRUContext(deploymentId, ctx, name,
+                            partition, nPartitions);
                     IMRUDebugger.sendDebugInfo(imruContext.getNodeId()
                             + " reduce start " + partition);
 
@@ -124,9 +130,9 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
                                     // parameters.compressIntermediateResultsAfterNIterations)
                                     // objectData = IMRUSerialize.compress(objectData);
                                     SerializedFrames.serializeToFrames(
-                                            imruContext, writer, objectData,
-                                            partition, 0, imruContext
-                                                    .getNodeId()
+                                            imruContext, imruWriter,
+                                            objectData, partition, 0,
+                                            imruContext.getNodeId()
                                                     + " reduce "
                                                     + partition
                                                     + " "
@@ -182,7 +188,7 @@ public class ReduceOperatorDescriptor extends IMRUOperatorDescriptor {
                 imruSpec.reduceDbgInfoClose(dbgInfoRecvQueue);
                 ImruIterInfo info = imruSpec.reduceClose(recvQueue);
                 try {
-                    SerializedFrames.serializeDbgInfo(imruContext, writer,
+                    SerializedFrames.serializeDbgInfo(imruContext, imruWriter,
                             info, partition, 0, 0);
                 } catch (IOException e) {
                     throw new HyracksDataException(e);

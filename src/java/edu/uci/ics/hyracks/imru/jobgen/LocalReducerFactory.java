@@ -28,6 +28,7 @@ import edu.uci.ics.hyracks.api.constraints.expressions.ConstantExpression;
 import edu.uci.ics.hyracks.api.constraints.expressions.PartitionLocationExpression;
 import edu.uci.ics.hyracks.api.dataflow.IConnectorDescriptor;
 import edu.uci.ics.hyracks.api.dataflow.IOperatorDescriptor;
+import edu.uci.ics.hyracks.api.deployment.DeploymentId;
 import edu.uci.ics.hyracks.api.job.JobSpecification;
 import edu.uci.ics.hyracks.dataflow.std.connectors.HashtableLocalityMap;
 import edu.uci.ics.hyracks.dataflow.std.connectors.ILocalityMap;
@@ -63,13 +64,13 @@ public class LocalReducerFactory {
      *            The IMRU spec used by the job
      */
     @SuppressWarnings( { "rawtypes" })
-    public static void addLocalReducers(JobSpecification spec,
+    public static void addLocalReducers(DeploymentId deploymentId,JobSpecification spec,
             IOperatorDescriptor producerOp, int producerPort,
             String[] producerLocations, IOperatorDescriptor consumerOp,
             int consumerPort, IConnectorDescriptor consumerConn,
             ImruStream imruSpec, ImruParameters parameters) {
         ReduceOperatorDescriptor localReducer = new ReduceOperatorDescriptor(
-                spec, imruSpec, "LRed", parameters);
+                deploymentId, spec, imruSpec, "LRed", parameters);
         localReducer.level = -1;
         localReducer.isLocal = true;
         // Construct the locality map used to route tuples to local

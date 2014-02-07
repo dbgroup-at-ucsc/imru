@@ -34,6 +34,7 @@ import edu.uci.ics.hyracks.api.dataflow.IOperatorNodePushable;
 import edu.uci.ics.hyracks.api.dataflow.value.IRecordDescriptorProvider;
 import edu.uci.ics.hyracks.api.dataflow.value.ISerializerDeserializer;
 import edu.uci.ics.hyracks.api.dataflow.value.RecordDescriptor;
+import edu.uci.ics.hyracks.api.deployment.DeploymentId;
 import edu.uci.ics.hyracks.api.exceptions.HyracksDataException;
 import edu.uci.ics.hyracks.api.io.FileReference;
 import edu.uci.ics.hyracks.api.job.JobSpecification;
@@ -44,7 +45,6 @@ import edu.uci.ics.hyracks.imru.api.ASyncIO;
 import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.FrameWriter;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
-import edu.uci.ics.hyracks.imru.api.IMRUMapContext;
 import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruParameters;
 import edu.uci.ics.hyracks.imru.api.ImruStream;
@@ -52,6 +52,9 @@ import edu.uci.ics.hyracks.imru.api.old.IIMRUJob2;
 import edu.uci.ics.hyracks.imru.data.ChunkFrameHelper;
 import edu.uci.ics.hyracks.imru.data.RunFileContext;
 import edu.uci.ics.hyracks.imru.data.SerializedFrames;
+import edu.uci.ics.hyracks.imru.elastic.wrapper.ImruHyracksWriter;
+import edu.uci.ics.hyracks.imru.elastic.wrapper.ImruState;
+import edu.uci.ics.hyracks.imru.elastic.wrapper.ImruWriter;
 import edu.uci.ics.hyracks.imru.file.HDFSSplit;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.IMRURuntimeContext;
 import edu.uci.ics.hyracks.imru.runtime.bootstrap.MapTaskState;
@@ -81,6 +84,7 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
     // private final String envInPath;
     protected final HDFSSplit[] inputSplits;
     ImruParameters parameters;
+    DeploymentId deploymentId;
 
     /**
      * Create a new MapOperatorDescriptor.
@@ -96,13 +100,14 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
      * @param roundNum
      *            The round number.
      */
-    public MapOperatorDescriptor(JobSpecification spec,
-            ImruStream<Model, Data> imruSpec, HDFSSplit[] inputSplits,
-            String name, ImruParameters parameters) {
+    public MapOperatorDescriptor(DeploymentId deploymentId,
+            JobSpecification spec, ImruStream<Model, Data> imruSpec,
+            HDFSSplit[] inputSplits, String name, ImruParameters parameters) {
         super(spec, 0, 1, name, imruSpec);
         recordDescriptors[0] = dummyRecordDescriptor;
         this.inputSplits = inputSplits;
         this.parameters = parameters;
+        this.deploymentId = deploymentId;
     }
 
     @Override
@@ -113,15 +118,16 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
         return new AbstractUnaryOutputSourceOperatorNodePushable() {
             private final IHyracksTaskContext fileCtx;
             private final String name;
-            IMRUMapContext imruContext;
-
+            IMRUContext imruContext;
+            ImruHyracksWriter imruWriter;
             {
                 this.name = MapOperatorDescriptor.this.getDisplayName()
                         + partition;
                 fileCtx = new RunFileContext(ctx, imruSpec
                         .getCachedDataFrameSize());
-                imruContext = new IMRUMapContext(ctx, name,
-                        inputSplits[partition], partition, nPartitions);
+                imruContext = new IMRUContext(deploymentId, ctx, name,
+                        partition, nPartitions);
+                imruContext.setSplit(inputSplits[partition]);
             }
 
             @SuppressWarnings("unchecked")
@@ -129,6 +135,8 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
             public void initialize() throws HyracksDataException {
                 MemoryStatsLogger.logHeapStats(LOG,
                         "MapOperator: Before reading examples");
+                imruWriter = new ImruHyracksWriter(deploymentId, ctx,
+                        this.writer);
                 writer.open();
 
                 try {
@@ -151,14 +159,15 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                         if (context.modelAge < parameters.roundNum)
                             throw new HyracksDataException(
                                     "Model was not spread to "
-                                            + new IMRUContext(ctx, name,
-                                                    partition, nPartitions)
-                                                    .getNodeId());
+                                            + new IMRUContext(deploymentId,
+                                                    ctx, name, partition,
+                                                    nPartitions).getNodeId());
                     }
 
                     // Load the examples.
-                    MapTaskState state = (MapTaskState) IterationUtils
+                    MapTaskState state2 = (MapTaskState) IterationUtils
                             .getIterationState(ctx, partition);
+                    ImruState state = state2 == null ? null : state2.state;
                     if (!parameters.noDiskCache) {
                         if (state == null) {
                             Rt.p("state=null");
@@ -169,7 +178,9 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                             // Use the same state in the future iterations
                             IterationUtils.removeIterationState(ctx, partition);
                             IterationUtils.setIterationState(ctx, partition,
-                                    state);
+                                    new MapTaskState(state, ctx
+                                            .getJobletContext().getJobId(), ctx
+                                            .getTaskAttemptId().getTaskId()));
                         }
                     }
 
@@ -188,63 +199,21 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                     ImruIterInfo info;
                     long mapStartTime = System.currentTimeMillis();
                     if (!parameters.noDiskCache) {
-                        RunFileWriter runFileWriter = state.getRunFileWriter();
+                        ImruWriter runFileWriter = state.diskCache;
                         if (runFileWriter != null) {
                             // Read from disk cache
                             Log.info("Cached example file size is "
                                     + runFileWriter.getFileSize() + " bytes");
-                            final RunFileReader reader = new RunFileReader(
-                                    runFileWriter.getFileReference(), ctx
-                                            .getIOManager(), runFileWriter
-                                            .getFileSize());
-                            // readInReverse
-                            reader.open();
-                            final ByteBuffer inputFrame = fileCtx
-                                    .allocateFrame();
-                            // ChunkFrameHelper chunkFrameHelper = new
-                            // ChunkFrameHelper(
-                            // ctx);
-                            // IMRUContext imruContext = new IMRUContext(
-                            // chunkFrameHelper.getContext(), name);
-                            {
-                                Iterator<ByteBuffer> input = new Iterator<ByteBuffer>() {
-                                    boolean read = false;
-                                    boolean hasData;
-
-                                    @Override
-                                    public void remove() {
-                                    }
-
-                                    @Override
-                                    public ByteBuffer next() {
-                                        if (!hasNext())
-                                            return null;
-                                        read = false;
-                                        return inputFrame;
-                                    }
-
-                                    @Override
-                                    public boolean hasNext() {
-                                        try {
-                                            if (!read) {
-                                                hasData = reader
-                                                        .nextFrame(inputFrame);
-                                                read = true;
-                                            }
-                                        } catch (HyracksDataException e) {
-                                            e.printStackTrace();
-                                        }
-                                        return hasData;
-                                    }
-                                };
-                                // writer = chunkFrameHelper.wrapWriter(writer,
-                                // partition);
-                                info = imruSpec.map(imruContext, input, model,
-                                        out, imruSpec.getCachedDataFrameSize());
-                            }
+                            Iterator<ByteBuffer> input = runFileWriter
+                                    .getReader().getIterator(
+                                            imruSpec.getCachedDataFrameSize());
+                            // writer = chunkFrameHelper.wrapWriter(writer,
+                            // partition);
+                            info = imruSpec.map(imruContext, input, model, out,
+                                    imruSpec.getCachedDataFrameSize());
                         } else {
                             // read from memory cache
-                            Vector vector = state.getMemCache();
+                            Vector vector = state.memCache;
                             Log.info("Cached in memory examples "
                                     + vector.size());
                             info = imruSpec.mapMem(imruContext,
@@ -268,9 +237,10 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                         };
                         ChunkFrameHelper chunkFrameHelper = new ChunkFrameHelper(
                                 ctx);
-                        final IMRUMapContext parseContext = new IMRUMapContext(
-                                chunkFrameHelper.getContext(), name,
-                                inputSplits[partition], partition, nPartitions);
+                        final IMRUContext parseContext = new IMRUContext(
+                                deploymentId, chunkFrameHelper.getContext(),
+                                name, partition, nPartitions);
+                        parseContext.setSplit(inputSplits[partition]);
 
                         Future future = IMRUSerialize.threadPool
                                 .submit(new Runnable() {
@@ -303,11 +273,11 @@ public class MapOperatorDescriptor<Model extends Serializable, Data extends Seri
                             + " map start " + partition);
                     if (imruContext.getIterationNumber() >= parameters.compressIntermediateResultsAfterNIterations)
                         objectData = IMRUSerialize.compress(objectData);
-                    SerializedFrames.serializeToFrames(imruContext, writer,
+                    SerializedFrames.serializeToFrames(imruContext, imruWriter,
                             objectData, partition, 0, imruContext.getNodeId()
                                     + " map " + partition + " "
                                     + imruContext.getOperatorName());
-                    SerializedFrames.serializeDbgInfo(imruContext, writer,
+                    SerializedFrames.serializeDbgInfo(imruContext, imruWriter,
                             info, partition, 0, 0);
                     IMRUDebugger.sendDebugInfo(imruContext.getNodeId()
                             + " map finish");

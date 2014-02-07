@@ -26,7 +26,6 @@ import edu.uci.ics.hyracks.api.deployment.DeploymentId;
 import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
-import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
 import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
@@ -94,13 +93,8 @@ public class HelloWorldJob extends ImruObject<String, String, String> {
             combined += result;
         }
         combined += ")_" + ctx.getNodeId();
-        IMRUReduceContext reduceContext = (IMRUReduceContext) ctx;
-        System.out.println(ctx.getNodeId()
-                + "-"
-                + ctx.getOperatorName()
-                + "-"
-                + (reduceContext.isLocalReducer() ? "L" : reduceContext
-                        .getReducerLevel()) + ": " + sb + " -> " + combined);
+        System.out.println(ctx.getNodeId() + "-" + ctx.getOperatorName() + ": "
+                + sb + " -> " + combined);
         return combined;
     }
 

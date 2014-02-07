@@ -27,7 +27,6 @@ import edu.uci.ics.hyracks.imru.api.DataWriter;
 import edu.uci.ics.hyracks.imru.api.FrameWriter;
 import edu.uci.ics.hyracks.imru.api.IMRUContext;
 import edu.uci.ics.hyracks.imru.api.IMRUDataException;
-import edu.uci.ics.hyracks.imru.api.IMRUReduceContext;
 import edu.uci.ics.hyracks.imru.api.ImruIterInfo;
 import edu.uci.ics.hyracks.imru.api.ImruSplitInfo;
 import edu.uci.ics.hyracks.imru.api.RecoveryAction;
@@ -75,7 +74,7 @@ public interface IIMRUJob2<Model, Data extends Serializable> extends
     /**
      * Combine multiple raw data to one binary data
      */
-    public void reduce(IMRUReduceContext ctx, Iterator<byte[]> input,
+    public void reduce(IMRUContext ctx, Iterator<byte[]> input,
             OutputStream output) throws IMRUDataException;
 
     /**
